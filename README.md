@@ -1,19 +1,21 @@
-# Renivet Frontend — local Phase 0.3
+# Renivet Frontend — Phase 0.4
 
-Fresh Next.js 15 / React 19 / TypeScript / Tailwind foundation. No old Renivet code imported.
+Next.js / TypeScript / Tailwind foundation for **new** Renivet platform. No legacy migration and no commerce UI is enabled.
 
-**Windows start:** Use `renivet-engineering-os/dev/scripts/setup-windows.ps1` to clone/install the three apps, then `start-deps.ps1` and `start-apps.ps1` from the Engineering OS repository.
+## Local development (Windows)
 
-For manual startup after dependencies are installed:
+Follow `renivet-engineering-os/dev/README.md`. On the checked-out `phase0/foundation` branch:
 
 ```powershell
+npm install
 npm run dev
 ```
 
-- UI: http://127.0.0.1:3000/
-- Live server-side API bridge: http://127.0.0.1:3000/api/health (HTTP 503 when backend is down)
-- Backend: http://127.0.0.1:4000/api/v1/health
+Open http://127.0.0.1:3000/. Backend connectivity: http://127.0.0.1:3000/api/health.
 
-The bridge uses ignored local `.env.local` and the server-only `BACKEND_INTERNAL_URL` variable. It is an **API connectivity test only**, not customer authentication, domain authorization or a production readiness probe.
+## Code organization
 
-CI runs lint/typecheck/tests/build. A reviewed package lockfile and deterministic `npm ci` remain an open release hardening gate. No production deployments or unapproved checkout/payment features are provided.
+Read `docs/architecture.md` before adding a route, shared component or feature.
+Root home page lives in `src/app/(storefront)/page.tsx`. The other route groups are *reserved*, not functional or secured just by being groups. Shared component and config boundaries are exercised on the bootstrap page.
+
+CI: lint, typecheck, unit tests and Next build. Dependency lockfile/npm ci and GitHub branch enforcement remain open gates. D01–D06 are still in review.
