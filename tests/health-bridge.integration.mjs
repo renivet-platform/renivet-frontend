@@ -1,3 +1,5 @@
+/* global fetch, AbortSignal */
+import process from 'node:process';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
