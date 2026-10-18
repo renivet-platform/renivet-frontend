@@ -23,3 +23,5 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Reject high/critical runtime dependency advisories
         run: npm audit --omit=dev --audit-level=high
+      - name: Reject high/critical advisories in the full dependency tree (including PostCSS tooling)
+        run: npm audit --audit-level=high
