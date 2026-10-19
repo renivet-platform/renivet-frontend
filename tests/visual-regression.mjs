@@ -1,3 +1,4 @@
+/* global URL, process, setTimeout, fetch, WebSocket, document, getComputedStyle, innerWidth, innerHeight, Buffer, console */
 // CI-only Chromium layout regression checks plus unapproved screenshot candidates.
 // Requires only Node 22 and Chrome installed on a disposable GitHub Actions runner.
 import assert from "node:assert/strict";
@@ -32,7 +33,7 @@ try {
       const contents = await readFile(path.join(dir, "DevToolsActivePort"), "utf8");
       port = Number(contents.split("\n")[0]);
       if (port > 0) break;
-    } catch {}
+    } catch { /* Chrome has not created the debugging port file yet. */ }
     await sleep(200);
   }
   if (!port) throw new Error("Chrome debugging unavailable: " + stderr.slice(-900));
