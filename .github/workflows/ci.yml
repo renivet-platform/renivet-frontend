@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
           cache: npm
@@ -25,3 +25,95 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: http://localhost:4000/api/v1
       - name: Test frontend-to-backend health bridge
         run: node --test tests/health-bridge.integration.mjs
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Build pinned-base frontend staging image
+        run: docker build --tag renivet-frontend:ci .
+      - name: Reject fixable high/critical image CVEs
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: 'renivet-frontend:ci'
+          version: 'v0.70.0'
+          format: table
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          scanners: vuln
+          exit-code: '1'
+      - name: Generate SPDX container SBOM
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: 'renivet-frontend:ci'
+          version: 'v0.70.0'
+          format: spdx-json
+          output: 'container-sbom.spdx.json'
+          exit-code: '0'
+      - name: Retain container SBOM for release review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: renivet-frontend-container-sbom
+          path: container-sbom.spdx.json
+          retention-days: 7
+          if-no-files-found: error
+      - name: Verify production Next.js serves the technical landing page
+        run: |
+          docker run --detach --name renivet-frontend-ci \
+            --publish 127.0.0.1:43000:3000 \
+            --env BACKEND_INTERNAL_URL=http://127.0.0.1:49999/api/v1 \
+            renivet-frontend:ci
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:43000/ | grep -q 'New platform foundation'; then exit 0; fi
+            sleep 2
+          done
+          docker logs renivet-frontend-ci
+          exit 1
+      - name: Stop disposable frontend CI container
+        if: always()
+        run: docker rm --force renivet-frontend-ci || true
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install and build real Tailwind 4/Next.js site
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+      - name: Check installed GitHub runner Chrome
+        run: |
+          command -v google-chrome
+          google-chrome --version
+      - name: Regression checks of rendered desktop/mobile styles and screenshots
+        run: |
+          mkdir -p visual-artifacts
+          npm run start > visual-artifacts/nextjs-server.log 2>&1 &
+          echo "$!" > visual-artifacts/nextjs-server.pid
+          for i in $(seq 1 50); do
+            if curl --fail --silent http://127.0.0.1:3000/ | grep -q 'New platform foundation'; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:3000/ > /dev/null
+          node tests/visual-regression.mjs
+      - name: Upload desktop/mobile screenshot candidates for visual review
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: renivet-frontend-foundation-visual-checks
+          path: visual-artifacts/
+          retention-days: 7
+          if-no-files-found: error
+      - name: Stop disposable GitHub CI frontend
+        if: always()
+        shell: bash
+        run: |
+          if test -f visual-artifacts/nextjs-server.pid; then
+            kill "$(cat visual-artifacts/nextjs-server.pid)" || true
+          fi
