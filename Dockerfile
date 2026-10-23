@@ -17,5 +17,7 @@ COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/next.config.ts ./next.config.ts
 COPY --from=build /app/tsconfig.json ./tsconfig.json
+RUN chown -R node:node /app
+USER node
 EXPOSE 3000
 CMD ["node", "node_modules/next/dist/bin/next", "start"]
