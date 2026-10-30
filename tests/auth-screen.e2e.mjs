@@ -65,6 +65,7 @@ try {
   await command("Page.enable"); await command("Runtime.enable");
   const evaluate = async expression => (await command("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true })).result?.value;
   const waitFor = async expression => { for (let i = 0; i < 80; i++) { const value = await evaluate(expression); if (value) return value; await sleep(100); } throw new Error("Timed out waiting for browser condition: " + expression + "\nPage: " + await evaluate("document.body.innerText")); };
+  const waitInteractive = id => waitFor(`(() => { const input=document.getElementById(${JSON.stringify(id)}); return !!input && Object.keys(input).some(key => key.startsWith('__reactProps')) })()`);
   const enter = async (id, value) => evaluate(`(() => { const input=document.getElementById(${JSON.stringify(id)}); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set; setter.call(input,${JSON.stringify(value)}); input.dispatchEvent(new Event('input',{bubbles:true})); input.dispatchEvent(new Event('change',{bubbles:true})); return true })()`);
   const submit = () => evaluate("document.querySelector('form').requestSubmit(); true");
   for (const [route, title, fields] of [
@@ -104,14 +105,14 @@ try {
   // Registration -> email challenge -> code verification -> password login -> session -> CSRF logout.
   await command("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await command("Page.navigate", { url: new URL("register", base).href });
-  await waitFor("document.getElementById('register-email') !== null");
+  await waitInteractive("register-email");
   await enter("register-email", "buyer@example.test"); await enter("register-password", "synthetic passphrase 123"); await submit();
-  await waitFor("document.getElementById('register-code') !== null");
+  await waitInteractive("register-code");
   await enter("register-code", "123456"); await submit();
   await waitFor("document.body.innerText.includes('Your email is verified')");
   assert.equal(await evaluate("location.search === '' && document.cookie.includes('synthetic-session') === false"), true, "verification keeps challenge/code/session out of URL and document.cookie");
   await command("Page.navigate", { url: new URL("sign-in", base).href });
-  await waitFor("document.getElementById('signin-email') !== null");
+  await waitInteractive("signin-email");
   await enter("signin-email", "buyer@example.test"); await enter("signin-password", "synthetic passphrase 123"); await submit();
   await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
   assert.equal(await evaluate("document.cookie.includes('synthetic-session')"), false, "HttpOnly session cookie is not readable by page JavaScript");
@@ -122,19 +123,19 @@ try {
   await waitFor("document.body.innerText.includes('Your session has expired')");
   console.log("PASS registration, email verification, secure session cookie, session inspection, logout, expired-session flow");
 
-  await command("Page.navigate", { url: new URL("sign-in", base).href }); await waitFor("document.getElementById('signin-email') !== null");
+  await command("Page.navigate", { url: new URL("sign-in", base).href }); await waitInteractive("signin-email");
   await enter("signin-email", "unknown@example.test"); await enter("signin-password", "synthetic passphrase 123"); await submit();
   await waitFor("document.body.innerText.includes('We couldn’t sign you in with those details.')");
   assert.equal(await evaluate("!document.body.innerText.includes('enumeration detail')"), true, "login failure does not expose backend detail");
-  await command("Page.navigate", { url: new URL("recover", base).href }); await waitFor("document.getElementById('recovery-email') !== null");
-  await enter("recovery-email", "buyer@example.test"); await submit(); await waitFor("document.getElementById('recovery-code') !== null");
+  await command("Page.navigate", { url: new URL("recover", base).href }); await waitInteractive("recovery-email");
+  await enter("recovery-email", "buyer@example.test"); await submit(); await waitInteractive("recovery-code");
   await enter("recovery-code", "000000"); await enter("recovery-password", "another synthetic password"); await submit();
   await waitFor("document.body.innerText.includes('We couldn’t sign you in with those details')");
   assert.equal(await evaluate("!document.body.innerText.includes('private delivery state')"), true, "OTP denial hides backend details");
   await enter("recovery-code", "123456"); await submit();
   await waitFor("document.body.innerText.includes('your password has been reset')");
   assert.equal(await evaluate("location.search === ''"), true, "recovery code and password do not enter the URL");
-  await command("Page.navigate", { url: new URL("recover", base).href }); await waitFor("document.getElementById('recovery-email') !== null");
+  await command("Page.navigate", { url: new URL("recover", base).href }); await waitInteractive("recovery-email");
   await enter("recovery-email", "outage@example.test"); await submit();
   await waitFor("document.body.innerText.includes('Authentication is temporarily unavailable')");
   console.log("PASS generic login denial and honest provider outage state");
