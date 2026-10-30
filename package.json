@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "api:types": "npm exec --yes --package=openapi-typescript@7.13.0 -- openapi-typescript openapi/renivet-backend.openapi.json --output src/generated/renivet-api.d.ts",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
@@ -25,6 +26,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^10.12.0",
+    "openapi-typescript": "7.13.0",
     "postcss": "^8.5.31",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.19.0",
