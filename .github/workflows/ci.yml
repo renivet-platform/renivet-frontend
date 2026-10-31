@@ -17,6 +17,10 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci --no-audit --no-fund
+      - name: Verify generated auth API types match the committed OpenAPI contract
+        run: |
+          npm run api:types
+          git diff --exit-code -- src/generated/renivet-api.d.ts
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
@@ -94,7 +98,7 @@ jobs:
       - name: Regression checks of rendered desktop/mobile styles and screenshots
         run: |
           mkdir -p visual-artifacts
-          npm run start > visual-artifacts/nextjs-server.log 2>&1 &
+          BACKEND_INTERNAL_URL=http://127.0.0.1:4000/api/v1 npm run start > visual-artifacts/nextjs-server.log 2>&1 &
           echo "$!" > visual-artifacts/nextjs-server.pid
           for i in $(seq 1 50); do
             if curl --fail --silent http://127.0.0.1:3000/ | grep -q 'New platform foundation'; then break; fi
@@ -102,11 +106,12 @@ jobs:
           done
           curl --fail --silent http://127.0.0.1:3000/ > /dev/null
           node tests/visual-regression.mjs
+          node tests/auth-screen.e2e.mjs
       - name: Upload desktop/mobile screenshot candidates for visual review
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: renivet-frontend-foundation-visual-checks
+          name: renivet-frontend-visual-checks
           path: visual-artifacts/
           retention-days: 7
           if-no-files-found: error
