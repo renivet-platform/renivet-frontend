@@ -76,7 +76,15 @@ try {
     for (const width of [320, 390]) {
       await command("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: true });
       await command("Page.navigate", { url: new URL(route, base).href });
-      const page = await waitFor("(() => { const main=document.querySelector('main'); const h=document.querySelector('h1'); return main&&h?{title:h.textContent.trim(),labels:[...document.querySelectorAll('label')].map(x=>x.textContent.trim()),width:document.documentElement.scrollWidth,viewport:innerWidth,button:!!document.querySelector('button[type=submit]')}:null })()");
+      const page = await waitFor(`(() => {
+        const main = document.querySelector('main');
+        const heading = document.querySelector('h1');
+        const labels = [...document.querySelectorAll('label')].map(label => label.textContent.trim());
+        return main && heading && ${JSON.stringify(fields)}.every(field => labels.includes(field))
+          ? { title: heading.textContent.trim(), labels, width: document.documentElement.scrollWidth,
+              viewport: innerWidth, button: !!document.querySelector('button[type=submit]') }
+          : null;
+      })()`);
       assert.equal(page.title, title, `${route}: expected screen heading`);
       assert.ok(fields.every(field => page.labels.includes(field)), `${route}: all fields have visible labels`);
       assert.ok(page.button, `${route}: submit action exists`);
