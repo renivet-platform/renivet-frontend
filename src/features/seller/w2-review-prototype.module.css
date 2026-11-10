@@ -16,6 +16,7 @@
   color: var(--ink);
   font-family: Arial, Helvetica, sans-serif;
 }
+.page, .page * { box-sizing: border-box; }
 
 .topbar { width: 100%; height: 72px; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(22px, 6vw, 92px); background: var(--white); border-bottom: 1px solid var(--line); }
 .wordmark { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-family: Georgia, "Times New Roman", serif; font-size: 23px; letter-spacing: -.04em; }
