@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { contrastRatio } from "../src/features/identity/auth-theme";
-import { getOnboardingPrototypeScreens, getPrototypeStateCopy } from "../src/features/identity/onboarding-prototype";
+import { getOnboardingPrototypeScreens, getPrototypeStateCopy, type PrototypeScreenId } from "../src/features/identity/onboarding-prototype";
 
 const prototypeCss = readFileSync(new URL("../src/features/identity/onboarding-prototype.module.css", import.meta.url), "utf8");
+const prototypeView = readFileSync(new URL("../src/features/identity/onboarding-prototype-view.tsx", import.meta.url), "utf8");
 
 function cssToken(name: string): string {
   const value = prototypeCss.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, "i"))?.[1];
@@ -12,9 +13,53 @@ function cssToken(name: string): string {
   return value;
 }
 
-test("W1 onboarding preview covers the agreed customer, seller, and admin entry screens", () => {
+test("W1 onboarding preview covers the customer, seller, and admin journey map", () => {
   const screens = getOnboardingPrototypeScreens();
-  assert.deepEqual(screens.map(screen => screen.sourceId), ["CU-08", "CU-09", "CU-09", "SE-20", "AD-01", "AD-06"]);
+  assert.deepEqual(screens.map(screen => [screen.id, screen.sourceId]), [
+    ["sign-in", "CU-08"],
+    ["register", "CU-09"],
+    ["email-verification", "CU-09"],
+    ["recover", "CU-09"],
+    ["recovery-code", "CU-09"],
+    ["account-session", "CU-08"],
+    ["session-expired", "CU-09"],
+    ["admin-mfa", "AD-01"],
+    ["seller-access", "SE-20"],
+    ["team-permissions", "AD-06"],
+  ]);
+});
+
+test("preview journey controls resolve to screens in the same map", () => {
+  const screens = getOnboardingPrototypeScreens();
+  const screenIds = new Set(screens.map(screen => screen.id));
+  for (const screen of screens) {
+    for (const target of [screen.nextStepId, screen.alternateStepId]) {
+      if (target) assert.ok(screenIds.has(target), screen.id + " links to an existing preview screen");
+    }
+  }
+  assert.equal(screens.find(screen => screen.id === "sign-in")?.alternateStepId, "recover");
+  assert.equal(screens.find(screen => screen.id === "register")?.nextStepId, "email-verification");
+});
+
+test("each journey screen offers relevant loading and negative states", () => {
+  const screens = new Map(getOnboardingPrototypeScreens().map(screen => [screen.id, screen]));
+  const expectedStates: Record<string, string[]> = {
+    "sign-in": ["validation-error", "loading", "recoverable-error", "denied", "expired", "service-unavailable"],
+    register: ["validation-error", "loading", "recoverable-error", "success-preview", "service-unavailable"],
+    "email-verification": ["validation-error", "loading", "invalid-code", "expired", "already-used", "rate-limited", "service-unavailable", "success-preview"],
+    recover: ["validation-error", "loading", "recoverable-error", "success-preview", "service-unavailable"],
+    "recovery-code": ["validation-error", "loading", "invalid-code", "expired", "rate-limited", "service-unavailable", "success-preview"],
+    "account-session": ["loading", "success-preview", "expired", "recoverable-error"],
+    "session-expired": ["expired", "loading", "recoverable-error"],
+    "admin-mfa": ["validation-error", "loading", "invalid-code", "expired", "rate-limited", "denied", "service-unavailable"],
+    "seller-access": ["loading", "success-preview", "empty", "denied", "suspended", "expired", "service-unavailable"],
+    "team-permissions": ["loading", "success-preview", "empty", "denied", "expired", "audit-unavailable", "service-unavailable"],
+  };
+  for (const [id, required] of Object.entries(expectedStates)) {
+    const screen = screens.get(id as PrototypeScreenId);
+    assert.ok(screen, id + " screen exists");
+    for (const state of required) assert.ok(screen.states.includes(state as never), id + " includes " + state);
+  }
 });
 
 test("onboarding preview labels all approval and access states as proposals requiring review", () => {
@@ -38,6 +83,20 @@ test("error and denial preview copy avoids claiming an account or access exists"
   assert.doesNotMatch(getPrototypeStateCopy("recoverable-error").message, /account exists|approved/i);
   assert.match(getPrototypeStateCopy("denied").message, /does not currently have access/i);
   assert.doesNotMatch(getPrototypeStateCopy("denied").message, /brand|application|staff/i);
+});
+
+test("simulated success never claims a request, verification, session, or permission occurred", () => {
+  const copy = getPrototypeStateCopy("success-preview" as never);
+  assert.match(copy.label, /preview/i);
+  assert.match(copy.message, /no (request|code|session|permission)|not (sent|verified|created|changed)/i);
+  assert.doesNotMatch(copy.message, /email sent|code verified|signed in|permission granted/i);
+});
+
+test("preview controls do not call authentication APIs or submit form data", () => {
+  assert.doesNotMatch(prototypeView, /\bfetch\s*\(|\/api\/auth/);
+  assert.match(prototypeView, /readOnly/);
+  assert.match(prototypeView, /Continue preview|Preview next/);
+  assert.match(prototypeView, /aria-live="polite"/);
 });
 
 test("proposed onboarding text and button color pairs meet WCAG AA contrast", () => {

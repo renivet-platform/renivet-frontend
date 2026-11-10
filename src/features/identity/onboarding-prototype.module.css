@@ -104,7 +104,8 @@
 .primaryAction { width: 100%; min-height: 2.9rem; display: flex; align-items: center; justify-content: space-between; margin-top: 1.2rem; padding: .65rem .9rem; border: 1px solid var(--pine); border-radius: .55rem; color: #fffefa; background: var(--pine); font: inherit; font-size: .8rem; font-weight: 700; }
 .primaryAction:disabled { cursor: not-allowed; opacity: .78; }
 .primaryAction span { font-size: 1rem; }
-.secondaryAction { margin: .8rem 0 0; color: var(--pine); font-size: .73rem; font-weight: 700; text-align: center; text-decoration: underline; text-underline-offset: .2rem; }
+.secondaryAction { width: 100%; display: block; margin: .8rem 0 0; padding: .2rem; border: 0; color: var(--pine); background: transparent; font: inherit; font-size: .73rem; font-weight: 700; text-align: center; text-decoration: underline; text-underline-offset: .2rem; cursor: pointer; }
+.secondaryAction:focus-visible { outline: 3px solid #176e56; outline-offset: 3px; border-radius: .25rem; }
 .previewOnly { margin: .85rem 0 0; color: #78837a; font-size: .64rem; text-align: center; }
 .statePicker { min-width: 0; margin: 1rem 0 0; padding: 0; border: 0; }
 .statePicker legend { margin-bottom: .55rem; color: var(--muted); font-size: .7rem; font-weight: 700; }

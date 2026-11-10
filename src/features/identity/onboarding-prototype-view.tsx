@@ -15,7 +15,9 @@ export function OnboardingPrototype() {
   const screen = screens[screenIndex];
   const [state, setState] = useState<PrototypeState>(screen.states[0]);
   const stateCopy = getPrototypeStateCopy(state);
-  const isError = state !== "ready";
+  const isError = ["validation-error", "recoverable-error", "denied", "expired", "service-unavailable", "invalid-code", "already-used", "rate-limited", "suspended", "audit-unavailable"].includes(state);
+  const nextIndex = screen.nextStepId ? screens.findIndex(item => item.id === screen.nextStepId) : -1;
+  const alternateIndex = screen.alternateStepId ? screens.findIndex(item => item.id === screen.alternateStepId) : -1;
 
   function selectScreen(index: number) {
     setScreenIndex(index);
@@ -81,7 +83,7 @@ export function OnboardingPrototype() {
 
             <div className={styles.formPanel}>
               <div className={styles.frameEyebrow}><span className={styles.eyebrowLine} />{screen.eyebrow}</div>
-              <h2 id="screen-title">{screen.heading}</h2>
+              <h2 id="screen-title" aria-live="polite" aria-atomic="true">{screen.heading}</h2>
               <p className={styles.screenDescription}>{screen.description}</p>
 
               {screen.fields.length > 0 ? (
@@ -101,16 +103,16 @@ export function OnboardingPrototype() {
                 </div>
               )}
 
-              <div className={isError ? styles.stateMessageError : styles.stateMessage} role={isError ? "alert" : "status"}>
+              <div className={isError ? styles.stateMessageError : styles.stateMessage} role="status" aria-live="polite" aria-atomic="true">
                 <span className={styles.stateIcon} aria-hidden="true">{isError ? "!" : "✓"}</span>
                 <span><strong>{stateCopy.label}</strong><small>{stateCopy.message}</small></span>
               </div>
 
-              <button className={styles.primaryAction} type="button" disabled aria-disabled="true">
-                {screen.primaryAction}<span aria-hidden="true">→</span>
+              <button className={styles.primaryAction} type="button" onClick={() => selectScreen(nextIndex)} disabled={nextIndex < 0}>
+                {nextIndex < 0 ? "End of preview" : "Preview next"}<span aria-hidden="true">&rarr;</span>
               </button>
-              {screen.secondaryAction && <p className={styles.secondaryAction}>{screen.secondaryAction}</p>}
-              <p className={styles.previewOnly}>Preview only · actions are disabled</p>
+              {alternateIndex >= 0 && <button className={styles.secondaryAction} type="button" onClick={() => selectScreen(alternateIndex)}>{screen.secondaryAction || `Preview ${screens[alternateIndex].title.toLowerCase()}`}</button>}
+              <p className={styles.previewOnly}>Preview only. Buttons navigate between proposed screens; no information is submitted.</p>
             </div>
           </div>
 
