@@ -6,6 +6,8 @@ const maxBodyBytes = 16 * 1024;
 const safeMessages: Record<string, string> = {
   AUTH_INPUT_INVALID: "Check the information and try again.",
   AUTHENTICATION_FAILED: "We couldn't verify those details. Check them or request another code.",
+  AUTH_MFA_PROOF_INVALID: "That authenticator or recovery code could not be verified. Try another code.",
+  AUTH_MFA_STEP_UP_REQUIRED: "A fresh identity check is required for this action.",
   AUTH_RATE_LIMITED: "Too many attempts. Wait a little, then try again.",
   AUTH_SERVICE_UNAVAILABLE: "Authentication is temporarily unavailable. Please try again shortly.",
   AUTH_INTERNAL_ERROR: "Authentication is temporarily unavailable. Please try again shortly.",
@@ -15,6 +17,8 @@ const safeMessages: Record<string, string> = {
 const safeStatuses: Record<string, number> = {
   AUTH_INPUT_INVALID: 400,
   AUTHENTICATION_FAILED: 401,
+  AUTH_MFA_PROOF_INVALID: 401,
+  AUTH_MFA_STEP_UP_REQUIRED: 403,
   AUTH_RATE_LIMITED: 429,
   AUTH_SERVICE_UNAVAILABLE: 503,
   AUTH_INTERNAL_ERROR: 500,
@@ -37,6 +41,7 @@ function unavailableResponse(): Response {
 function isAllowedAuthOperation(path: string, method: AuthMethod): boolean {
   if (["/auth/register", "/auth/sessions", "/auth/challenges"].includes(path)) return method === "POST";
   if (path === "/auth/session") return method === "GET" || method === "DELETE";
+  if (path === "/auth/mfa/step-up") return method === "POST";
   const match = /^\/auth\/challenges\/([^/]+)\/verify$/.exec(path);
   return method === "POST" && Boolean(match && isValidChallengeId(match[1]));
 }
@@ -112,14 +117,14 @@ export async function proxyAuthRequest(request: Request, path: string, method: A
   const upstreamHeaders = new Headers({ Accept: "application/json" });
   if (body !== undefined) upstreamHeaders.set("Content-Type", "application/json");
   const cookie = request.headers.get("cookie");
-  if (cookie && (path === "/auth/session" || path === "/auth/sessions")) {
+  if (cookie && (path === "/auth/session" || path === "/auth/sessions" || path === "/auth/mfa/step-up")) {
     upstreamHeaders.set("Cookie", cookie);
   }
   if (method !== "GET") {
     upstreamHeaders.set("Origin", request.headers.get("origin")!);
     upstreamHeaders.set("Sec-Fetch-Site", "same-origin");
   }
-  if (method === "DELETE") {
+  if (method === "DELETE" || path === "/auth/mfa/step-up") {
     const csrfToken = request.headers.get("x-csrf-token");
     if (!csrfToken || csrfToken.length > 512) {
       return jsonResponse({

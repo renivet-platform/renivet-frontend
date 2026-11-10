@@ -8,6 +8,8 @@ type ChallengeRequest = operations["createOtpChallenge"]["requestBody"]["content
 type ChallengeResponse = operations["createOtpChallenge"]["responses"][202]["content"]["application/json"];
 type VerifyRequest = operations["verifyOtpChallenge"]["requestBody"]["content"]["application/json"];
 type VerifyResponse = operations["verifyOtpChallenge"]["responses"][200]["content"]["application/json"];
+type MfaStepUpRequest = operations["stepUpWithMfa"]["requestBody"]["content"]["application/json"];
+type MfaStepUpResponse = operations["stepUpWithMfa"]["responses"][200]["content"]["application/json"];
 // NestJS currently documents logout's JSON example without a response schema, so validate this narrow shape at runtime.
 type LogoutResponse = { status: "logged_out" };
 type CsrfToken = operations["logoutCurrentSession"]["parameters"]["header"]["X-CSRF-Token"];
@@ -118,6 +120,19 @@ export async function getCurrentSession(): Promise<CurrentSession> {
   const body = await requestJson<unknown>("/api/auth/session", { method: "GET" });
   if (!isCurrentSession(body)) throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
   return body;
+}
+
+export async function stepUpWithMfa(code: MfaStepUpRequest["code"], csrfToken: CsrfToken): Promise<MfaStepUpResponse> {
+  const response = await requestJson<unknown>("/api/auth/mfa/step-up", {
+    ...jsonPost({ code }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+  });
+  if (!response || typeof response !== "object") throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  const value = response as Record<string, unknown>;
+  if (value.authenticationState !== "elevated" || typeof value.csrfToken !== "string" || value.csrfToken.length < 32 || value.csrfToken.length > 512) {
+    throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  }
+  return response as MfaStepUpResponse;
 }
 
 export async function logoutCurrentSession(csrfToken: CsrfToken): Promise<LogoutResponse> {
