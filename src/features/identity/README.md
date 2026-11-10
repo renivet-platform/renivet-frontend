@@ -9,3 +9,11 @@ Registration uses email/password, then requests an email-verification challenge.
 The session page fetches the backend-validated minimal identity and keeps the CSRF token only in component memory for logout. It does not read, store or expose the HttpOnly session cookie. The cookie is forwarded by the BFF and remains managed by the browser.
 
 OpenAPI source snapshot: `openapi/renivet-backend.openapi.json` (backend `main` commit `6a85d53`). Regenerate types with `npm run api:types`; CI should reject generated-type drift.
+
+## Provisional W1 design review preview
+
+`/design/onboarding` is a code-based review provision for REN2-10 while the requested Figma artifact is unavailable. It maps CU-08/CU-09, SE-20 and AD-01/AD-06 into ten screen steps, with preview-only navigation and selectable ready, loading, validation, denial, expiry, throttling, service-failure and success-preview states. Fields are read-only. Buttons only change the displayed preview screen; they do not submit data or call authentication APIs.
+
+This prototype is not a production auth or authorization flow and does not replace the versioned editable Figma journeys, clickable Figma prototype, or required Product/Design/Security/Frontend and Accessibility decisions. REN2-10's Figma and formal approval acceptance criteria remain open. Reviewers should check generic account-safe errors, screen/state mapping, keyboard operation, contrast and responsive behavior before any acceptance decision.
+
+The prototype suite checks its specified foreground/background contrast pairs. Manual keyboard-only, screen-reader and narrow-viewport review has not yet been recorded; those checks remain part of the outstanding accessibility and design review.
