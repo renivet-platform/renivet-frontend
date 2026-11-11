@@ -1,0 +1,1359 @@
+{
+    "candidateSource":  {
+                            "repository":  "renivet-platform/renivet-engineering-os",
+                            "commit":  "4adb9dbced07347563907a1d1497b9df3251b03f",
+                            "file":  "docs/02-system-design/w2-catalog-inventory/v1.5/W2_OpenAPI_v1_5_CANDIDATE.yaml"
+                        },
+    "backendSource":  {
+                          "repository":  "renivet-platform/renivet-backend",
+                          "commit":  "53dd0d0de75de2d204c0ee306f2b1bfe7347b693",
+                          "file":  "openapi/renivet.openapi.json"
+                      },
+    "candidateOperationCount":  47,
+    "operations":  [
+                       {
+                           "operationId":  "listCategories",
+                           "route":  "/seller/products/new",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G03",
+                                         "G07",
+                                         "G08",
+                                         "G13",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "getCategoryAttributes",
+                           "route":  "/seller/products/new",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G03",
+                                         "G07",
+                                         "G08",
+                                         "G13",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "createBrandProduct",
+                           "route":  "/seller/products/new",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G03",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "listBrandProducts",
+                           "route":  "/seller/products",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G03",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "getBrandProduct",
+                           "route":  "/seller/products/[productId]",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G03",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "updateBrandProduct",
+                           "route":  "/seller/products/[productId]",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G03",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "createProductVariant",
+                           "route":  "/seller/products/[productId]/variants",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G03",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "proposeVariantPrice",
+                           "route":  "/seller/products/[productId]/pricing",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G02",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "headless",
+                           "presentationReason":  "The registered contract requires a server-issued ruleVersion, but no registered read operation supplies it; keep price proposal submission unavailable instead of guessing.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "listVariantPrices",
+                           "route":  "/seller/products/[productId]/pricing",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G02",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "submitProductForReview",
+                           "route":  "/seller/products/[productId]/submit",
+                           "role":  "seller",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G07",
+                                         "G08",
+                                         "G14",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "publishApprovedProduct",
+                           "route":  "/admin/catalog-publishing",
+                           "role":  "admin",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G07",
+                                         "G08",
+                                         "G14",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "restrictPublishedProduct",
+                           "route":  "/admin/catalog-publishing",
+                           "role":  "admin",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G07",
+                                         "G08",
+                                         "G14",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "beginMediaUpload",
+                           "route":  "/seller/products/[productId]/media",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "createMediaZipMappingManifest",
+                           "route":  "/seller/imports/media-zip",
+                           "role":  "seller",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G10",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "createMediaZipImport",
+                           "route":  "/seller/imports/media-zip",
+                           "role":  "seller",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G10",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "getMediaZipImportStatus",
+                           "route":  "/seller/imports/media-zip",
+                           "role":  "seller",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G10",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "createCatalogImport",
+                           "route":  "/seller/imports",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G15",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "beginCatalogImportUpload",
+                           "route":  "/seller/imports",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G15",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "saveImportMapping",
+                           "route":  "/seller/imports/[batchId]",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G15",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "getCatalogImportPreview",
+                           "route":  "/seller/imports/[batchId]",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G15",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "confirmCatalogImport",
+                           "route":  "/seller/imports/[batchId]",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G15",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "getImportResults",
+                           "route":  "/seller/imports/[batchId]",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G15",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "retryImportFailures",
+                           "route":  "/seller/imports/[batchId]",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G15",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "listAuthoritativeBalances",
+                           "route":  "/seller/inventory",
+                           "role":  "seller",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G05",
+                                         "G06",
+                                         "G07",
+                                         "G08",
+                                         "G16",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "createStockLocation",
+                           "route":  "/seller/inventory",
+                           "role":  "seller",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G05",
+                                         "G06",
+                                         "G07",
+                                         "G08",
+                                         "G16",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "submitStockObservation",
+                           "route":  "/seller/inventory",
+                           "role":  "seller",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G05",
+                                         "G06",
+                                         "G07",
+                                         "G08",
+                                         "G16",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "proposeStockAdjustment",
+                           "route":  "/seller/inventory",
+                           "role":  "seller",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G05",
+                                         "G06",
+                                         "G07",
+                                         "G08",
+                                         "G16",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "listStockMovements",
+                           "route":  "/seller/inventory",
+                           "role":  "seller",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G05",
+                                         "G06",
+                                         "G07",
+                                         "G08",
+                                         "G16",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "createCycleCount",
+                           "route":  "/seller/inventory",
+                           "role":  "seller",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G05",
+                                         "G06",
+                                         "G07",
+                                         "G08",
+                                         "G16",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "listInventoryReconciliations",
+                           "route":  "/seller/inventory",
+                           "role":  "seller",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G05",
+                                         "G06",
+                                         "G07",
+                                         "G08",
+                                         "G16",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "resolveReconciliation",
+                           "route":  "/seller/inventory",
+                           "role":  "seller",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G05",
+                                         "G06",
+                                         "G07",
+                                         "G08",
+                                         "G16",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "decideCatalogReview",
+                           "route":  "/admin/catalog-review",
+                           "role":  "admin",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G07",
+                                         "G08",
+                                         "G14",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "decideStockAdjustment",
+                           "route":  "/admin/inventory",
+                           "role":  "admin",
+                           "availability":  "gated",
+                           "gates":  [
+                                         "G05",
+                                         "G07",
+                                         "G08",
+                                         "G16",
+                                         "G17"
+                                     ],
+                           "presentation":  "gated",
+                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "getCategorySchemaVersion",
+                           "route":  "/seller/products/new",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G03",
+                                         "G07",
+                                         "G08",
+                                         "G13",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "completeMediaUpload",
+                           "route":  "/seller/products/[productId]/media",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "getMediaAssetStatus",
+                           "route":  "/seller/products/[productId]/media",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "attachProductMedia",
+                           "route":  "/seller/products/[productId]/media",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "updateProductMediaLink",
+                           "route":  "/seller/products/[productId]/media",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "detachProductMedia",
+                           "route":  "/seller/products/[productId]/media",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G04",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "decideVariantPrice",
+                           "route":  "/admin/pricing",
+                           "role":  "admin",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G02",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "headless",
+                           "presentationReason":  "The API route is registered, but the backend exposes no safe review queue/read-by-id context for this action; keep it out of interactive admin controls until evidence and authorization context can be shown.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "proposeCategorySchemaVersion",
+                           "route":  "/admin/taxonomy",
+                           "role":  "admin",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G03",
+                                         "G07",
+                                         "G08",
+                                         "G13",
+                                         "G17"
+                                     ],
+                           "presentation":  "headless",
+                           "presentationReason":  "The API route is registered, but the backend exposes no safe review queue/read-by-id context for this action; keep it out of interactive admin controls until evidence and authorization context can be shown.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "publishCategorySchemaVersion",
+                           "route":  "/admin/taxonomy",
+                           "role":  "admin",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G03",
+                                         "G07",
+                                         "G08",
+                                         "G13",
+                                         "G17"
+                                     ],
+                           "presentation":  "headless",
+                           "presentationReason":  "The API route is registered, but the backend exposes no safe review queue/read-by-id context for this action; keep it out of interactive admin controls until evidence and authorization context can be shown.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "updateProductVariant",
+                           "route":  "/seller/products/[productId]/variants",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G03",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "headless",
+                           "presentationReason":  "The backend route is registered, but the seller workspace does not currently provide an edit or deactivate control for this operation; keep it headless until that interaction is implemented and tested.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "deactivateProductVariant",
+                           "route":  "/seller/products/[productId]/variants",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G03",
+                                         "G07",
+                                         "G08",
+                                         "G17"
+                                     ],
+                           "presentation":  "headless",
+                           "presentationReason":  "The backend route is registered, but the seller workspace does not currently provide an edit or deactivate control for this operation; keep it headless until that interaction is implemented and tested.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "proposeProductClaim",
+                           "route":  "/seller/products/[productId]/claims",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G07",
+                                         "G08",
+                                         "G14",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "listProductClaims",
+                           "route":  "/seller/products/[productId]/claims",
+                           "role":  "seller",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G07",
+                                         "G08",
+                                         "G14",
+                                         "G17"
+                                     ],
+                           "presentation":  "interactive",
+                           "presentationReason":  "This operation is backed by the feature-gated seller product or import workspace and its same-origin API proxy; backend brand authorization remains authoritative.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       },
+                       {
+                           "operationId":  "decideProductClaim",
+                           "route":  "/admin/claims",
+                           "role":  "admin",
+                           "availability":  "registered",
+                           "gates":  [
+                                         "G07",
+                                         "G08",
+                                         "G14",
+                                         "G17"
+                                     ],
+                           "presentation":  "headless",
+                           "presentationReason":  "The API route is registered, but the backend exposes no safe review queue/read-by-id context for this action; keep it out of interactive admin controls until evidence and authorization context can be shown.",
+                           "accessibility":  [
+                                                 "keyboard",
+                                                 "labelled-controls",
+                                                 "visible-focus",
+                                                 "announced-errors"
+                                             ],
+                           "stateRequirements":  [
+                                                     "loading",
+                                                     "empty",
+                                                     "error",
+                                                     "permission-denied",
+                                                     "success"
+                                                 ]
+                       }
+                   ],
+    "handoff":  {
+                    "uxStates":  [
+                                     "loading",
+                                     "empty",
+                                     "error",
+                                     "permission-denied",
+                                     "conflict",
+                                     "success",
+                                     "session-expired"
+                                 ],
+                    "responsive":  [
+                                       "desktop",
+                                       "tablet",
+                                       "mobile"
+                                   ],
+                    "accessibility":  [
+                                          "keyboard navigation",
+                                          "visible focus",
+                                          "programmatic labels",
+                                          "announced validation and API errors",
+                                          "reduced motion"
+                                      ],
+                    "auth":  [
+                                 "first-party W1 session",
+                                 "backend-derived brand membership",
+                                 "same-origin CSRF on mutations",
+                                 "MFA step-up enforced by backend"
+                             ],
+                    "designEvidence":  {
+                                           "codePreview":  "owner-approved code-first design handoff for this implementation pass",
+                                           "figmaSourceIds":  "deferred by owner for this implementation pass",
+                                           "stakeholderApprovals":  "no approval claimed beyond owner direction; reviews required by REN2-10/REN2-18 remain governed by those issues",
+                                           "runtimeActivation":  "blocked by G07/G08/G17 and issue-specific gates"
+                                       },
+                    "unimplemented":  [
+                                          "inventory APIs are not registered in backend OpenAPI",
+                                          "catalog review queue and submission actions are not registered",
+                                          "publication and restriction actions are not registered",
+                                          "admin review queue/read-by-id context is not registered",
+                                          "price proposal requires ruleVersion but there is no approved read operation for current rules"
+                                      ]
+                },
+    "scopeNote":  "Linear acceptance text says 44 operations, while the pinned candidate contains 47 unique operationId values; this handoff follows the pinned source and lists every operation once."
+}

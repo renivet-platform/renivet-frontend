@@ -110,6 +110,31 @@ test("auth BFF preserves the backend session cookie and forwards the existing co
   });
 });
 
+test("auth BFF performs MFA step-up only with same-origin CSRF evidence and rotates the session", async () => {
+  await withUpstream((_request, response) => {
+    response.setHeader("Content-Type", "application/json");
+    response.setHeader("Set-Cookie", "__Host-renivet_session=elevated-synthetic-session; Path=/; HttpOnly; Secure; SameSite=Lax");
+    response.writeHead(200).end(JSON.stringify({ authenticationState: "elevated", csrfToken: "synthetic-elevated-csrf-token-000000000000000000" }));
+  }, async (_base, captured) => {
+    const response = await proxyAuthRequest(new Request("http://app.test/api/auth/mfa/step-up", {
+      method: "POST",
+      headers: {
+        ...sameOriginHeaders(),
+        "Content-Type": "application/json",
+        "X-CSRF-Token": "synthetic-csrf-token",
+        Cookie: "__Host-renivet_session=synthetic-session",
+      },
+      body: JSON.stringify({ code: "123456" }),
+    }), "/auth/mfa/step-up", "POST");
+
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("set-cookie") ?? "", /elevated-synthetic-session/);
+    assert.equal(captured[0]?.url, "/api/v1/auth/mfa/step-up");
+    assert.equal(captured[0]?.headers.cookie, "__Host-renivet_session=synthetic-session");
+    assert.equal(captured[0]?.headers["x-csrf-token"], "synthetic-csrf-token");
+  });
+});
+
 test("auth BFF forwards same-origin CSRF evidence and the session cookie on logout", async () => {
   await withUpstream((_request, response) => {
     response.setHeader("Content-Type", "application/json");
