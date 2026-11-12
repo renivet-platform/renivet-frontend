@@ -59,7 +59,7 @@ const screens: PrototypeScreen[] = [
     id: "register", sourceId: "CU-09", title: "Create account", audience: "customer", stage: "Create your account",
     eyebrow: "Start with the essentials", heading: "Make it yours.",
     description: "Create an account with an email address you can verify.",
-    fields: [{ label: "Email address", placeholder: "you@example.com", type: "email" }, { label: "Create a password", placeholder: "15 characters or more", type: "password" }],
+    fields: [{ label: "Email address", placeholder: "you@example.com", type: "email" }, { label: "Create a password", placeholder: "8–128 characters", type: "password" }],
     primaryAction: "Create account", secondaryAction: "I already have an account", nextStepId: "email-verification", alternateStepId: "sign-in",
     states: ["ready", "validation-error", "loading", "recoverable-error", "success-preview", "service-unavailable"],
     securityNote: "Verification and account creation require a real backend response.", approval: "proposed",

@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Backend main commit `6a85d53` owns the NestJS/OpenAPI contract; do not invent routes, request fields, OTP login, phone delivery, brand authorization, or other service behavior.
-- Register and login use verified email + password; passphrases are 15–128 characters and paste/password managers remain enabled.
+- Register and login use verified email + password; passphrases are 8–128 characters and paste/password managers remain enabled.
 - OTP is six numeric digits and is used only for email verification and password recovery; no client timer or delivery claim is invented.
 - The backend owns identity/session state. The `__Host-renivet_session` cookie stays Secure, HttpOnly, host-only, SameSite=Lax, Path=/; raw session tokens never enter UI code/storage.
 - Unsafe BFF calls require exact same-origin `Origin` and `Sec-Fetch-Site: same-origin`; logout also forwards the session-bound `X-CSRF-Token`.

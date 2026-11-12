@@ -23,7 +23,7 @@ Give customers a coherent, accessible first-party authentication journey in the 
 
 ## User flows
 
-1. **Register:** email + 15–128 character passphrase → `POST /auth/register` → request `email_verification` challenge → enter six-digit code → `POST /auth/challenges/{id}/verify` → sign in.
+1. **Register:** email + 8–128 character passphrase → `POST /auth/register` → request `email_verification` challenge → enter six-digit code → `POST /auth/challenges/{id}/verify` → sign in.
 2. **Sign in:** email + passphrase → `POST /auth/sessions` → backend sets `__Host-renivet_session` → same-origin account/session screen verifies `GET /auth/session`.
 3. **Recover:** email → request `password_recovery` challenge → enter code and replacement passphrase → same verify operation atomically changes the password and revokes old sessions → sign in.
 4. **Session expiry/logout:** session inspection 401 returns the user to sign-in with a safe status; logout calls `DELETE /auth/session` with exact same-origin metadata and the session-bound CSRF token, then returns to sign-in.
