@@ -17,6 +17,7 @@ const testPhone = "+919876543210";
 let attachedPhone = false;
 let phoneChallengeRequested = false;
 let phoneChallengeVerified = false;
+const emailChallengeRequests = [];
 const mockApi = createServer(async (request, response) => {
   let raw = ""; for await (const chunk of request) raw += chunk.toString();
   const body = raw ? JSON.parse(raw) : {};
@@ -32,6 +33,7 @@ const mockApi = createServer(async (request, response) => {
   }
   if (request.url === "/api/v1/auth/challenges" && request.method === "POST") {
     if (body.destination === "outage@example.test") return send(503, { code: "AUTH_SERVICE_UNAVAILABLE", message: "provider offline" });
+    if (body.channel === "email") emailChallengeRequests.push(body);
     if (body.channel === "phone" && body.purpose === "phone_verification" && body.destination === testPhone) phoneChallengeRequested = true;
     return send(202, { status: "accepted", challengeId });
   }
@@ -130,6 +132,13 @@ try {
   await waitInteractive("register-email");
   await enter("register-email", "buyer@example.test"); await enter("register-password", "synthetic passphrase 123"); await submit();
   await waitInteractive("register-code");
+  assert.equal(await evaluate("document.activeElement?.id === 'register-code'"), true, "registration focuses the code field when the challenge step opens");
+  const registerRequestsBeforeResend = emailChallengeRequests.length;
+  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Resend code'))?.click()");
+  await waitFor("document.getElementById('register-code')?.value === ''");
+  await sleep(250);
+  assert.equal(emailChallengeRequests.length, registerRequestsBeforeResend + 1, "registration resend requests a new email verification challenge");
+  assert.equal(emailChallengeRequests.at(-1)?.purpose, "email_verification", "registration resend keeps the email-verification purpose");
   await enter("register-code", "123456"); await submit();
   await waitFor("document.body.innerText.includes('Your email is verified')");
   assert.equal(await evaluate("location.search === '' && document.cookie.includes('synthetic-session') === false"), true, "verification keeps challenge/code/session out of URL and document.cookie");
@@ -162,9 +171,18 @@ try {
   assert.equal(await evaluate("!document.body.innerText.includes('enumeration detail')"), true, "login failure does not expose backend detail");
   await command("Page.navigate", { url: new URL("recover", base).href }); await waitInteractive("recovery-email");
   await enter("recovery-email", "buyer@example.test"); await submit(); await waitInteractive("recovery-code");
+  assert.equal(await evaluate("document.activeElement?.id === 'recovery-code'"), true, "recovery focuses the code field when the challenge step opens");
+  const recoveryRequestsBeforeResend = emailChallengeRequests.length;
+  await enter("recovery-code", "111111");
+  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Resend code'))?.click()");
+  await waitFor("document.getElementById('recovery-code')?.value === ''");
+  await sleep(250);
+  assert.equal(emailChallengeRequests.length, recoveryRequestsBeforeResend + 1, "recovery resend requests a new challenge");
+  assert.equal(emailChallengeRequests.at(-1)?.purpose, "password_recovery", "recovery resend keeps the password-recovery purpose");
   await enter("recovery-code", "000000"); await enter("recovery-password", "another synthetic password"); await submit();
   await waitFor("document.body.innerText.includes('We couldn’t sign you in with those details')");
   assert.equal(await evaluate("!document.body.innerText.includes('private delivery state')"), true, "OTP denial hides backend details");
+  assert.equal(await evaluate("document.getElementById('recovery-code')?.getAttribute('aria-invalid') === 'true' && document.getElementById('recovery-code')?.getAttribute('aria-describedby') === document.querySelector('[role=alert]')?.id"), true, "recovery code error is announced and associated with its input");
   await enter("recovery-code", "123456"); await submit();
   await waitFor("document.body.innerText.includes('your password has been reset')");
   assert.equal(await evaluate("location.search === ''"), true, "recovery code and password do not enter the URL");
