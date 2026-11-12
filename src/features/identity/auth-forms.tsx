@@ -11,9 +11,11 @@ import {
   registerWithEmailAndPassword,
   requestEmailChallenge,
   requestPhoneChallenge,
+  requestPhoneLoginChallenge,
   setPhoneForVerification,
   verifyChallenge,
   verifyPhoneChallenge,
+  verifyPhoneLogin,
 } from "./auth-api";
 import { isAcceptedPassphrase, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber } from "./auth-policy";
 import { AuthShell } from "./auth-shell";
@@ -55,9 +57,16 @@ export function SignInForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [method, setMethod] = useState<"email" | "phone">("email");
+  const [phone, setPhone] = useState("");
+  const [challengeId, setChallengeId] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  const codeInput = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (challengeId) codeInput.current?.focus(); }, [challengeId]);
+  async function submitEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError("");
     if (!isAcceptedPassphrase(password)) { setError("Password must be 15–128 characters."); return; }
     setBusy(true);
@@ -67,17 +76,58 @@ export function SignInForm() {
     } catch (cause) { setError(messageFor(cause)); }
     finally { setBusy(false); }
   }
-  return <AuthShell eyebrow="Welcome back" title="Sign in to Renivet" description="Use your email and password to continue to your account.">
-    <form className={styles.form} onSubmit={submit}>
-      <FormMessage error={error} status="" />
-      <div className={styles.field}><label className={styles.label} htmlFor="signin-email">Email address</label>
-        <input className={styles.input} id="signin-email" name="email" type="email" autoComplete="username" inputMode="email"
-          maxLength={254} required value={email} onChange={event => setEmail(event.currentTarget.value)} /></div>
-      <PasswordField id="signin-password" label="Password" autoComplete="current-password" value={password} onChange={setPassword} />
-      <div className={styles.formLinks}><Link className={styles.link} href="/recover">Forgot password?</Link>
-        <Link className={styles.link} href="/register">Create account</Link></div>
-      <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-    </form>
+  async function requestPhoneCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setError(""); setStatus("");
+    const normalizedPhone = normalizePhoneNumber(phone);
+    if (!normalizedPhone) { setError("Enter a valid Indian mobile number."); return; }
+    setBusy(true);
+    try {
+      const challenge = await requestPhoneLoginChallenge(normalizedPhone);
+      setPhone(normalizedPhone); setChallengeId(challenge.challengeId);
+      setStatus("If this verified number can sign in, a one-time code will be sent.");
+    } catch (cause) { setError(messageFor(cause)); }
+    finally { setBusy(false); }
+  }
+  async function verifyPhoneCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setError(""); setStatus("");
+    if (!/^\d{6}$/.test(code)) { setError("Enter the six-digit code."); return; }
+    setBusy(true);
+    try {
+      await verifyPhoneLogin(challengeId, code);
+      setCode(""); router.replace("/account"); router.refresh();
+    } catch (cause) { setError(messageFor(cause)); }
+    finally { setBusy(false); }
+  }
+  return <AuthShell eyebrow="Welcome back" title="Sign in to Renivet" description="Continue with your email and password or a code sent to your verified phone number.">
+    <div className={styles.form}>
+      <div role="group" aria-label="Sign-in method" className={styles.formLinks}>
+        <button className={styles.secondaryButton} type="button" aria-pressed={method === "email"} onClick={() => { setMethod("email"); setChallengeId(""); setError(""); setStatus(""); }}>Email and password</button>
+        <button className={styles.secondaryButton} type="button" aria-pressed={method === "phone"} onClick={() => { setMethod("phone"); setChallengeId(""); setError(""); setStatus(""); }}>Phone number</button>
+      </div>
+      {method === "email" ? <form className={styles.form} onSubmit={submitEmail}>
+        <FormMessage error={error} status={status} />
+        <div className={styles.field}><label className={styles.label} htmlFor="signin-email">Email address</label>
+          <input className={styles.input} id="signin-email" name="email" type="email" autoComplete="username" inputMode="email" maxLength={254} required value={email} onChange={event => setEmail(event.currentTarget.value)} /></div>
+        <PasswordField id="signin-password" label="Password" autoComplete="current-password" value={password} onChange={setPassword} />
+        <div className={styles.formLinks}><Link className={styles.link} href="/recover">Forgot password?</Link><Link className={styles.link} href="/register">Create account</Link></div>
+        <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+      </form> : !challengeId ? <form className={styles.form} onSubmit={requestPhoneCode}>
+        <FormMessage error={error} status={status} />
+        <div className={styles.field}><label className={styles.label} htmlFor="signin-phone">Phone number</label>
+          <input className={styles.input} id="signin-phone" name="tel" type="tel" autoComplete="tel" inputMode="tel" maxLength={20} required value={phone} aria-describedby="signin-phone-hint" onChange={event => setPhone(event.currentTarget.value)} />
+          <p id="signin-phone-hint" className={styles.hint}>Use the verified Indian mobile number on your account.</p></div>
+        <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Sending code…" : "Send sign-in code"}</button>
+        <p className={styles.hint}>New to Renivet? <Link className={styles.link} href="/register">Create an account</Link></p>
+      </form> : <form className={styles.form} onSubmit={verifyPhoneCode}>
+        <FormMessage error={error} status={status} />
+        <p className={styles.statusBox} role="status">Enter the six-digit code sent to your verified phone.</p>
+        <div className={styles.field}><label className={styles.label} htmlFor="signin-phone-code">Six-digit sign-in code</label>
+          <input ref={codeInput} className={styles.input} id="signin-phone-code" name="one-time-code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={event => setCode(normalizeOtpEntry(event.currentTarget.value))} />
+          <p className={styles.hint}>The code expires in five minutes. Never share it.</p></div>
+        <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Signing in…" : "Verify code and sign in"}</button>
+        <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => { setChallengeId(""); setCode(""); setError(""); setStatus(""); }}>Use a different number</button>
+      </form>}
+    </div>
   </AuthShell>;
 }
 

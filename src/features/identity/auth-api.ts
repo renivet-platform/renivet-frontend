@@ -28,6 +28,7 @@ type PhoneChallengeRequest = Omit<ChallengeRequest, "channel" | "purpose"> & {
   purpose: "phone_verification";
 };
 type PhoneVerifyRequest = Omit<VerifyRequest, "purpose"> & { purpose: "phone_verification" };
+type PhoneLoginResponse = { authenticationState: "authenticated"; user: { id: string } };
 
 const fallbackError = {
   code: "AUTH_SERVICE_UNAVAILABLE" as const,
@@ -94,7 +95,7 @@ export async function verifyChallenge(challengeId: string, input: EmailVerifyReq
     `/api/auth/challenges/${encodeURIComponent(challengeId)}/verify`,
     jsonPost(input),
   );
-  if (response.status !== "verified") throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  if (!("status" in response) || response.status !== "verified") throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
   return response;
 }
 
@@ -122,8 +123,23 @@ export async function verifyPhoneChallenge(challengeId: string, input: PhoneVeri
     `/api/auth/challenges/${encodeURIComponent(challengeId)}/verify`,
     jsonPost(input),
   );
-  if (response.status !== "verified") throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  if (!("status" in response) || response.status !== "verified") throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
   return response;
+}
+
+export async function requestPhoneLoginChallenge(phone: string): Promise<ChallengeResponse> {
+  const response = await requestJson<ChallengeResponse>("/api/auth/challenges", jsonPost({ channel: "phone", purpose: "phone_login", destination: phone }));
+  if (response.status !== "accepted" || !isUuid(response.challengeId)) throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  return response;
+}
+
+export async function verifyPhoneLogin(challengeId: string, code: string): Promise<PhoneLoginResponse> {
+  const response = await requestJson<unknown>(`/api/auth/challenges/${encodeURIComponent(challengeId)}/verify`, jsonPost({ purpose: "phone_login", code }));
+  if (!response || typeof response !== "object") throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  const result = response as Record<string, unknown>;
+  const user = result.user as Record<string, unknown> | undefined;
+  if (result.authenticationState !== "authenticated" || !isUuid(user?.id)) throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  return response as PhoneLoginResponse;
 }
 
 export async function createPasswordSession(input: PasswordSessionRequest): Promise<PasswordSessionResponse> {
