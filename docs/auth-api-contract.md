@@ -4,6 +4,6 @@ The NestJS backend is authoritative for authentication routes and behavior. `ope
 
 Run `npm run api:types` to regenerate `src/generated/renivet-api.d.ts` with pinned `openapi-typescript` 7.13.0. CI regenerates and checks for drift.
 
-The snapshot includes the implemented registration, password session, session inspection/logout, email/phone verification challenge, password-recovery challenge and MFA operations. This frontend slice uses only registration, password sessions, session inspection/logout and email verification/password recovery. It does not assume an OTP-to-session operation, phone delivery provider, or any future membership route.
+The snapshot includes the implemented registration, password session, session inspection/logout, authenticated phone attachment, email/phone verification challenge, password-recovery challenge and MFA operations. The account page uses the session-bound CSRF proof to attach an Indian mobile number as unverified, then requests and verifies a purpose-bound phone OTP through the same-origin BFF. The phone proof verifies contact ownership only; it does not create a session or enable phone-number login. Provider credentials and SMS delivery remain server-side in NestJS.
 
 `BACKEND_INTERNAL_URL` is server-only and should point to the NestJS `/api/v1` base. `NEXT_PUBLIC_API_BASE_URL` is an existing browser-safe fallback; authentication requests are still routed through same-origin Next.js handlers. Neither setting carries credentials.

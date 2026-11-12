@@ -5,7 +5,7 @@ import test from "node:test";
 
 const snapshotPath = fileURLToPath(new URL("../openapi/renivet-backend.openapi.json", import.meta.url));
 
-test("auth OpenAPI snapshot exposes only the implemented registration, session, and challenge operations", () => {
+test("auth OpenAPI snapshot exposes only the implemented registration, session, phone, and challenge operations", () => {
   const contract = JSON.parse(readFileSync(snapshotPath, "utf8")) as {
     paths?: Record<string, Record<string, unknown>>;
     components?: { schemas?: Record<string, unknown> };
@@ -18,6 +18,7 @@ test("auth OpenAPI snapshot exposes only the implemented registration, session, 
     ["/api/v1/auth/sessions", "post"],
     ["/api/v1/auth/session", "get"],
     ["/api/v1/auth/session", "delete"],
+    ["/api/v1/auth/phone", "post"],
     ["/api/v1/auth/challenges", "post"],
     ["/api/v1/auth/challenges/{challengeId}/verify", "post"],
   ]) {
@@ -30,6 +31,7 @@ test("auth OpenAPI snapshot exposes only the implemented registration, session, 
   assert.equal(operationIds.get("/api/v1/auth/register"), "registerWithEmailAndPassword");
   assert.equal(operationIds.get("/api/v1/auth/sessions"), "createPasswordSession");
   assert.equal(operationIds.get("/api/v1/auth/challenges"), "createOtpChallenge");
+  assert.equal(operationIds.get("/api/v1/auth/phone"), "setPhoneForVerification");
   assert.equal(operationIds.get("/api/v1/auth/challenges/{challengeId}/verify"), "verifyOtpChallenge");
 
   const schemas = contract.components?.schemas ?? {};
@@ -42,6 +44,8 @@ test("auth OpenAPI snapshot exposes only the implemented registration, session, 
     "OtpAcceptedDto",
     "OtpVerifyRequestDto",
     "OtpVerifiedDto",
+    "SetPhoneForVerificationDto",
+    "PhoneContactAcceptedDto",
   ]) {
     assert.ok(schemas[schema], `${schema} is in the backend contract`);
   }

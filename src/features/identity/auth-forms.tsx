@@ -10,9 +10,12 @@ import {
   logoutCurrentSession,
   registerWithEmailAndPassword,
   requestEmailChallenge,
+  requestPhoneChallenge,
+  setPhoneForVerification,
   verifyChallenge,
+  verifyPhoneChallenge,
 } from "./auth-api";
-import { isAcceptedPassphrase, normalizeEmail, normalizeOtpEntry } from "./auth-policy";
+import { isAcceptedPassphrase, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber } from "./auth-policy";
 import { AuthShell } from "./auth-shell";
 import styles from "./auth.module.css";
 
@@ -172,6 +175,81 @@ export function RecoveryForm() {
   </AuthShell>;
 }
 
+function PhoneVerificationPanel({ csrfToken }: { csrfToken: string }) {
+  const [phone, setPhone] = useState("");
+  const [challengeId, setChallengeId] = useState("");
+  const [code, setCode] = useState("");
+  const [phase, setPhase] = useState<"enter" | "code" | "verified">("enter");
+  const [error, setError] = useState("");
+  const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function requestCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setError(""); setStatus("");
+    const normalizedPhone = normalizePhoneNumber(phone);
+    if (!normalizedPhone) { setError("Enter a valid Indian mobile number with 10 digits."); return; }
+    setBusy(true);
+    try {
+      const attached = await setPhoneForVerification(normalizedPhone, csrfToken);
+      setPhone(normalizedPhone);
+      if (!attached.verificationRequired) {
+        setPhase("verified");
+        return;
+      }
+      const challenge = await requestPhoneChallenge({ channel: "phone", purpose: "phone_verification", destination: normalizedPhone });
+      setChallengeId(challenge.challengeId);
+      setPhase("code");
+      setStatus("If this number can be verified, a code will be sent. Enter the six-digit code here.");
+    } catch (cause) { setError(messageFor(cause)); }
+    finally { setBusy(false); }
+  }
+
+  async function verifyPhone(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setError(""); setStatus("");
+    if (!/^\d{6}$/.test(code)) { setError("Enter the six-digit code."); return; }
+    setBusy(true);
+    try {
+      await verifyPhoneChallenge(challengeId, { purpose: "phone_verification", code });
+      setCode(""); setChallengeId(""); setPhase("verified");
+    } catch (cause) { setError(messageFor(cause)); }
+    finally { setBusy(false); }
+  }
+
+  function changeNumber() {
+    setCode(""); setChallengeId(""); setError(""); setStatus(""); setPhase("enter");
+  }
+
+  return <section className={styles.subForm} aria-labelledby="phone-verification-heading">
+    <hr className={styles.separator} />
+    <div>
+      <h2 className={styles.sectionHeading} id="phone-verification-heading">Phone number</h2>
+      <p className={styles.hint}>Add and verify an Indian mobile number for contact and account recovery. It won’t sign you in by phone.</p>
+    </div>
+    {phase === "verified" ? <div className={styles.form}>
+      <p className={styles.successBox} role="status">Your phone number is verified for this account.</p>
+      <button className={styles.secondaryButton} type="button" onClick={changeNumber}>Change phone number</button>
+    </div> : phase === "code" ? <form className={styles.form} onSubmit={verifyPhone}>
+      <FormMessage error={error} status={status} />
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="account-phone-code">Six-digit verification code</label>
+        <input className={styles.input} id="account-phone-code" name="one-time-code" type="text" inputMode="numeric" autoComplete="one-time-code"
+          pattern="[0-9]{6}" maxLength={6} required value={code} onChange={event => setCode(normalizeOtpEntry(event.currentTarget.value))} />
+      </div>
+      <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Verifying…" : "Verify phone number"}</button>
+      <button className={styles.secondaryButton} type="button" disabled={busy} onClick={changeNumber}>Use a different number</button>
+    </form> : <form className={styles.form} onSubmit={requestCode}>
+      <FormMessage error={error} status={status} />
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="account-phone">Indian mobile number</label>
+        <input className={styles.input} id="account-phone" name="phone" type="tel" autoComplete="tel" inputMode="tel" maxLength={20}
+          placeholder="+91 98765 43210" aria-describedby="account-phone-hint" required value={phone} onChange={event => setPhone(event.currentTarget.value)} />
+        <p className={styles.hint} id="account-phone-hint">We’ll text a one-time code to confirm this number belongs to you.</p>
+      </div>
+      <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Sending code…" : "Add phone and send code"}</button>
+    </form>}
+  </section>;
+}
+
 export function AccountSession() {
   const router = useRouter();
   const [state, setState] = useState<"loading" | "ready" | "expired" | "error">("loading");
@@ -194,7 +272,8 @@ export function AccountSession() {
   return <AuthShell eyebrow="Your account" title="Account session" description="This page is shown only after the backend confirms your session.">
     {state === "loading" && <p className={styles.loading} role="status">Checking your session…</p>}
     {state === "ready" && <div className={styles.form}><p className={styles.successBox}>You are signed in.</p>
-      {error && <FormMessage error={error} status="" />}<button className={styles.primaryButton} type="button" onClick={signOut}>Sign out</button></div>}
+      {error && <FormMessage error={error} status="" />}<PhoneVerificationPanel csrfToken={csrf} />
+      <button className={styles.primaryButton} type="button" onClick={signOut}>Sign out</button></div>}
     {state === "expired" && <div className={styles.form}><p className={styles.statusBox}>Your session has expired. Sign in to continue.</p><Link className={styles.primaryButton} href="/sign-in">Go to sign in</Link></div>}
     {state === "error" && <div className={styles.form}><FormMessage error={error} status=""/><button className={styles.secondaryButton} type="button" onClick={() => void inspect()}>Try again</button></div>}
   </AuthShell>;

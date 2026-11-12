@@ -13,17 +13,31 @@ if (base.protocol !== "http:" || !["localhost", "127.0.0.1"].includes(base.hostn
 const dir = await mkdtemp(path.join(tmpdir(), "renivet-auth-chrome-"));
 const challengeId = "37a7d0bf-8414-4f75-bd11-311c7a442d84";
 const csrfToken = "synthetic-csrf-token-012345678901234567890123";
+const testPhone = "+919876543210";
+let attachedPhone = false;
+let phoneChallengeRequested = false;
+let phoneChallengeVerified = false;
 const mockApi = createServer(async (request, response) => {
   let raw = ""; for await (const chunk of request) raw += chunk.toString();
   const body = raw ? JSON.parse(raw) : {};
   const send = (status, data, headers = {}) => { response.writeHead(status, { "Content-Type": "application/json", ...headers }); response.end(JSON.stringify(data)); };
   if (request.url === "/api/v1/auth/register" && request.method === "POST") return send(202, { status: "accepted" });
+  if (request.url === "/api/v1/auth/phone" && request.method === "POST") {
+    if (!request.headers.cookie?.includes("__Host-renivet_session=synthetic-session") || request.headers["x-csrf-token"] !== csrfToken
+      || request.headers.origin !== base.origin || request.headers["sec-fetch-site"] !== "same-origin" || body.phone !== testPhone) {
+      return send(403, { code: "CSRF_VALIDATION_FAILED", message: "private CSRF detail" });
+    }
+    attachedPhone = true;
+    return send(202, { status: "accepted", verificationRequired: true });
+  }
   if (request.url === "/api/v1/auth/challenges" && request.method === "POST") {
     if (body.destination === "outage@example.test") return send(503, { code: "AUTH_SERVICE_UNAVAILABLE", message: "provider offline" });
+    if (body.channel === "phone" && body.purpose === "phone_verification" && body.destination === testPhone) phoneChallengeRequested = true;
     return send(202, { status: "accepted", challengeId });
   }
   if (request.url === `/api/v1/auth/challenges/${challengeId}/verify` && request.method === "POST") {
     if (body.code !== "123456") return send(401, { code: "AUTHENTICATION_FAILED", message: "private delivery state" });
+    if (body.purpose === "phone_verification") phoneChallengeVerified = true;
     return send(200, { status: "verified" });
   }
   if (request.url === "/api/v1/auth/sessions" && request.method === "POST") {
@@ -125,6 +139,17 @@ try {
   await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
   assert.equal(await evaluate("document.cookie.includes('synthetic-session')"), false, "HttpOnly session cookie is not readable by page JavaScript");
   assert.equal(await evaluate("location.search === ''"), true, "session proof is absent from the URL");
+  await waitInteractive("account-phone");
+  await enter("account-phone", testPhone); await submit();
+  await waitInteractive("account-phone-code");
+  await enter("account-phone-code", "123456"); await submit();
+  await waitFor("document.body.innerText.includes('Your phone number is verified for this account')");
+  assert.equal(await evaluate("location.search === '' && document.cookie.includes('synthetic-session') === false"), true, "phone number, OTP, and session secret stay out of URL and document.cookie");
+  assert.equal(attachedPhone && phoneChallengeRequested && phoneChallengeVerified, true, "browser flow calls attach, request-code, and verify-code backend operations in order");
+  await command("Emulation.setDeviceMetricsOverride", { width: 320, height: 844, deviceScaleFactor: 1, mobile: true });
+  assert.equal(await evaluate("document.documentElement.scrollWidth <= innerWidth"), true, "phone verification account page has no horizontal overflow at 320px");
+  await command("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  console.log("PASS signed-in phone attach -> phone OTP request -> code verification through same-origin BFF");
   await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Sign out'))?.click()");
   await waitFor("location.pathname === '/sign-in'");
   await command("Page.navigate", { url: new URL("account", base).href });
