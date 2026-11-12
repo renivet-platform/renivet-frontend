@@ -39,7 +39,7 @@ function unavailableResponse(): Response {
 }
 
 function isAllowedAuthOperation(path: string, method: AuthMethod): boolean {
-  if (["/auth/register", "/auth/sessions", "/auth/challenges"].includes(path)) return method === "POST";
+  if (["/auth/register", "/auth/sessions", "/auth/challenges", "/auth/phone"].includes(path)) return method === "POST";
   if (path === "/auth/session") return method === "GET" || method === "DELETE";
   if (path === "/auth/mfa/step-up") return method === "POST";
   const match = /^\/auth\/challenges\/([^/]+)\/verify$/.exec(path);
@@ -117,14 +117,14 @@ export async function proxyAuthRequest(request: Request, path: string, method: A
   const upstreamHeaders = new Headers({ Accept: "application/json" });
   if (body !== undefined) upstreamHeaders.set("Content-Type", "application/json");
   const cookie = request.headers.get("cookie");
-  if (cookie && (path === "/auth/session" || path === "/auth/sessions" || path === "/auth/mfa/step-up")) {
+  if (cookie && (path === "/auth/session" || path === "/auth/sessions" || path === "/auth/phone" || path === "/auth/mfa/step-up")) {
     upstreamHeaders.set("Cookie", cookie);
   }
   if (method !== "GET") {
     upstreamHeaders.set("Origin", request.headers.get("origin")!);
     upstreamHeaders.set("Sec-Fetch-Site", "same-origin");
   }
-  if (method === "DELETE" || path === "/auth/mfa/step-up") {
+  if (method === "DELETE" || path === "/auth/phone" || path === "/auth/mfa/step-up") {
     const csrfToken = request.headers.get("x-csrf-token");
     if (!csrfToken || csrfToken.length > 512) {
       return jsonResponse({

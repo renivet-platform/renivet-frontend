@@ -17,3 +17,8 @@ OpenAPI source snapshot: `openapi/renivet-backend.openapi.json` (backend `main` 
 This prototype is not a production auth or authorization flow and does not replace the versioned editable Figma journeys, clickable Figma prototype, or required Product/Design/Security/Frontend and Accessibility decisions. REN2-10's Figma and formal approval acceptance criteria remain open. Reviewers should check generic account-safe errors, screen/state mapping, keyboard operation, contrast and responsive behavior before any acceptance decision.
 
 The prototype suite checks its specified foreground/background contrast pairs. Manual keyboard-only, screen-reader and narrow-viewport review has not yet been recorded; those checks remain part of the outstanding accessibility and design review.
+# Phone contact verification (REN2-39)
+
+Signed-in users can add an Indian mobile number from the account page. The browser sends the contact only to the same-origin `/api/auth/phone` BFF, which enforces same-origin request metadata and forwards the HttpOnly session cookie plus session-bound CSRF proof to NestJS. The backend attaches the number as unverified; the browser then requests a `phone_verification` challenge and submits the six-digit code to the existing verification endpoint.
+
+The phone and OTP remain in page memory only. Do not place either in URLs, browser storage, logs, Postman examples, or frontend configuration. Verification confirms contact ownership only and does not sign the user in using a phone number. Fast2SMS credentials and delivery stay in the backend.

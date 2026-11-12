@@ -164,6 +164,32 @@ test("auth BFF forwards same-origin CSRF evidence and the session cookie on logo
   });
 });
 
+test("auth BFF protects phone changes with the active session and CSRF proof", async () => {
+  await withUpstream((_request, response) => {
+    response.writeHead(202, { "Content-Type": "application/json" }).end(JSON.stringify({ status: "accepted", verificationRequired: true }));
+  }, async (_base, captured) => {
+    const unsafe = await proxyAuthRequest(new Request("http://app.test/api/auth/phone", {
+      method: "POST", headers: { ...sameOriginHeaders("https://evil.test"), "Content-Type": "application/json", Cookie: "__Host-renivet_session=synthetic-session", "X-CSRF-Token": "synthetic-csrf-token" },
+      body: JSON.stringify({ phone: "+919876543210" }),
+    }), "/auth/phone", "POST");
+    assert.equal(unsafe.status, 403);
+    assert.equal(captured.length, 0, "cross-site request must not reach NestJS");
+
+    const response = await proxyAuthRequest(new Request("http://app.test/api/auth/phone", {
+      method: "POST", headers: { ...sameOriginHeaders(), "Content-Type": "application/json", Cookie: "__Host-renivet_session=synthetic-session", "X-CSRF-Token": "synthetic-csrf-token" },
+      body: JSON.stringify({ phone: "+919876543210" }),
+    }), "/auth/phone", "POST");
+
+    assert.equal(response.status, 202);
+    assert.deepEqual(await response.json(), { status: "accepted", verificationRequired: true });
+    assert.equal(captured[0]?.url, "/api/v1/auth/phone");
+    assert.equal(captured[0]?.headers.cookie, "__Host-renivet_session=synthetic-session");
+    assert.equal(captured[0]?.headers["x-csrf-token"], "synthetic-csrf-token");
+    assert.equal(captured[0]?.headers.origin, "http://app.test");
+    assert.equal(captured[0]?.headers["sec-fetch-site"], "same-origin");
+  });
+});
+
 test("auth BFF rejects cross-site or missing-CSRF logout before contacting NestJS", async () => {
   await withUpstream((_request, response) => response.writeHead(200).end(JSON.stringify({ status: "logged_out" })), async (_base, captured) => {
     const crossSite = await proxyAuthRequest(new Request("http://app.test/api/auth/session", {

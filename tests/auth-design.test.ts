@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { AUTH_THEME, contrastRatio } from "../src/features/identity/auth-theme";
-import { isAcceptedPassphrase, normalizeEmail, normalizeOtpEntry } from "../src/features/identity/auth-policy";
+import { isAcceptedPassphrase, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber } from "../src/features/identity/auth-policy";
 
 test("authentication text and action color pairs meet WCAG AA contrast", () => {
   const pairs: Array<[string, string, string]> = [
@@ -33,4 +33,11 @@ test("OTP entry accepts whole-code paste and keeps six numeric digits", () => {
   assert.equal(normalizeOtpEntry("12 34-56"), "123456");
   assert.equal(normalizeOtpEntry("1234567"), "123456");
   assert.equal(normalizeOtpEntry("code"), "");
+});
+
+test("phone entry normalizes Indian mobile numbers to E.164 and rejects invalid destinations", () => {
+  assert.equal(normalizePhoneNumber("+91 98765 43210"), "+919876543210");
+  assert.equal(normalizePhoneNumber("98765-43210"), "+919876543210");
+  assert.equal(normalizePhoneNumber("+1 415 555 0100"), null);
+  assert.equal(normalizePhoneNumber("12345"), null);
 });

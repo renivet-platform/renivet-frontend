@@ -8,6 +8,8 @@ type ChallengeRequest = operations["createOtpChallenge"]["requestBody"]["content
 type ChallengeResponse = operations["createOtpChallenge"]["responses"][202]["content"]["application/json"];
 type VerifyRequest = operations["verifyOtpChallenge"]["requestBody"]["content"]["application/json"];
 type VerifyResponse = operations["verifyOtpChallenge"]["responses"][200]["content"]["application/json"];
+type SetPhoneRequest = operations["setPhoneForVerification"]["requestBody"]["content"]["application/json"];
+type SetPhoneResponse = operations["setPhoneForVerification"]["responses"][202]["content"]["application/json"];
 type MfaStepUpRequest = operations["stepUpWithMfa"]["requestBody"]["content"]["application/json"];
 type MfaStepUpResponse = operations["stepUpWithMfa"]["responses"][200]["content"]["application/json"];
 // NestJS currently documents logout's JSON example without a response schema, so validate this narrow shape at runtime.
@@ -21,6 +23,11 @@ type EmailChallengeRequest = Omit<ChallengeRequest, "channel" | "purpose"> & {
 type EmailVerifyRequest = Omit<VerifyRequest, "purpose"> & {
   purpose: "email_verification" | "password_recovery";
 };
+type PhoneChallengeRequest = Omit<ChallengeRequest, "channel" | "purpose"> & {
+  channel: "phone";
+  purpose: "phone_verification";
+};
+type PhoneVerifyRequest = Omit<VerifyRequest, "purpose"> & { purpose: "phone_verification" };
 
 const fallbackError = {
   code: "AUTH_SERVICE_UNAVAILABLE" as const,
@@ -83,6 +90,34 @@ export async function requestEmailChallenge(input: EmailChallengeRequest): Promi
 }
 
 export async function verifyChallenge(challengeId: string, input: EmailVerifyRequest): Promise<VerifyResponse> {
+  const response = await requestJson<VerifyResponse>(
+    `/api/auth/challenges/${encodeURIComponent(challengeId)}/verify`,
+    jsonPost(input),
+  );
+  if (response.status !== "verified") throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  return response;
+}
+
+export async function setPhoneForVerification(phone: string, csrfToken: string): Promise<SetPhoneResponse> {
+  const response = await requestJson<SetPhoneResponse>("/api/auth/phone", {
+    ...jsonPost({ phone } satisfies SetPhoneRequest),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+  });
+  if (response.status !== "accepted" || typeof response.verificationRequired !== "boolean") {
+    throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  }
+  return response;
+}
+
+export async function requestPhoneChallenge(input: PhoneChallengeRequest): Promise<ChallengeResponse> {
+  const response = await requestJson<ChallengeResponse>("/api/auth/challenges", jsonPost(input));
+  if (response.status !== "accepted" || !isUuid(response.challengeId)) {
+    throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  }
+  return response;
+}
+
+export async function verifyPhoneChallenge(challengeId: string, input: PhoneVerifyRequest): Promise<VerifyResponse> {
   const response = await requestJson<VerifyResponse>(
     `/api/auth/challenges/${encodeURIComponent(challengeId)}/verify`,
     jsonPost(input),
