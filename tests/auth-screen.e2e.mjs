@@ -17,6 +17,8 @@ const testPhone = "+919876543210";
 let attachedPhone = false;
 let phoneChallengeRequested = false;
 let phoneChallengeVerified = false;
+let phoneLoginChallengeRequested = false;
+let phoneLoginVerified = false;
 const emailChallengeRequests = [];
 const mockApi = createServer(async (request, response) => {
   let raw = ""; for await (const chunk of request) raw += chunk.toString();
@@ -35,11 +37,19 @@ const mockApi = createServer(async (request, response) => {
     if (body.destination === "outage@example.test") return send(503, { code: "AUTH_SERVICE_UNAVAILABLE", message: "provider offline" });
     if (body.channel === "email") emailChallengeRequests.push(body);
     if (body.channel === "phone" && body.purpose === "phone_verification" && body.destination === testPhone) phoneChallengeRequested = true;
+    if (body.channel === "phone" && body.purpose === "phone_login" && body.destination === testPhone) phoneLoginChallengeRequested = true;
     return send(202, { status: "accepted", challengeId });
   }
   if (request.url === `/api/v1/auth/challenges/${challengeId}/verify` && request.method === "POST") {
     if (body.code !== "123456") return send(401, { code: "AUTHENTICATION_FAILED", message: "private delivery state" });
     if (body.purpose === "phone_verification") phoneChallengeVerified = true;
+    if (body.purpose === "phone_login") {
+      if (body.code !== "123456" || !phoneLoginChallengeRequested) return send(401, { code: "AUTHENTICATION_FAILED", message: "private login detail" });
+      phoneLoginVerified = true;
+      return send(200, { authenticationState: "authenticated", user: { id: "37a7d0bf-8414-4f75-bd11-311c7a442d84" } }, {
+        "Set-Cookie": "__Host-renivet_session=synthetic-session; Path=/; Max-Age=1800; HttpOnly; Secure; SameSite=Lax",
+      });
+    }
     return send(200, { status: "verified" });
   }
   if (request.url === "/api/v1/auth/sessions" && request.method === "POST") {
@@ -190,6 +200,19 @@ try {
   await enter("recovery-email", "outage@example.test"); await submit();
   await waitFor("document.body.innerText.includes('Authentication is temporarily unavailable')");
   console.log("PASS generic login denial and honest provider outage state");
+
+  await command("Page.navigate", { url: new URL("sign-in", base).href });
+  await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.includes('Phone number'))");
+  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Phone number'))?.click()");
+  await waitInteractive("signin-phone");
+  await enter("signin-phone", testPhone); await submit();
+  await waitInteractive("signin-phone-code");
+  assert.equal(await evaluate("document.activeElement?.id === 'signin-phone-code'"), true, "phone login focuses the OTP field after requesting a challenge");
+  await enter("signin-phone-code", "123456"); await submit();
+  await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
+  assert.equal(phoneLoginChallengeRequested && phoneLoginVerified, true, "phone sign-in requests the phone_login purpose and verifies it through the same-origin BFF");
+  assert.equal(await evaluate("document.cookie.includes('synthetic-session') === false && location.search === ''"), true, "phone sign-in keeps the session cookie HttpOnly and puts no proof in the URL");
+  console.log("PASS phone number -> purpose-bound OTP -> secure authenticated account session");
 } finally {
   for (const waiter of pending.values()) waiter.reject(new Error("Closing browser")); pending.clear();
   if (ws && ws.readyState === WebSocket.OPEN) ws.close();
