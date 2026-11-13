@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { AUTH_THEME, contrastRatio } from "../src/features/identity/auth-theme";
-import { isAcceptedPassphrase, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber } from "../src/features/identity/auth-policy";
+import { isAcceptedPassphrase, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber, phoneContactErrorMessage } from "../src/features/identity/auth-policy";
 
 test("authentication text and action color pairs meet WCAG AA contrast", () => {
   const pairs: Array<[string, string, string]> = [
@@ -40,4 +40,12 @@ test("phone entry normalizes Indian mobile numbers to E.164 and rejects invalid 
   assert.equal(normalizePhoneNumber("98765-43210"), "+919876543210");
   assert.equal(normalizePhoneNumber("+1 415 555 0100"), null);
   assert.equal(normalizePhoneNumber("12345"), null);
+});
+
+test("phone contact errors give safe, actionable guidance without confirming account ownership", () => {
+  assert.equal(
+    phoneContactErrorMessage("AUTH_INPUT_INVALID", 400),
+    "We couldn’t add this number. Check it and try again, or use a different number. If this is your Renivet sign-in number, choose Phone number on the sign-in page.",
+  );
+  assert.equal(phoneContactErrorMessage("AUTH_SERVICE_UNAVAILABLE", 503), null);
 });

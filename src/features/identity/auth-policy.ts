@@ -21,3 +21,10 @@ export function normalizePhoneNumber(value: string): string | null {
     : digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
   return /^[6-9][0-9]{9}$/.test(nationalNumber) ? `+91${nationalNumber}` : null;
 }
+
+export function phoneContactErrorMessage(code: string, status: number): string | null {
+  if (code === "AUTH_INPUT_INVALID" && status === 400) {
+    return "We couldn’t add this number. Check it and try again, or use a different number. If this is your Renivet sign-in number, choose Phone number on the sign-in page.";
+  }
+  return null;
+}

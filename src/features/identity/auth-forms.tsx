@@ -20,7 +20,7 @@ import {
   verifyPhoneRegistration,
 } from "./auth-api";
 import type { CurrentSession } from "./auth-api";
-import { isAcceptedPassphrase, MAX_PASSPHRASE_LENGTH, MIN_PASSPHRASE_LENGTH, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber } from "./auth-policy";
+import { isAcceptedPassphrase, MAX_PASSPHRASE_LENGTH, MIN_PASSPHRASE_LENGTH, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber, phoneContactErrorMessage } from "./auth-policy";
 import { AuthShell } from "./auth-shell";
 import styles from "./auth.module.css";
 
@@ -317,7 +317,10 @@ function PhoneVerificationPanel({ csrfToken, initiallyVerified }: { csrfToken: s
       setChallengeId(challenge.challengeId);
       setPhase("code");
       setStatus("If this number can be verified, a code will be sent. Enter the six-digit code here.");
-    } catch (cause) { setError(messageFor(cause)); }
+    } catch (cause) {
+      const phoneError = cause instanceof AuthApiError ? phoneContactErrorMessage(cause.code, cause.status) : null;
+      setError(phoneError ?? messageFor(cause));
+    }
     finally { setBusy(false); }
   }
 
