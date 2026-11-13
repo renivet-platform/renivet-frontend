@@ -19,6 +19,7 @@ import {
   verifyPhoneLogin,
   verifyPhoneRegistration,
 } from "./auth-api";
+import type { CurrentSession } from "./auth-api";
 import { isAcceptedPassphrase, MAX_PASSPHRASE_LENGTH, MIN_PASSPHRASE_LENGTH, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber } from "./auth-policy";
 import { AuthShell } from "./auth-shell";
 import styles from "./auth.module.css";
@@ -291,11 +292,11 @@ export function RecoveryForm() {
   </AuthShell>;
 }
 
-function PhoneVerificationPanel({ csrfToken }: { csrfToken: string }) {
+function PhoneVerificationPanel({ csrfToken, initiallyVerified }: { csrfToken: string; initiallyVerified: boolean }) {
   const [phone, setPhone] = useState("");
   const [challengeId, setChallengeId] = useState("");
   const [code, setCode] = useState("");
-  const [phase, setPhase] = useState<"enter" | "code" | "verified">("enter");
+  const [phase, setPhase] = useState<"enter" | "code" | "verified">(initiallyVerified ? "verified" : "enter");
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
@@ -370,9 +371,11 @@ export function AccountSession() {
   const router = useRouter();
   const [state, setState] = useState<"loading" | "ready" | "expired" | "error">("loading");
   const [csrf, setCsrf] = useState(""); const [error, setError] = useState("");
+  const [account, setAccount] = useState<CurrentSession["account"] | null>(null);
+  const [signOutBusy, setSignOutBusy] = useState(false);
   async function inspect() {
     setState("loading"); setError("");
-    try { const session = await getCurrentSession(); setCsrf(session.csrfToken); setState("ready"); }
+    try { const session = await getCurrentSession(); setCsrf(session.csrfToken); setAccount(session.account); setState("ready"); }
     catch (cause) {
       if (cause instanceof AuthApiError && cause.status === 401) setState("expired");
       else { setError(messageFor(cause)); setState("error"); }
@@ -381,15 +384,27 @@ export function AccountSession() {
   // Load on mount without placing session data in browser storage or URLs.
   useEffect(() => { void inspect(); }, []);
   async function signOut() {
-    setError(""); setState("loading");
-    try { await logoutCurrentSession(csrf); setCsrf(""); router.replace("/sign-in"); router.refresh(); }
-    catch (cause) { setError(messageFor(cause)); setState("error"); }
+    if (signOutBusy || !csrf) return;
+    setError(""); setSignOutBusy(true);
+    try { await logoutCurrentSession(csrf); setCsrf(""); setAccount(null); router.replace("/sign-in"); router.refresh(); }
+    catch (cause) { setError(messageFor(cause)); }
+    finally { setSignOutBusy(false); }
   }
   return <AuthShell eyebrow="Your account" title="Account session" description="This page is shown only after the backend confirms your session.">
     {state === "loading" && <p className={styles.loading} role="status">Checking your session…</p>}
-    {state === "ready" && <div className={styles.form}><p className={styles.successBox}>You are signed in.</p>
-      {error && <FormMessage error={error} status="" />}<PhoneVerificationPanel csrfToken={csrf} />
-      <button className={styles.primaryButton} type="button" onClick={signOut}>Sign out</button></div>}
+    {state === "ready" && <div className={styles.form}><p className={styles.successBox} role="status">You are signed in.</p>
+      {error && <FormMessage error={error} status="" />}
+      {account?.signInMethod === "phone"
+        ? <section className={styles.subForm} aria-labelledby="phone-sign-in-heading">
+          <hr className={styles.separator} />
+          <h2 className={styles.sectionHeading} id="phone-sign-in-heading">Phone sign-in</h2>
+          <p className={styles.hint}>Your phone number is verified and is used to sign in with a one-time code. You don’t need to add it again here.</p>
+          {account.phoneVerified && <p className={styles.successBox} role="status">Phone number verified</p>}
+        </section>
+        : <PhoneVerificationPanel csrfToken={csrf} initiallyVerified={account?.phoneVerified ?? false} />}
+      <button className={styles.primaryButton} type="button" onClick={signOut} disabled={signOutBusy}>
+        {signOutBusy ? "Signing out…" : "Sign out"}
+      </button></div>}
     {state === "expired" && <div className={styles.form}><p className={styles.statusBox}>Your session has expired. Sign in to continue.</p><Link className={styles.primaryButton} href="/sign-in">Go to sign in</Link></div>}
     {state === "error" && <div className={styles.form}><FormMessage error={error} status=""/><button className={styles.secondaryButton} type="button" onClick={() => void inspect()}>Try again</button></div>}
   </AuthShell>;

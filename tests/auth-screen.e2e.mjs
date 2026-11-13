@@ -21,6 +21,9 @@ let phoneLoginChallengeRequested = false;
 let phoneLoginVerified = false;
 let phoneRegistrationChallengeRequested = false;
 let phoneRegistrationVerified = false;
+let currentSignInMethod = "phone";
+let currentPhoneVerified = true;
+let logoutRequests = 0;
 const emailChallengeRequests = [];
 const mockApi = createServer(async (request, response) => {
   let raw = ""; for await (const chunk of request) raw += chunk.toString();
@@ -45,10 +48,11 @@ const mockApi = createServer(async (request, response) => {
   }
   if (request.url === `/api/v1/auth/challenges/${challengeId}/verify` && request.method === "POST") {
     if (body.code !== "123456") return send(401, { code: "AUTHENTICATION_FAILED", message: "private delivery state" });
-    if (body.purpose === "phone_verification") phoneChallengeVerified = true;
+    if (body.purpose === "phone_verification") { phoneChallengeVerified = true; currentPhoneVerified = true; }
     if (body.purpose === "phone_login") {
       if (body.code !== "123456" || !phoneLoginChallengeRequested) return send(401, { code: "AUTHENTICATION_FAILED", message: "private login detail" });
       phoneLoginVerified = true;
+      currentSignInMethod = "phone"; currentPhoneVerified = true;
       return send(200, { authenticationState: "authenticated", user: { id: "37a7d0bf-8414-4f75-bd11-311c7a442d84" } }, {
         "Set-Cookie": "__Host-renivet_session=synthetic-session; Path=/; Max-Age=1800; HttpOnly; Secure; SameSite=Lax",
       });
@@ -56,6 +60,7 @@ const mockApi = createServer(async (request, response) => {
     if (body.purpose === "phone_registration") {
       if (!phoneRegistrationChallengeRequested) return send(401, { code: "AUTHENTICATION_FAILED", message: "private registration detail" });
       phoneRegistrationVerified = true;
+      currentSignInMethod = "phone"; currentPhoneVerified = true;
       return send(200, { authenticationState: "authenticated", user: { id: "37a7d0bf-8414-4f75-bd11-311c7a442d84" } }, {
         "Set-Cookie": "__Host-renivet_session=synthetic-session; Path=/; Max-Age=1800; HttpOnly; Secure; SameSite=Lax",
       });
@@ -64,17 +69,19 @@ const mockApi = createServer(async (request, response) => {
   }
   if (request.url === "/api/v1/auth/sessions" && request.method === "POST") {
     if (body.email === "unknown@example.test") return send(401, { code: "AUTHENTICATION_FAILED", message: "email enumeration detail" });
+    currentSignInMethod = "email_password"; currentPhoneVerified = false;
     return send(200, { authenticationState: "authenticated", user: { id: "37a7d0bf-8414-4f75-bd11-311c7a442d84" } }, {
       "Set-Cookie": "__Host-renivet_session=synthetic-session; Path=/; Max-Age=1800; HttpOnly; Secure; SameSite=Lax",
     });
   }
   if (request.url === "/api/v1/auth/session" && request.method === "GET") {
     return request.headers.cookie?.includes("__Host-renivet_session=synthetic-session")
-      ? send(200, { authenticationState: "authenticated", user: { id: "37a7d0bf-8414-4f75-bd11-311c7a442d84" }, csrfToken })
+      ? send(200, { authenticationState: "authenticated", user: { id: "37a7d0bf-8414-4f75-bd11-311c7a442d84" }, account: { signInMethod: currentSignInMethod, phoneVerified: currentPhoneVerified }, csrfToken })
       : send(401, { code: "AUTHENTICATION_FAILED", message: "no session" });
   }
   if (request.url === "/api/v1/auth/session" && request.method === "DELETE") {
     if (request.headers["x-csrf-token"] !== csrfToken) return send(403, { code: "CSRF_VALIDATION_FAILED", message: "invalid proof" });
+    logoutRequests += 1;
     return send(200, { status: "logged_out" }, { "Set-Cookie": "__Host-renivet_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax" });
   }
   return send(404, { code: "AUTH_INPUT_INVALID", message: "not found" });
@@ -166,10 +173,12 @@ try {
   await enter("register-code", "123456"); await submit();
   await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
   assert.equal(phoneRegistrationChallengeRequested && phoneRegistrationVerified, true, "signup sends phone_registration and verifies that same purpose");
+  assert.equal(await evaluate("document.getElementById('account-phone') === null && document.body.innerText.includes('Your phone number is verified')"), true, "phone-only account does not ask the user to verify the sign-in phone a second time");
   assert.equal(await evaluate("document.cookie.includes('synthetic-session') === false && location.search === ''"), true, "phone registration keeps session proof HttpOnly and credentials out of URL");
   console.log("PASS phone-only registration -> OTP verification -> new authenticated session");
   await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Sign out'))?.click()");
   await waitFor("location.pathname === '/sign-in'");
+  assert.equal(logoutRequests, 1, "phone-only sign out reaches server revocation before redirecting");
 
   // Registration -> email challenge -> code verification -> password login -> session -> CSRF logout.
   await command("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
@@ -193,6 +202,7 @@ try {
   await waitInteractive("signin-email");
   await enter("signin-email", "buyer@example.test"); await enter("signin-password", "pass1234"); await submit();
   await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
+  assert.equal(await evaluate("document.getElementById('account-phone') !== null"), true, "email/password account can add an optional verified contact phone");
   assert.equal(await evaluate("document.cookie.includes('synthetic-session')"), false, "HttpOnly session cookie is not readable by page JavaScript");
   assert.equal(await evaluate("location.search === ''"), true, "session proof is absent from the URL");
   await waitInteractive("account-phone");
@@ -248,6 +258,7 @@ try {
   await enter("signin-phone-code", "123456"); await submit();
   await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
   assert.equal(phoneLoginChallengeRequested && phoneLoginVerified, true, "phone sign-in requests the phone_login purpose and verifies it through the same-origin BFF");
+  assert.equal(await evaluate("document.getElementById('account-phone') === null && document.body.innerText.includes('Your phone number is verified')"), true, "phone login lands on the phone sign-in account state, not the contact-verification form");
   assert.equal(await evaluate("document.cookie.includes('synthetic-session') === false && location.search === ''"), true, "phone sign-in keeps the session cookie HttpOnly and puts no proof in the URL");
   console.log("PASS phone number -> purpose-bound OTP -> secure authenticated account session");
 } finally {
