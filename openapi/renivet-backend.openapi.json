@@ -3820,7 +3820,8 @@
             "schema": {
               "type": "string",
               "example": "\"1\""
-            }
+            },
+            "description": "Quoted parent product rowVersion."
           },
           {
             "name": "brandId",
@@ -4161,7 +4162,8 @@
             "schema": {
               "type": "string",
               "example": "\"1\""
-            }
+            },
+            "description": "Quoted parent product rowVersion."
           },
           {
             "name": "brandId",

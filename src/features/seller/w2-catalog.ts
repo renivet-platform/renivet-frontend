@@ -88,9 +88,9 @@ export function canonicalVariantOptions(options: Record<string, string>): string
   return JSON.stringify(Object.fromEntries(Object.entries(options).sort(([left], [right]) => left.localeCompare(right))));
 }
 
-export function hasVariantCombination(options: Record<string, string>, variants: Array<{ options: Record<string, string>; variantState: string }>): boolean {
+export function hasVariantCombination(options: Record<string, string>, variants: Array<{ id?: string; options: Record<string, string>; variantState: string }>, exceptVariantId?: string): boolean {
   const signature = canonicalVariantOptions(options);
-  return variants.some((variant) => variant.variantState !== "INACTIVE" && canonicalVariantOptions(variant.options) === signature);
+  return variants.some((variant) => (!exceptVariantId || variant.id !== exceptVariantId) && variant.variantState !== "INACTIVE" && canonicalVariantOptions(variant.options) === signature);
 }
 
 export function createIdempotencyKey(): string {

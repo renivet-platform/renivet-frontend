@@ -32,8 +32,11 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
   const [saving, setSaving] = useState(false);
   const [variantSku, setVariantSku] = useState("");
   const [variantOptions, setVariantOptions] = useState<Record<string, string>>({});
+  const [editVariantOptions, setEditVariantOptions] = useState<Record<string, string>>({});
   const [variantError, setVariantError] = useState("");
   const [variantSaving, setVariantSaving] = useState(false);
+  const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
+  const [confirmingDeactivationId, setConfirmingDeactivationId] = useState<string | null>(null);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [claimsError, setClaimsError] = useState("");
   const [claimCode, setClaimCode] = useState("");
@@ -115,6 +118,57 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     } finally { setVariantSaving(false); }
   }
 
+  function startVariantEdit(variantId: string, options: Record<string, string>) {
+    setEditingVariantId(variantId);
+    setEditVariantOptions({ ...options });
+    setConfirmingDeactivationId(null);
+    setVariantError("");
+  }
+
+  async function saveVariant(variantId: string) {
+    if (!product || !editable) return;
+    const options = Object.fromEntries(Object.entries(editVariantOptions).filter(([, value]) => value.trim()).map(([code, value]) => [code, value.trim()]));
+    setVariantError("");
+    if (Object.keys(options).length === 0) { setVariantError("Keep at least one option value on this SKU."); return; }
+    if (hasVariantCombination(options, product.variants, variantId)) { setVariantError("Another active SKU already uses that option combination."); return; }
+    setVariantSaving(true);
+    try {
+      const session = await getCurrentSession();
+      const variant = product.variants.find((item) => item.id === variantId);
+      if (!variant) { setVariantError("This SKU is no longer in the product. Refresh the latest product data."); return; }
+      await w2Request(["brands", brandId, "products", productId, "variants", variantId], {
+        method: "PATCH", body: { options }, csrfToken: session.csrfToken,
+        idempotencyKey: createIdempotencyKey(), ifMatch: `"${product.rowVersion}"`,
+      });
+      setEditingVariantId(null); setEditVariantOptions({}); setReloadKey((key) => key + 1);
+    } catch (error) {
+      setVariantError(error instanceof W2ApiError && error.status === 409
+        ? "This SKU changed or now conflicts with another variant. Refresh and review the latest version."
+        : messageFor(error));
+    } finally { setVariantSaving(false); }
+  }
+
+  async function deactivateVariant(variantId: string) {
+    if (!product || !editable) return;
+    const variant = product.variants.find((item) => item.id === variantId);
+    if (!variant) { setVariantError("This SKU is no longer in the product. Refresh the latest product data."); return; }
+    setVariantError("");
+    setVariantSaving(true);
+    try {
+      const session = await getCurrentSession();
+      await w2Request(["brands", brandId, "products", productId, "variants", variantId], {
+        method: "DELETE", body: { reasonCode: "SELLER_DRAFT_REMOVAL" }, csrfToken: session.csrfToken,
+        idempotencyKey: createIdempotencyKey(), ifMatch: `"${product.rowVersion}"`,
+      });
+      setEditingVariantId(null); setConfirmingDeactivationId(null); setReloadKey((key) => key + 1);
+    } catch (error) {
+      setConfirmingDeactivationId(null);
+      setVariantError(error instanceof W2ApiError && error.status === 409
+        ? "This SKU can’t be deactivated because its state changed or it has dependent records. Refresh and review it."
+        : messageFor(error));
+    } finally { setVariantSaving(false); }
+  }
+
   async function proposeClaim(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setClaimsError(""); setClaimNotice("");
     if (!product || product.publicationState !== "PUBLISHED") return;
@@ -159,12 +213,14 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     </section>
     <section className={styles.formPanel} aria-labelledby="variants-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>SKU MATRIX</p><h2 id="variants-heading">Sizes and colors</h2><p>Each SKU is unique to this product. The backend checks the pinned category schema and catches concurrent conflicts.</p></div><span className={styles.draftBadge}>{product.variants.length} SKU{product.variants.length === 1 ? "" : "s"}</span></div>
-      {product.variants.length > 0 && <div className={styles.tableWrap}><table className={styles.variantTable}><caption className={styles.visuallyHidden}>Product SKU variants</caption><thead><tr><th scope="col">SKU</th><th scope="col">Options</th><th scope="col">State</th><th scope="col">Image scan</th></tr></thead><tbody>{product.variants.map((variant) => <tr key={variant.id}><th scope="row">{variant.sku}</th><td>{Object.entries(variant.options).map(([key, value]) => `${key}: ${value}`).join(" · ") || "No options"}</td><td>{variant.variantState.replaceAll("_", " ")}</td><td>{variant.mediaLinks?.map((media) => media.scanState).join(", ") || "No variant image"}</td></tr>)}</tbody></table></div>}
+      {product.variants.length > 0 && <div className={styles.tableWrap}><table className={styles.variantTable}><caption className={styles.visuallyHidden}>Product SKU variants</caption><thead><tr><th scope="col">SKU</th><th scope="col">Options</th><th scope="col">State</th><th scope="col">Image scan</th>{editable && <th scope="col">Draft actions</th>}</tr></thead><tbody>{product.variants.map((variant) => <tr key={variant.id}><th scope="row">{variant.sku}</th><td>{Object.entries(variant.options).map(([key, value]) => `${key}: ${value}`).join(" · ") || "No options"}</td><td>{variant.variantState.replaceAll("_", " ")}</td><td>{variant.mediaLinks?.map((media) => media.scanState).join(", ") || "No variant image"}</td>{editable && <td>{variant.variantState === "INACTIVE" ? <span>Retired</span> : <div className={styles.mediaActions}><button type="button" className={styles.textButton} disabled={variantSaving} onClick={() => editingVariantId === variant.id ? setEditingVariantId(null) : startVariantEdit(variant.id, variant.options)}>{editingVariantId === variant.id ? "Cancel edit" : "Edit SKU options"}</button>{confirmingDeactivationId === variant.id ? <><button type="button" className={styles.textButton} disabled={variantSaving} onClick={() => void deactivateVariant(variant.id)}>Confirm deactivation</button><button type="button" className={styles.textButton} disabled={variantSaving} onClick={() => setConfirmingDeactivationId(null)}>Keep SKU</button></> : <button type="button" className={styles.textButton} disabled={variantSaving} onClick={() => { setVariantError(""); setConfirmingDeactivationId(variant.id); }}>Deactivate SKU</button>}</div>}</td>}</tr>)}</tbody></table></div>}
+      {editingVariantId && editable && <div className={styles.schemaPanel} aria-labelledby="edit-variant-heading"><div><p className={styles.kicker}>EDIT SKU OPTIONS</p><h3 id="edit-variant-heading">Update the variant</h3><p>The SKU itself is permanent. Changes use this SKU’s current version and can be rejected if another SKU or a dependent record conflicts.</p></div><div className={styles.formGrid}>{variantFields.filter((field) => field.type === "enum" || field.type === "text").map((field) => <div className={styles.field} key={field.code}><label htmlFor={`edit-variant-${field.code}`}>{field.code.replaceAll("_", " ")}{field.required && " *"}</label>{field.type === "enum" ? <select id={`edit-variant-${field.code}`} value={editVariantOptions[field.code] ?? ""} onChange={(event) => setEditVariantOptions((current) => ({ ...current, [field.code]: event.target.value }))}><option value="">Choose an option</option>{(field.allowedValues ?? []).map((value) => <option key={value} value={value}>{value}</option>)}</select> : <input id={`edit-variant-${field.code}`} value={editVariantOptions[field.code] ?? ""} onChange={(event) => setEditVariantOptions((current) => ({ ...current, [field.code]: event.target.value }))} maxLength={128} />}</div>)}</div><div className={styles.formActions}><p>Changes are saved only to this draft.</p><button type="button" className={styles.primaryButton} disabled={variantSaving} onClick={() => void saveVariant(editingVariantId)}>{variantSaving ? "Saving SKU…" : "Save SKU changes"}</button></div></div>}
+      {variantError && <p className={styles.error} role="alert">{variantError}</p>}
       {editable ? <form onSubmit={createVariant} noValidate><div className={styles.formGrid}>
         <div className={styles.field}><label htmlFor="variant-sku">SKU <span aria-hidden="true">*</span></label><input id="variant-sku" value={variantSku} onChange={(event) => setVariantSku(event.target.value)} maxLength={40} autoComplete="off" /></div>
         {variantFields.filter((field) => field.type === "enum" || field.type === "text").map((field) => <div className={styles.field} key={field.code}><label htmlFor={`variant-${field.code}`}>{field.code.replaceAll("_", " ")}{field.required && " *"}</label>{field.type === "enum" ? <select id={`variant-${field.code}`} value={variantOptions[field.code] ?? ""} onChange={(event) => setVariantOptions((current) => ({ ...current, [field.code]: event.target.value }))}><option value="">Choose an option</option>{(field.allowedValues ?? []).map((value) => <option key={value} value={value}>{value}</option>)}</select> : <input id={`variant-${field.code}`} value={variantOptions[field.code] ?? ""} onChange={(event) => setVariantOptions((current) => ({ ...current, [field.code]: event.target.value }))} maxLength={128} />}</div>)}
       </div>{variantFields.some((field) => field.type !== "enum" && field.type !== "text") && <p className={styles.inlineError}>Some pinned variant fields use types the current variant API cannot safely submit. Those fields are left out; the server will reject incomplete variants.</p>}
-      {variantError && <p className={styles.error} role="alert">{variantError}</p>}<div className={styles.formActions}><p>Combination: {canonicalVariantOptions(variantOptions)}</p><button className={styles.primaryButton} type="submit" disabled={variantSaving || variantFields.length === 0}>{variantSaving ? "Adding SKU…" : "Add SKU"}</button></div></form> : <p className={styles.readOnlyNotice} role="status">Variants are read-only after the draft enters review or publication.</p>}
+      <div className={styles.formActions}><p>Combination: {canonicalVariantOptions(variantOptions)}</p><button className={styles.primaryButton} type="submit" disabled={variantSaving || variantFields.length === 0}>{variantSaving ? "Adding SKU…" : "Add SKU"}</button></div></form> : <p className={styles.readOnlyNotice} role="status">Variants are read-only after the draft enters review or publication.</p>}
     </section>
     <ProductMediaWorkspace brandId={brandId} productId={productId} product={product} editable={editable} onChanged={() => setReloadKey((key) => key + 1)} />
     <section className={styles.formPanel} aria-labelledby="prices-heading">
