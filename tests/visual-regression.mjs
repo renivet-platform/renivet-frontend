@@ -14,11 +14,17 @@ if (url.protocol !== "http:" || !["localhost", "127.0.0.1"].includes(url.hostnam
 const output = path.resolve("visual-artifacts");
 await mkdir(output, { recursive: true });
 const dir = await mkdtemp(path.join(tmpdir(), "renivet-chrome-"));
+const chromeEnv = {
+  ...process.env,
+  DBUS_SESSION_BUS_ADDRESS: "unix:path=/dev/null",
+  DBUS_SYSTEM_BUS_ADDRESS: "unix:path=/dev/null",
+  XDG_RUNTIME_DIR: "",
+};
 const chrome = spawn(process.env.CHROME_BIN ?? "google-chrome", [
   "--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
   "--hide-scrollbars", "--no-first-run", "--no-default-browser-check",
   "--remote-debugging-port=0", "--user-data-dir=" + dir, "about:blank",
-], { stdio: ["ignore", "ignore", "pipe"] });
+], { stdio: ["ignore", "ignore", "pipe"], env: chromeEnv });
 let stderr = "";
 chrome.stderr.on("data", chunk => { stderr += String(chunk); });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));

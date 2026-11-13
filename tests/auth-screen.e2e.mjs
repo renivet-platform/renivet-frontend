@@ -71,7 +71,13 @@ const mockApi = createServer(async (request, response) => {
 });
 mockApi.listen(Number(process.env.AUTH_MOCK_API_PORT ?? 4000), "127.0.0.1");
 await once(mockApi, "listening");
-const chrome = spawn(process.env.CHROME_BIN ?? "google-chrome", ["--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--no-first-run", "--no-default-browser-check", "--remote-debugging-port=0", "--user-data-dir=" + dir, "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
+const chromeEnv = {
+  ...process.env,
+  DBUS_SESSION_BUS_ADDRESS: "unix:path=/dev/null",
+  DBUS_SYSTEM_BUS_ADDRESS: "unix:path=/dev/null",
+  XDG_RUNTIME_DIR: "",
+};
+const chrome = spawn(process.env.CHROME_BIN ?? "google-chrome", ["--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--no-first-run", "--no-default-browser-check", "--remote-debugging-port=0", "--user-data-dir=" + dir, "about:blank"], { stdio: ["ignore", "ignore", "pipe"], env: chromeEnv });
 let stderr = ""; chrome.stderr.on("data", chunk => { stderr += String(chunk); });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 let ws; const pending = new Map(); let sequence = 0;
