@@ -7,6 +7,7 @@ Implemented route surfaces:
 - `/brands/[brandId]/products`: category-guided product draft creation and list.
 - `/brands/[brandId]/products/[productId]`: draft resume, variants, scanned media, price history and claim evidence.
 - `/brands/[brandId]/imports`: file upload, mapping, preview, confirmation, results and safe retry.
+- `/brands/[brandId]/inventory`: explicit unavailable state while protected inventory routes remain unregistered; no stock values are fabricated.
 - `/portal-preview`: static non-operational design handoff only.
 
 The operation-level availability, presentation mode, UX state contract, accessibility notes, and open evidence gates are in `docs/ren2-47/operation-map.json`.

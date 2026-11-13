@@ -143,7 +143,7 @@ export function ProductWorkspace({ brandId }: { brandId: string }) {
     <main className={styles.page} aria-labelledby="products-title">
       <header className={styles.header}>
         <div><p className={styles.kicker}>BRAND WORKSPACE <span aria-hidden="true">/</span> CATALOGUE</p><h1 id="products-title">Products</h1><p className={styles.subtitle}>Start a draft with the details you have. Complete the rest when you’re ready.</p></div>
-        <div className={styles.headerActions}><Link className={styles.secondaryButton} href={`/brands/${encodeURIComponent(brandId)}/imports`}>Import products</Link><button className={styles.primaryButton} type="button" onClick={() => { setShowForm((visible) => !visible); setFormError(""); setFormNotice(""); }}>
+        <div className={styles.headerActions}><Link className={styles.secondaryButton} href={`/brands/${encodeURIComponent(brandId)}/inventory`}>Inventory</Link><Link className={styles.secondaryButton} href={`/brands/${encodeURIComponent(brandId)}/imports`}>Import products</Link><button className={styles.primaryButton} type="button" onClick={() => { setShowForm((visible) => !visible); setFormError(""); setFormNotice(""); }}>
           {showForm ? "Close draft form" : "Create product draft"}
         </button></div>
       </header>
