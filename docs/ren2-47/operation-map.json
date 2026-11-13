@@ -6,7 +6,7 @@
                         },
     "backendSource":  {
                           "repository":  "renivet-platform/renivet-backend",
-                          "commit":  "53dd0d0de75de2d204c0ee306f2b1bfe7347b693",
+                          "commit": "32acb20d4309b35aa7bd0a947cb6ad920b3f6d99",
                           "file":  "openapi/renivet.openapi.json"
                       },
     "candidateOperationCount":  47,
@@ -1188,8 +1188,8 @@
                                          "G08",
                                          "G17"
                                      ],
-                           "presentation":  "headless",
-                           "presentationReason":  "The backend route is registered, but the seller workspace does not currently provide an edit or deactivate control for this operation; keep it headless until that interaction is implemented and tested.",
+                           "presentation":  "interactive",
+                           "presentationReason":  "This action is available in the brand-scoped seller SKU editor through the same-origin API proxy; the backend validates the parent product version and enforces SKU restrictions.",
                            "accessibility":  [
                                                  "keyboard",
                                                  "labelled-controls",
@@ -1215,8 +1215,8 @@
                                          "G08",
                                          "G17"
                                      ],
-                           "presentation":  "headless",
-                           "presentationReason":  "The backend route is registered, but the seller workspace does not currently provide an edit or deactivate control for this operation; keep it headless until that interaction is implemented and tested.",
+                           "presentation":  "interactive",
+                           "presentationReason":  "This action is available in the brand-scoped seller SKU editor through the same-origin API proxy; the backend validates the parent product version and enforces SKU restrictions.",
                            "accessibility":  [
                                                  "keyboard",
                                                  "labelled-controls",

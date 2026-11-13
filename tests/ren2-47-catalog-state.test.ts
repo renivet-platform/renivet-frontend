@@ -32,4 +32,9 @@ describe("REN2-97 SKU option uniqueness", () => {
   it("allows a distinct option combination", () => {
     assert.equal(hasVariantCombination({ color: "Blue", size: "L" }, variants), false);
   });
+
+  it("allows a SKU to keep its own current option combination during edit", () => {
+    const current = [{ id: "sku-1", options: { color: "Blue", size: "M" }, variantState: "DRAFT" }];
+    assert.equal(hasVariantCombination({ size: "M", color: "Blue" }, current, "sku-1"), false);
+  });
 });
