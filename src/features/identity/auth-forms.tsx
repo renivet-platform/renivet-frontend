@@ -11,11 +11,13 @@ import {
   registerWithEmailAndPassword,
   requestEmailChallenge,
   requestPhoneChallenge,
+  requestPhoneRegistrationChallenge,
   requestPhoneLoginChallenge,
   setPhoneForVerification,
   verifyChallenge,
   verifyPhoneChallenge,
   verifyPhoneLogin,
+  verifyPhoneRegistration,
 } from "./auth-api";
 import { isAcceptedPassphrase, MAX_PASSPHRASE_LENGTH, MIN_PASSPHRASE_LENGTH, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber } from "./auth-policy";
 import { AuthShell } from "./auth-shell";
@@ -132,72 +134,101 @@ export function SignInForm() {
 }
 
 export function RegisterForm() {
-  const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
+  const router = useRouter();
+  const [method, setMethod] = useState<"phone" | "email">("phone");
+  const [phone, setPhone] = useState(""); const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
   const [challengeId, setChallengeId] = useState(""); const [code, setCode] = useState(""); const [verified, setVerified] = useState(false);
   const [error, setError] = useState(""); const [status, setStatus] = useState(""); const [busy, setBusy] = useState(false);
   const codeInput = useRef<HTMLInputElement>(null);
   const successLink = useRef<HTMLAnchorElement>(null);
   useEffect(() => { if (challengeId) codeInput.current?.focus(); }, [challengeId]);
   useEffect(() => { if (verified) successLink.current?.focus(); }, [verified]);
+
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setStatus("");
-    if (!isAcceptedPassphrase(password)) { setError("Password must be 8–128 characters."); return; }
+    if (method === "email" && !isAcceptedPassphrase(password)) { setError("Password must be 8–128 characters."); return; }
     setBusy(true);
     try {
-      const canonicalEmail = normalizeEmail(email);
-      await registerWithEmailAndPassword({ email: canonicalEmail, password });
-      setPassword("");
-      const challenge = await requestEmailChallenge({ channel: "email", purpose: "email_verification", destination: canonicalEmail });
-      setChallengeId(challenge.challengeId); setStatus("If this email can be registered, a verification code will be sent. Enter it below to verify your address.");
+      if (method === "phone") {
+        const normalized = normalizePhoneNumber(phone);
+        if (!normalized) { setError("Enter a valid Indian mobile number."); return; }
+        const challenge = await requestPhoneRegistrationChallenge(normalized);
+        setPhone(normalized); setChallengeId(challenge.challengeId);
+        setStatus("If this number can be registered, we’ll send a one-time code. Your account is activated after verification.");
+      } else {
+        const canonicalEmail = normalizeEmail(email);
+        await registerWithEmailAndPassword({ email: canonicalEmail, password });
+        setPassword("");
+        const challenge = await requestEmailChallenge({ channel: "email", purpose: "email_verification", destination: canonicalEmail });
+        setChallengeId(challenge.challengeId); setStatus("If this email can be registered, a verification code will be sent. Enter it below to verify your address.");
+      }
     } catch (cause) { setError(messageFor(cause)); }
     finally { setBusy(false); }
   }
+
   async function verify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setStatus("");
     if (!/^\d{6}$/.test(code)) { setError("Enter the six-digit code."); return; }
     setBusy(true);
     try {
-      await verifyChallenge(challengeId, { purpose: "email_verification", code });
-      setCode(""); setChallengeId(""); setVerified(true); setStatus("");
+      if (method === "phone") {
+        await verifyPhoneRegistration(challengeId, code);
+        setCode(""); router.replace("/account"); router.refresh();
+      } else {
+        await verifyChallenge(challengeId, { purpose: "email_verification", code });
+        setCode(""); setChallengeId(""); setVerified(true);
+      }
     } catch (cause) { setError(messageFor(cause)); }
     finally { setBusy(false); }
   }
+
   async function resend() {
     setError(""); setStatus(""); setBusy(true);
     try {
-      const challenge = await requestEmailChallenge({ channel: "email", purpose: "email_verification", destination: normalizeEmail(email) });
-      setCode("");
-      setChallengeId(challenge.challengeId);
-      setStatus("If this email can be registered, a new verification code will be sent.");
+      const challenge = method === "phone"
+        ? await requestPhoneRegistrationChallenge(normalizePhoneNumber(phone) ?? phone)
+        : await requestEmailChallenge({ channel: "email", purpose: "email_verification", destination: normalizeEmail(email) });
+      setCode(""); setChallengeId(challenge.challengeId);
+      setStatus(method === "phone" ? "If this number can be registered, a new code will be sent." : "If this email can be registered, a new verification code will be sent.");
     } catch (cause) { setError(messageFor(cause)); }
     finally { setBusy(false); }
   }
-  return <AuthShell eyebrow="Join Renivet" title="Create your account" description="Start with an email address and a password. We’ll ask you to verify your email.">
+
+  return <AuthShell eyebrow="Join Renivet" title="Create your account" description={method === "phone" ? "Use your phone number and a one-time SMS code. No password is needed." : "Start with an email address and a password. We’ll ask you to verify your email."}>
     {verified ? <div className={styles.form}><p className={styles.successBox} role="status" tabIndex={-1}>Your email is verified. You can now sign in.</p><Link ref={successLink} className={styles.primaryButton} href="/sign-in">Go to sign in</Link></div>
-      : !challengeId ? <form className={styles.form} onSubmit={register}>
-      <FormMessage id="register-form-error" error={error} status={status} />
-      <div className={styles.field}><label className={styles.label} htmlFor="register-email">Email address</label>
-        <input className={styles.input} id="register-email" name="email" type="email" autoComplete="email" inputMode="email" maxLength={254}
-          required value={email} aria-invalid={error ? true : undefined} aria-describedby={error ? "register-form-error" : "register-email-hint"} onChange={event => { setEmail(event.currentTarget.value); setError(""); }} />
-        <p className={styles.hint} id="register-email-hint">We use your email to verify and protect your account.</p></div>
-      <PasswordField id="register-password" label="Create password" autoComplete="new-password" value={password} onChange={setPassword} />
-      <p className={styles.hint}>We won’t reveal whether an email address already has an account.</p>
-      <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Creating account…" : "Create account"}</button>
-      <p className={styles.hint}>Already have an account? <Link className={styles.link} href="/sign-in">Sign in</Link></p>
-    </form> : <form className={styles.form} onSubmit={verify}>
-      <FormMessage id="register-code-error" error={error} status={status} />
-      <p className={styles.statusBox} role="status">Enter the six-digit code sent to <strong>{normalizeEmail(email)}</strong>. It expires in five minutes.</p>
-      <div className={styles.field}><label className={styles.label} htmlFor="register-code">Six-digit verification code</label>
-        <input ref={codeInput} className={styles.input} id="register-code" name="one-time-code" type="text" inputMode="numeric" autoComplete="one-time-code"
-          pattern="[0-9]{6}" maxLength={6} required value={code} aria-invalid={error ? true : undefined} aria-describedby={error ? "register-code-error" : "register-code-hint"} onChange={event => { setCode(normalizeOtpEntry(event.currentTarget.value)); setError(""); }} />
-        <p id="register-code-hint" className={styles.hint}>You can paste the full code. Never share it with anyone.</p></div>
-      <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Verifying…" : "Verify email"}</button>
-      <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void resend()}>{busy ? "Sending…" : "Resend code"}</button>
-      <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => { setChallengeId(""); setCode(""); setError(""); setStatus(""); }}>Start again</button>
-    </form>}
+      : <>
+      <div role="group" aria-label="Registration method" className={styles.methodSelector}>
+        <button className={styles.secondaryButton} type="button" aria-pressed={method === "phone"} onClick={() => { setMethod("phone"); setChallengeId(""); setCode(""); setError(""); setStatus(""); }}>Phone number</button>
+        <button className={styles.secondaryButton} type="button" aria-pressed={method === "email"} onClick={() => { setMethod("email"); setChallengeId(""); setCode(""); setError(""); setStatus(""); }}>Email and password</button>
+      </div>
+      {!challengeId ? <form className={styles.form} onSubmit={register}>
+        <FormMessage id="register-form-error" error={error} status={status} />
+        {method === "phone" ? <div className={styles.field}><label className={styles.label} htmlFor="register-phone">Phone number</label>
+          <input className={styles.input} id="register-phone" name="tel" type="tel" autoComplete="tel" inputMode="tel" maxLength={20}
+            required value={phone} aria-invalid={error ? true : undefined} aria-describedby={error ? "register-form-error" : "register-phone-hint"} onChange={event => { setPhone(event.currentTarget.value); setError(""); }} />
+          <p className={styles.hint} id="register-phone-hint">We’ll text a code to verify this number before activating your account.</p></div> : <>
+          <div className={styles.field}><label className={styles.label} htmlFor="register-email">Email address</label>
+            <input className={styles.input} id="register-email" name="email" type="email" autoComplete="email" inputMode="email" maxLength={254}
+              required value={email} aria-invalid={error ? true : undefined} aria-describedby={error ? "register-form-error" : "register-email-hint"} onChange={event => { setEmail(event.currentTarget.value); setError(""); }} />
+            <p className={styles.hint} id="register-email-hint">We use your email to verify and protect your account.</p></div>
+          <PasswordField id="register-password" label="Create password" autoComplete="new-password" value={password} onChange={setPassword} />
+          <p className={styles.hint}>We won’t reveal whether an email address already has an account.</p>
+        </>}
+        <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Sending code…" : method === "phone" ? "Continue with phone" : "Create account"}</button>
+        <p className={styles.hint}>Already have an account? <Link className={styles.link} href="/sign-in">Sign in</Link></p>
+      </form> : <form className={styles.form} onSubmit={verify}>
+        <FormMessage id="register-code-error" error={error} status={status} />
+        <p className={styles.statusBox} role="status">Enter the six-digit code sent to <strong>{method === "phone" ? phone : normalizeEmail(email)}</strong>. It expires in five minutes.</p>
+        <div className={styles.field}><label className={styles.label} htmlFor="register-code">Six-digit verification code</label>
+          <input ref={codeInput} className={styles.input} id="register-code" name="one-time-code" type="text" inputMode="numeric" autoComplete="one-time-code"
+            pattern="[0-9]{6}" maxLength={6} required value={code} aria-invalid={error ? true : undefined} aria-describedby={error ? "register-code-error" : "register-code-hint"} onChange={event => { setCode(normalizeOtpEntry(event.currentTarget.value)); setError(""); }} />
+          <p id="register-code-hint" className={styles.hint}>You can paste the full code. Never share it with anyone.</p></div>
+        <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Verifying…" : method === "phone" ? "Verify and create account" : "Verify email"}</button>
+        <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void resend()}>{busy ? "Sending…" : "Resend code"}</button>
+        <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => { setChallengeId(""); setCode(""); setError(""); setStatus(""); }}>Use a different {method === "phone" ? "number" : "email"}</button>
+      </form>}</>}
   </AuthShell>;
 }
-
 export function RecoveryForm() {
   const [email, setEmail] = useState(""); const [challengeId, setChallengeId] = useState(""); const [resetDone, setResetDone] = useState(false);
   const [code, setCode] = useState(""); const [newPassword, setNewPassword] = useState("");

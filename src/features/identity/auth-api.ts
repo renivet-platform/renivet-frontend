@@ -25,9 +25,9 @@ type EmailVerifyRequest = Omit<VerifyRequest, "purpose"> & {
 };
 type PhoneChallengeRequest = Omit<ChallengeRequest, "channel" | "purpose"> & {
   channel: "phone";
-  purpose: "phone_verification";
+  purpose: "phone_verification" | "phone_registration";
 };
-type PhoneVerifyRequest = Omit<VerifyRequest, "purpose"> & { purpose: "phone_verification" };
+type PhoneVerifyRequest = Omit<VerifyRequest, "purpose"> & { purpose: "phone_verification" | "phone_registration" };
 type PhoneLoginResponse = { authenticationState: "authenticated"; user: { id: string } };
 
 const fallbackError = {
@@ -135,6 +135,20 @@ export async function requestPhoneLoginChallenge(phone: string): Promise<Challen
 
 export async function verifyPhoneLogin(challengeId: string, code: string): Promise<PhoneLoginResponse> {
   const response = await requestJson<unknown>(`/api/auth/challenges/${encodeURIComponent(challengeId)}/verify`, jsonPost({ purpose: "phone_login", code }));
+  if (!response || typeof response !== "object") throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  const result = response as Record<string, unknown>;
+  const user = result.user as Record<string, unknown> | undefined;
+  if (result.authenticationState !== "authenticated" || !isUuid(user?.id)) throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  return response as PhoneLoginResponse;
+}
+
+export async function requestPhoneRegistrationChallenge(phone: string): Promise<ChallengeResponse> {
+  const response = await requestPhoneChallenge({ channel: "phone", purpose: "phone_registration", destination: phone });
+  return response;
+}
+
+export async function verifyPhoneRegistration(challengeId: string, code: string): Promise<PhoneLoginResponse> {
+  const response = await requestJson<unknown>(`/api/auth/challenges/${encodeURIComponent(challengeId)}/verify`, jsonPost({ purpose: "phone_registration", code }));
   if (!response || typeof response !== "object") throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
   const result = response as Record<string, unknown>;
   const user = result.user as Record<string, unknown> | undefined;
