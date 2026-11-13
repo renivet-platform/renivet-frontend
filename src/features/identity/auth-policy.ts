@@ -1,4 +1,4 @@
-export const MIN_PASSPHRASE_LENGTH = 15;
+export const MIN_PASSPHRASE_LENGTH = 8;
 export const MAX_PASSPHRASE_LENGTH = 128;
 
 export function normalizeEmail(value: string): string {

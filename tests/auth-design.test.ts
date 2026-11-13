@@ -17,9 +17,9 @@ test("authentication text and action color pairs meet WCAG AA contrast", () => {
   }
 });
 
-test("passphrase validation follows the backend 15-to-128 character rule without trimming", () => {
-  assert.equal(isAcceptedPassphrase("12345678901234"), false);
-  assert.equal(isAcceptedPassphrase("123456789012345"), true);
+test("passphrase validation follows the backend 8-to-128 character rule without trimming", () => {
+  assert.equal(isAcceptedPassphrase("1234567"), false);
+  assert.equal(isAcceptedPassphrase("12345678"), true);
   assert.equal(isAcceptedPassphrase("               "), true);
   assert.equal(isAcceptedPassphrase("x".repeat(128)), true);
   assert.equal(isAcceptedPassphrase("x".repeat(129)), false);

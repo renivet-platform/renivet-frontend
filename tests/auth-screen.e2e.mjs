@@ -140,7 +140,7 @@ try {
   await command("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await command("Page.navigate", { url: new URL("register", base).href });
   await waitInteractive("register-email");
-  await enter("register-email", "buyer@example.test"); await enter("register-password", "synthetic passphrase 123"); await submit();
+  await enter("register-email", "buyer@example.test"); await enter("register-password", "pass1234"); await submit();
   await waitInteractive("register-code");
   assert.equal(await evaluate("document.activeElement?.id === 'register-code'"), true, "registration focuses the code field when the challenge step opens");
   const registerRequestsBeforeResend = emailChallengeRequests.length;
@@ -154,7 +154,7 @@ try {
   assert.equal(await evaluate("location.search === '' && document.cookie.includes('synthetic-session') === false"), true, "verification keeps challenge/code/session out of URL and document.cookie");
   await command("Page.navigate", { url: new URL("sign-in", base).href });
   await waitInteractive("signin-email");
-  await enter("signin-email", "buyer@example.test"); await enter("signin-password", "synthetic passphrase 123"); await submit();
+  await enter("signin-email", "buyer@example.test"); await enter("signin-password", "pass1234"); await submit();
   await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
   assert.equal(await evaluate("document.cookie.includes('synthetic-session')"), false, "HttpOnly session cookie is not readable by page JavaScript");
   assert.equal(await evaluate("location.search === ''"), true, "session proof is absent from the URL");
@@ -176,7 +176,7 @@ try {
   console.log("PASS registration, email verification, secure session cookie, session inspection, logout, expired-session flow");
 
   await command("Page.navigate", { url: new URL("sign-in", base).href }); await waitInteractive("signin-email");
-  await enter("signin-email", "unknown@example.test"); await enter("signin-password", "synthetic passphrase 123"); await submit();
+  await enter("signin-email", "unknown@example.test"); await enter("signin-password", "pass1234"); await submit();
   await waitFor("document.body.innerText.includes('We couldn’t sign you in with those details.')");
   assert.equal(await evaluate("!document.body.innerText.includes('enumeration detail')"), true, "login failure does not expose backend detail");
   await command("Page.navigate", { url: new URL("recover", base).href }); await waitInteractive("recovery-email");

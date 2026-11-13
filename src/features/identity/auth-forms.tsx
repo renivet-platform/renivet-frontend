@@ -17,7 +17,7 @@ import {
   verifyPhoneChallenge,
   verifyPhoneLogin,
 } from "./auth-api";
-import { isAcceptedPassphrase, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber } from "./auth-policy";
+import { isAcceptedPassphrase, MAX_PASSPHRASE_LENGTH, MIN_PASSPHRASE_LENGTH, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber } from "./auth-policy";
 import { AuthShell } from "./auth-shell";
 import styles from "./auth.module.css";
 
@@ -44,12 +44,12 @@ function PasswordField({ id, label, autoComplete, value, onChange }: {
     <label className={styles.label} htmlFor={id}>{label}</label>
     <div className={styles.passwordRow}>
       <input className={styles.passwordInput} id={id} name={id} type={visible ? "text" : "password"}
-        autoComplete={autoComplete} required minLength={15} maxLength={128} value={value}
+        autoComplete={autoComplete} required minLength={MIN_PASSPHRASE_LENGTH} maxLength={MAX_PASSPHRASE_LENGTH} value={value}
         onChange={event => onChange(event.currentTarget.value)} aria-describedby={`${id}-hint`} />
       <button className={styles.togglePassword} type="button" aria-label={`${visible ? "Hide" : "Show"} ${label.toLowerCase()}`}
         aria-pressed={visible} onClick={() => setVisible(current => !current)}>{visible ? "Hide" : "Show"}</button>
     </div>
-    <p id={`${id}-hint`} className={styles.hint}>Use 15–128 characters. Spaces are allowed.</p>
+    <p id={`${id}-hint`} className={styles.hint}>Use 8–128 characters. Spaces are allowed.</p>
   </div>;
 }
 
@@ -68,7 +68,7 @@ export function SignInForm() {
   useEffect(() => { if (challengeId) codeInput.current?.focus(); }, [challengeId]);
   async function submitEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError("");
-    if (!isAcceptedPassphrase(password)) { setError("Password must be 15–128 characters."); return; }
+    if (!isAcceptedPassphrase(password)) { setError("Password must be 8–128 characters."); return; }
     setBusy(true);
     try {
       await createPasswordSession({ email: normalizeEmail(email), password });
@@ -141,7 +141,7 @@ export function RegisterForm() {
   useEffect(() => { if (verified) successLink.current?.focus(); }, [verified]);
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setStatus("");
-    if (!isAcceptedPassphrase(password)) { setError("Password must be 15–128 characters."); return; }
+    if (!isAcceptedPassphrase(password)) { setError("Password must be 8–128 characters."); return; }
     setBusy(true);
     try {
       const canonicalEmail = normalizeEmail(email);
@@ -217,7 +217,7 @@ export function RecoveryForm() {
   async function reset(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setStatus("");
     if (!/^\d{6}$/.test(code)) { setError("Enter the six-digit code."); return; }
-    if (!isAcceptedPassphrase(newPassword)) { setError("Password must be 15–128 characters."); return; }
+    if (!isAcceptedPassphrase(newPassword)) { setError("Password must be 8–128 characters."); return; }
     setBusy(true);
     try {
       await verifyChallenge(challengeId, { purpose: "password_recovery", code, newPassword });
