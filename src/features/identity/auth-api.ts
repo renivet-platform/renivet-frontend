@@ -167,6 +167,7 @@ export async function createPasswordSession(input: PasswordSessionRequest): Prom
 export interface CurrentSession {
   authenticationState: "authenticated";
   user: { id: string };
+  account: { signInMethod: "phone" | "email_password"; phoneVerified: boolean };
   csrfToken: string;
 }
 
@@ -174,8 +175,12 @@ function isCurrentSession(value: unknown): value is CurrentSession {
   if (!value || typeof value !== "object") return false;
   const record = value as Record<string, unknown>;
   const user = record.user;
+  const account = record.account;
   return record.authenticationState === "authenticated"
     && Boolean(user && typeof user === "object" && isUuid((user as Record<string, unknown>).id))
+    && Boolean(account && typeof account === "object"
+      && ["phone", "email_password"].includes(String((account as Record<string, unknown>).signInMethod))
+      && typeof (account as Record<string, unknown>).phoneVerified === "boolean")
     && typeof record.csrfToken === "string"
     && record.csrfToken.length >= 32
     && record.csrfToken.length <= 512;
