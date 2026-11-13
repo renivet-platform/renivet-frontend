@@ -51,8 +51,8 @@ describe("REN2-95 W2 operation map", () => {
       if (operation.availability === "gated") assert.equal(operation.presentation, "gated", `${operation.operationId} must not appear interactive before registration`);
       if (operation.operationId === "proposeVariantPrice") assert.equal(operation.presentation, "headless",
         "price proposal stays out of the UI until a supported source provides the required ruleVersion");
-      if (["updateProductVariant", "deactivateProductVariant"].includes(operation.operationId)) assert.equal(operation.presentation, "headless",
-        `${operation.operationId} must stay headless until its action is present in the seller UI`);
+      if (["updateProductVariant", "deactivateProductVariant"].includes(operation.operationId)) assert.equal(operation.presentation, "interactive",
+        `${operation.operationId} is available through an authenticated seller draft action`);
       assert.equal(backendOperationIds.has(operation.operationId), operation.availability === "registered",
         `${operation.operationId} availability must match generated backend OpenAPI`);
     }

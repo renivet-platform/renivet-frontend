@@ -6,7 +6,7 @@
                         },
     "backendSource":  {
                           "repository":  "renivet-platform/renivet-backend",
-                          "commit":  "53dd0d0de75de2d204c0ee306f2b1bfe7347b693",
+                          "commit": "32acb20",
                           "file":  "openapi/renivet.openapi.json"
                       },
     "candidateOperationCount":  47,
