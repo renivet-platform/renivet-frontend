@@ -19,6 +19,8 @@ let phoneChallengeRequested = false;
 let phoneChallengeVerified = false;
 let phoneLoginChallengeRequested = false;
 let phoneLoginVerified = false;
+let phoneRegistrationChallengeRequested = false;
+let phoneRegistrationVerified = false;
 const emailChallengeRequests = [];
 const mockApi = createServer(async (request, response) => {
   let raw = ""; for await (const chunk of request) raw += chunk.toString();
@@ -38,6 +40,7 @@ const mockApi = createServer(async (request, response) => {
     if (body.channel === "email") emailChallengeRequests.push(body);
     if (body.channel === "phone" && body.purpose === "phone_verification" && body.destination === testPhone) phoneChallengeRequested = true;
     if (body.channel === "phone" && body.purpose === "phone_login" && body.destination === testPhone) phoneLoginChallengeRequested = true;
+    if (body.channel === "phone" && body.purpose === "phone_registration" && body.destination === testPhone) phoneRegistrationChallengeRequested = true;
     return send(202, { status: "accepted", challengeId });
   }
   if (request.url === `/api/v1/auth/challenges/${challengeId}/verify` && request.method === "POST") {
@@ -46,6 +49,13 @@ const mockApi = createServer(async (request, response) => {
     if (body.purpose === "phone_login") {
       if (body.code !== "123456" || !phoneLoginChallengeRequested) return send(401, { code: "AUTHENTICATION_FAILED", message: "private login detail" });
       phoneLoginVerified = true;
+      return send(200, { authenticationState: "authenticated", user: { id: "37a7d0bf-8414-4f75-bd11-311c7a442d84" } }, {
+        "Set-Cookie": "__Host-renivet_session=synthetic-session; Path=/; Max-Age=1800; HttpOnly; Secure; SameSite=Lax",
+      });
+    }
+    if (body.purpose === "phone_registration") {
+      if (!phoneRegistrationChallengeRequested) return send(401, { code: "AUTHENTICATION_FAILED", message: "private registration detail" });
+      phoneRegistrationVerified = true;
       return send(200, { authenticationState: "authenticated", user: { id: "37a7d0bf-8414-4f75-bd11-311c7a442d84" } }, {
         "Set-Cookie": "__Host-renivet_session=synthetic-session; Path=/; Max-Age=1800; HttpOnly; Secure; SameSite=Lax",
       });
@@ -108,6 +118,10 @@ try {
     for (const width of [320, 390]) {
       await command("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: true });
       await command("Page.navigate", { url: new URL(route, base).href });
+      if (route === "register") {
+        await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.includes('Email and password'))");
+        await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Email and password'))?.click()");
+      }
       const page = await waitFor(`(() => {
         const main = document.querySelector('main');
         const heading = document.querySelector('h1');
@@ -137,14 +151,31 @@ try {
   const desktopShot = await command("Page.captureScreenshot", { format: "png", fromSurface: true });
   await writeFile(path.join("visual-artifacts", "auth-register-desktop.png"), Buffer.from(desktopShot.data, "base64"));
   await command("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
-  await command("Page.navigate", { url: new URL("register", base).href }); await waitFor("document.getElementById('register-email') !== null");
+  await command("Page.navigate", { url: new URL("register", base).href }); await waitFor("document.getElementById('register-phone') !== null");
   const mobileShot = await command("Page.captureScreenshot", { format: "png", fromSurface: true });
   await writeFile(path.join("visual-artifacts", "auth-register-mobile.png"), Buffer.from(mobileShot.data, "base64"));
   console.log("PASS /register: desktop width");
 
+  // Phone-only registration -> purpose-bound OTP -> signed-in session.
+  await command("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await command("Page.navigate", { url: new URL("register", base).href });
+  await waitInteractive("register-phone");
+  assert.equal(await evaluate("document.getElementById('register-password') === null"), true, "phone-only signup does not ask the user for a password");
+  await enter("register-phone", testPhone); await submit(); await waitInteractive("register-code");
+  assert.equal(await evaluate("document.activeElement?.id === 'register-code'"), true, "phone registration focuses the OTP input after requesting a challenge");
+  await enter("register-code", "123456"); await submit();
+  await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
+  assert.equal(phoneRegistrationChallengeRequested && phoneRegistrationVerified, true, "signup sends phone_registration and verifies that same purpose");
+  assert.equal(await evaluate("document.cookie.includes('synthetic-session') === false && location.search === ''"), true, "phone registration keeps session proof HttpOnly and credentials out of URL");
+  console.log("PASS phone-only registration -> OTP verification -> new authenticated session");
+  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Sign out'))?.click()");
+  await waitFor("location.pathname === '/sign-in'");
+
   // Registration -> email challenge -> code verification -> password login -> session -> CSRF logout.
   await command("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await command("Page.navigate", { url: new URL("register", base).href });
+  await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.includes('Email and password'))");
+  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Email and password'))?.click()");
   await waitInteractive("register-email");
   await enter("register-email", "buyer@example.test"); await enter("register-password", "pass1234"); await submit();
   await waitInteractive("register-code");

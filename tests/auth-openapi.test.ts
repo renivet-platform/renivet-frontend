@@ -50,6 +50,15 @@ test("auth OpenAPI snapshot exposes only the implemented registration, session, 
     assert.ok(schemas[schema], `${schema} is in the backend contract`);
   }
 
+  const challengeDescription = (paths["/api/v1/auth/challenges"]?.post as { description?: string } | undefined)?.description ?? "";
+  const verifyDescription = (paths["/api/v1/auth/challenges/{challengeId}/verify"]?.post as { description?: string } | undefined)?.description ?? "";
+  const issuePurpose = (schemas.OtpIssueRequestDto as { properties?: Record<string, { enum?: string[] }> } | undefined)?.properties?.purpose?.enum ?? [];
+  const verifyPurpose = (schemas.OtpVerifyRequestDto as { properties?: Record<string, { enum?: string[] }> } | undefined)?.properties?.purpose?.enum ?? [];
+  assert.ok(issuePurpose.includes("phone_registration"), "challenge contract exposes the passwordless registration purpose");
+  assert.ok(verifyPurpose.includes("phone_registration"), "verification contract exposes the passwordless registration purpose");
+  assert.match(challengeDescription, /phone_registration creates a pending, passwordless phone account/i);
+  assert.match(verifyDescription, /phone_registration atomically activates its passwordless pending account/i);
+
   assert.equal(
     Object.keys(paths).some((path) => /auth\/(?:otp|sessions\/otp|login\/otp)/i.test(path)),
     false,

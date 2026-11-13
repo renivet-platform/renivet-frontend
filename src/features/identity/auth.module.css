@@ -376,6 +376,19 @@
 .link { font-size: .875rem; }
 .formLinks { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .75rem; }
 
+.methodSelector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .55rem;
+  margin-bottom: 1rem;
+}
+
+.methodSelector .secondaryButton[aria-pressed="true"] {
+  border-color: var(--auth-primary);
+  color: var(--auth-primary-text);
+  background: var(--auth-primary);
+}
+
 .securityNote {
   margin: 1.1rem 0 0;
   display: flex;
