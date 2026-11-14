@@ -260,15 +260,15 @@
                            "operationId":  "submitProductForReview",
                            "route":  "/seller/products/[productId]/submit",
                            "role":  "seller",
-                           "availability":  "gated",
+                           "availability":  "registered",
                            "gates":  [
                                          "G07",
                                          "G08",
                                          "G14",
                                          "G17"
                                      ],
-                           "presentation":  "gated",
-                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "presentation":  "interactive",
+                           "presentationReason":  "REN2-71 exposes authenticated seller submission for the persisted draft revision; the UI binds the request to current row and schema versions while backend release gates remain authoritative.",
                            "accessibility":  [
                                                  "keyboard",
                                                  "labelled-controls",
@@ -285,17 +285,18 @@
                        },
                        {
                            "operationId":  "publishApprovedProduct",
+                           "implementedBy":  "publishAdminCatalogRevision",
                            "route":  "/admin/catalog-publishing",
                            "role":  "admin",
-                           "availability":  "gated",
+                           "availability":  "registered",
                            "gates":  [
                                          "G07",
                                          "G08",
                                          "G14",
                                          "G17"
                                      ],
-                           "presentation":  "gated",
-                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "presentation":  "interactive",
+                           "presentationReason":  "The publishing queue and persisted detail endpoint provide the approved revision context; the decision remains behind global W1 permission, MFA, CSRF and publication gates.",
                            "accessibility":  [
                                                  "keyboard",
                                                  "labelled-controls",
@@ -312,17 +313,18 @@
                        },
                        {
                            "operationId":  "restrictPublishedProduct",
+                           "implementedBy":  "restrictAdminCatalogProduct",
                            "route":  "/admin/catalog-publishing",
                            "role":  "admin",
-                           "availability":  "gated",
+                           "availability":  "registered",
                            "gates":  [
                                          "G07",
                                          "G08",
                                          "G14",
                                          "G17"
                                      ],
-                           "presentation":  "gated",
-                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "presentation":  "interactive",
+                           "presentationReason":  "The publishing queue and persisted detail endpoint provide the published revision context; the restriction decision remains behind global W1 permission, MFA and CSRF.",
                            "accessibility":  [
                                                  "keyboard",
                                                  "labelled-controls",
@@ -878,17 +880,18 @@
                        },
                        {
                            "operationId":  "decideCatalogReview",
+                           "implementedBy":  "decideAdminProductQcReview",
                            "route":  "/admin/catalog-review",
                            "role":  "admin",
-                           "availability":  "gated",
+                           "availability":  "registered",
                            "gates":  [
                                          "G07",
                                          "G08",
                                          "G14",
                                          "G17"
                                      ],
-                           "presentation":  "gated",
-                           "presentationReason":  "The v1.5 candidate operation is absent from the registered backend OpenAPI; keep its screen and action unavailable until API and release gates are approved.",
+                           "presentation":  "interactive",
+                           "presentationReason":  "The product QC queue and persisted detail endpoint show the frozen revision before the independent reviewer records a decision.",
                            "accessibility":  [
                                                  "keyboard",
                                                  "labelled-controls",
@@ -1105,8 +1108,8 @@
                                          "G08",
                                          "G17"
                                      ],
-                           "presentation":  "headless",
-                           "presentationReason":  "The API route is registered, but the backend exposes no safe review queue/read-by-id context for this action; keep it out of interactive admin controls until evidence and authorization context can be shown.",
+                           "presentation":  "interactive",
+                           "presentationReason":  "The pricing queue and persisted detail endpoint show the proposal context before an independent reviewer records a decision.",
                            "accessibility":  [
                                                  "keyboard",
                                                  "labelled-controls",
@@ -1161,8 +1164,8 @@
                                          "G13",
                                          "G17"
                                      ],
-                           "presentation":  "headless",
-                           "presentationReason":  "The API route is registered, but the backend exposes no safe review queue/read-by-id context for this action; keep it out of interactive admin controls until evidence and authorization context can be shown.",
+                           "presentation":  "interactive",
+                           "presentationReason":  "The taxonomy queue and persisted detail endpoint show the proposed schema version before an independent reviewer publishes it.",
                            "accessibility":  [
                                                  "keyboard",
                                                  "labelled-controls",
@@ -1296,8 +1299,8 @@
                                          "G14",
                                          "G17"
                                      ],
-                           "presentation":  "headless",
-                           "presentationReason":  "The API route is registered, but the backend exposes no safe review queue/read-by-id context for this action; keep it out of interactive admin controls until evidence and authorization context can be shown.",
+                           "presentation":  "interactive",
+                           "presentationReason":  "The claims queue and persisted detail endpoint show the claim evidence before an independent reviewer records a decision.",
                            "accessibility":  [
                                                  "keyboard",
                                                  "labelled-controls",

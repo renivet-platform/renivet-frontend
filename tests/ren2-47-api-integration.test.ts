@@ -8,6 +8,17 @@ const productId = "d4a3bd3b-5b71-49e1-87fc-3f4f9b8c8b0d";
 const variantId = "1d94ba0a-a595-4bda-80b3-0ce3ebacb35c";
 
 describe("REN2-47 live API coverage", () => {
+  it("exposes the registered brand-scoped product submission action", () => {
+    assert.equal(resolveW2BackendPath(["brands", brandId, "products", productId, "submit"], "POST"),
+      `/api/v1/brands/${brandId}/products/${productId}/submit`);
+
+    const component = readFileSync("src/features/seller/product-detail-workspace.tsx", "utf8");
+    assert.match(component, /Submit for independent review/);
+    assert.match(component, /draftContentVersion/);
+    assert.match(component, /categorySchemaVersion/);
+    assert.match(component, /ifMatch: `"\$\{product\.rowVersion\}"`/);
+  });
+
   it("routes SKU edit and deactivation to the registered brand-scoped backend operations", () => {
     assert.equal(resolveW2BackendPath(["brands", brandId, "products", productId, "variants", variantId], "PATCH"),
       `/api/v1/brands/${brandId}/products/${productId}/variants/${variantId}`);

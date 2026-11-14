@@ -64,6 +64,9 @@ export function resolveW2BackendPath(segments: string[], method: string): string
   if (resource === "products" && resourceId && uuid.test(resourceId) && segments.length === 4 && (method === "GET" || method === "PATCH")) {
     return `/api/v1/brands/${brandId}/products/${resourceId}`;
   }
+  if (resource === "products" && resourceId && uuid.test(resourceId) && subresource === "submit" && segments.length === 5 && method === "POST") {
+    return `/api/v1/brands/${brandId}/products/${resourceId}/submit`;
+  }
   if (resource === "products" && resourceId && uuid.test(resourceId) && subresource === "variants" && segments.length === 5 && method === "POST") {
     return `/api/v1/brands/${brandId}/products/${resourceId}/variants`;
   }
@@ -179,7 +182,8 @@ export async function proxyW2Request(request: Request, segments: string[]): Prom
       return jsonResponse({ code: "W2_REQUEST_INVALID", message: "The request is invalid." }, 400);
     }
     const requiresIfMatch = method === "PATCH" || method === "DELETE"
-      || (method === "POST" && /\/product-imports\/[0-9a-f-]{36}\/(?:mapping|confirm|retry)$/.test(backendPath));
+      || (method === "POST" && (/\/product-imports\/[0-9a-f-]{36}\/(?:mapping|confirm|retry)$/.test(backendPath)
+        || /\/products\/[0-9a-f-]{36}\/submit$/.test(backendPath)));
     if (requiresIfMatch && !request.headers.get("if-match")) return jsonResponse({ code: "W2_REQUEST_INVALID", message: "The request is invalid." }, 400);
     if (request.body !== null) {
       const result = await readJsonBody(request);

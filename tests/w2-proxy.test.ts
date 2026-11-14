@@ -74,3 +74,31 @@ describe("admin review proxy allowlist", () => {
     assert.equal(resolveW2BackendPath(["admin", "reviews", "quality", ".."], "GET"), null);
   });
 });
+
+describe("seller product submission proxy", () => {
+  it("requires an exact same-origin mutation, idempotency key, CSRF token and If-Match", async () => {
+    const previousEnabled = process.env.RENIVET_W2_PORTAL_ENABLED;
+    const previousBaseUrl = process.env.RENIVET_API_BASE_URL;
+    process.env.RENIVET_W2_PORTAL_ENABLED = "true";
+    process.env.RENIVET_API_BASE_URL = "http://127.0.0.1:4000/api/v1";
+    try {
+      const response = await proxyW2Request(new Request(`https://seller.example/api/w2/brands/${brandId}/products/${productId}/submit`, {
+        method: "POST",
+        headers: {
+          origin: "https://seller.example",
+          "sec-fetch-site": "same-origin",
+          "content-type": "application/json",
+          "x-csrf-token": "session-csrf",
+          "idempotency-key": "submit-request-1",
+        },
+        body: JSON.stringify({ draftContentVersion: 2, categorySchemaVersion: 1, contentSha256: "a".repeat(64) }),
+      }), ["brands", brandId, "products", productId, "submit"]);
+      assert.equal(response.status, 400);
+    } finally {
+      if (previousEnabled === undefined) delete process.env.RENIVET_W2_PORTAL_ENABLED;
+      else process.env.RENIVET_W2_PORTAL_ENABLED = previousEnabled;
+      if (previousBaseUrl === undefined) delete process.env.RENIVET_API_BASE_URL;
+      else process.env.RENIVET_API_BASE_URL = previousBaseUrl;
+    }
+  });
+});
