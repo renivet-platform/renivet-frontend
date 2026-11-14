@@ -25,6 +25,16 @@ describe("REN2-100 authenticated admin review console", () => {
     assert.match(source, /approvedRevisionId/);
   });
 
+  it("shows maker-checker context and blocks self-submitted or expired decisions", () => {
+    const source = readFileSync("src/features/admin/operations-console.tsx", "utf8");
+    assert.match(source, /submittedBy/);
+    assert.match(source, /sessionUserId/);
+    assert.match(source, /maker-checker/i);
+    assert.match(source, /expiresAt/);
+    assert.match(source, /expired/i);
+    assert.match(source, /disabled=.*self|self.*disabled/i);
+  });
+
   it("keeps keyboard focus visible and contrasts text against the console surface", () => {
     const css = readFileSync("src/features/admin/operations-console.module.css", "utf8");
     assert.match(css, /:focus-visible/);

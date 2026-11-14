@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { AuthApiError, getCurrentSession } from "@/features/identity/auth-api";
+import { AuthApiError, getCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
 import type { components, operations } from "@/generated/renivet-api";
 import { canonicalVariantOptions, createIdempotencyKey, createSubmissionRequestDigest, hasVariantCombination, type CategoryAttribute, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import { ProductMediaWorkspace } from "@/features/seller/product-media-workspace";
@@ -13,6 +13,7 @@ type SchemaVersion = components["schemas"]["CategorySchemaVersionReadDto"];
 type MeasurementValue = { value: number; unitCode: string };
 type AttributeValue = string | number | boolean | string[] | MeasurementValue | null;
 type Claim = operations["listProductClaims"]["responses"][200]["content"]["application/json"]["items"][number];
+type PriceProposalReceipt = operations["proposeVariantPrice"]["responses"][202]["content"]["application/json"];
 
 function messageFor(error: unknown): string {
   if (error instanceof W2ApiError) return error.message;
@@ -37,6 +38,17 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
   const [variantSaving, setVariantSaving] = useState(false);
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
   const [confirmingDeactivationId, setConfirmingDeactivationId] = useState<string | null>(null);
+  const [priceVariantId, setPriceVariantId] = useState<string | null>(null);
+  const [sellingPriceMinor, setSellingPriceMinor] = useState("");
+  const [mrpMinor, setMrpMinor] = useState("");
+  const [validFrom, setValidFrom] = useState("");
+  const [validTo, setValidTo] = useState("");
+  const [ruleVersion, setRuleVersion] = useState("");
+  const [priceReason, setPriceReason] = useState("");
+  const [priceMfaCode, setPriceMfaCode] = useState("");
+  const [priceError, setPriceError] = useState("");
+  const [priceNotice, setPriceNotice] = useState("");
+  const [priceSaving, setPriceSaving] = useState(false);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [claimsError, setClaimsError] = useState("");
   const [claimCode, setClaimCode] = useState("");
@@ -203,6 +215,50 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     } finally { setVariantSaving(false); }
   }
 
+  async function proposePrice(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!product || !editable || !priceVariantId) return;
+    setPriceError(""); setPriceNotice("");
+    const selling = Number(sellingPriceMinor);
+    const mrp = Number(mrpMinor);
+    const rule = Number(ruleVersion);
+    if (!Number.isSafeInteger(selling) || selling < 1) { setPriceError("Enter a positive selling price in paise."); return; }
+    if (!Number.isSafeInteger(mrp) || mrp < selling) { setPriceError("MRP must be at least the selling price, in paise."); return; }
+    if (!Number.isSafeInteger(rule) || rule < 1) { setPriceError("Enter the server-issued INR pricing rule version."); return; }
+    if (!validFrom) { setPriceError("Choose when this price becomes valid."); return; }
+    const from = new Date(validFrom);
+    const to = validTo ? new Date(validTo) : null;
+    if (Number.isNaN(from.valueOf()) || (to && Number.isNaN(to.valueOf())) || (to && to <= from)) { setPriceError("The price validity window is invalid."); return; }
+    if (!/^(?:\d{6}|[A-Z2-7]{26})$/.test(priceMfaCode.trim().toUpperCase())) { setPriceError("Enter a six-digit authenticator code or unused recovery code."); return; }
+    setPriceSaving(true);
+    try {
+      const session = await getCurrentSession();
+      const elevated = await stepUpWithMfa(priceMfaCode.trim().toUpperCase(), session.csrfToken);
+      const receipt = await w2Request<PriceProposalReceipt>(["brands", brandId, "variants", priceVariantId, "prices"], {
+        method: "PATCH",
+        body: {
+          currency: "INR",
+          sellingPriceMinor: selling,
+          mrpMinor: mrp,
+          validFrom: from.toISOString(),
+          ...(to ? { validTo: to.toISOString() } : {}),
+          ruleVersion: rule,
+          ...(priceReason.trim() ? { reasonCode: priceReason.trim() } : {}),
+        },
+        csrfToken: elevated.csrfToken,
+        idempotencyKey: createIdempotencyKey(),
+        ifMatch: `"${product.rowVersion}"`,
+      });
+      setPriceNotice(`Price proposal ${receipt.id} is pending independent review.`);
+      setPriceVariantId(null); setPriceMfaCode(""); setSellingPriceMinor(""); setMrpMinor(""); setValidFrom(""); setValidTo(""); setRuleVersion(""); setPriceReason("");
+      setReloadKey((key) => key + 1);
+    } catch (error) {
+      setPriceError(error instanceof W2ApiError && (error.status === 409 || error.status === 412)
+        ? "This price changed while you were preparing it. Reload the product and try again."
+        : messageFor(error));
+    } finally { setPriceSaving(false); }
+  }
+
   async function proposeClaim(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setClaimsError(""); setClaimNotice("");
     if (!product || product.publicationState !== "PUBLISHED") return;
@@ -270,7 +326,20 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
         if (!variant.priceVersions?.length) return null;
         return <div className={styles.tableWrap} key={variant.id}><table className={styles.variantTable}><caption>Price history · {variant.sku}</caption><thead><tr><th scope="col">Selling price</th><th scope="col">MRP</th><th scope="col">Valid from</th><th scope="col">Valid to</th><th scope="col">State</th></tr></thead><tbody>{variant.priceVersions.map((price) => <tr key={price.id}><td>₹{(price.amountMinor / 100).toFixed(2)}</td><td>₹{(price.mrpMinor / 100).toFixed(2)}</td><td>{new Date(price.validFrom).toLocaleDateString()}</td><td>{price.validTo ? new Date(price.validTo).toLocaleDateString() : "Open-ended"}</td><td>{price.priceState === "PENDING" ? "Pending review" : price.priceState.replaceAll("_", " ")}</td></tr>)}</tbody></table></div>;
       }) : <p className={styles.emptyLine}>No price proposals have been recorded for these SKUs.</p>}
-      <p className={styles.inlineError}>New price proposals need a server-issued rule version. The current registered API has no read operation for that rule, so this screen does not guess one.</p>
+      {editable && product.variants.some((variant) => variant.variantState !== "INACTIVE") && <div className={styles.schemaPanel} aria-labelledby="price-proposal-heading">
+        <div><p className={styles.kicker}>PROPOSE AN INR PRICE</p><h3 id="price-proposal-heading">Create a pending price proposal</h3><p>Enter the pricing rule version supplied by the authorized pricing service. The UI never guesses this value.</p></div>
+        <div className={styles.mediaActions}>{product.variants.filter((variant) => variant.variantState !== "INACTIVE").map((variant) => <button key={variant.id} type="button" className={styles.textButton} onClick={() => { setPriceVariantId(variant.id); setPriceError(""); setPriceNotice(""); }}>{priceVariantId === variant.id ? `Editing ${variant.sku}` : `Price ${variant.sku}`}</button>)}</div>
+        {priceVariantId && <form onSubmit={proposePrice} noValidate><div className={styles.formGrid}>
+          <div className={styles.field}><label htmlFor="selling-price-minor">Selling price (paise)</label><input id="selling-price-minor" type="number" min="1" step="1" value={sellingPriceMinor} onChange={(event) => setSellingPriceMinor(event.target.value)} required /></div>
+          <div className={styles.field}><label htmlFor="mrp-minor">MRP (paise)</label><input id="mrp-minor" type="number" min="1" step="1" value={mrpMinor} onChange={(event) => setMrpMinor(event.target.value)} required /></div>
+          <div className={styles.field}><label htmlFor="price-valid-from">Valid from</label><input id="price-valid-from" type="datetime-local" value={validFrom} onChange={(event) => setValidFrom(event.target.value)} required /></div>
+          <div className={styles.field}><label htmlFor="price-valid-to">Valid to <span>(optional)</span></label><input id="price-valid-to" type="datetime-local" value={validTo} onChange={(event) => setValidTo(event.target.value)} /></div>
+          <div className={styles.field}><label htmlFor="price-rule-version">INR rule version</label><input id="price-rule-version" type="number" min="1" step="1" value={ruleVersion} onChange={(event) => setRuleVersion(event.target.value)} required /><small>Use the version returned by the approved pricing process.</small></div>
+          <div className={styles.field}><label htmlFor="price-reason">Reason code <span>(optional)</span></label><input id="price-reason" maxLength={128} value={priceReason} onChange={(event) => setPriceReason(event.target.value)} /></div>
+          <div className={styles.fieldWide}><label htmlFor="price-mfa">Authenticator or recovery code</label><input id="price-mfa" autoComplete="one-time-code" value={priceMfaCode} onChange={(event) => setPriceMfaCode(event.target.value)} maxLength={26} required /></div>
+        </div>{priceError && <p className={styles.error} role="alert">{priceError}</p>}{priceNotice && <p className={styles.notice} role="status">{priceNotice}</p>}<div className={styles.formActions}><p>Creates a pending INR proposal; it is not active until independently approved.</p><button type="submit" className={styles.primaryButton} disabled={priceSaving}>{priceSaving ? "Submitting price…" : "Submit price proposal"}</button><button type="button" className={styles.secondaryButton} disabled={priceSaving} onClick={() => setPriceVariantId(null)}>Cancel</button></div></form>}
+      </div>}
+      {!editable && <p className={styles.inlineError}>New price proposals are disabled after submission; review the persisted price history above.</p>}
     </section>
     <section className={styles.formPanel} aria-labelledby="claims-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>SUSTAINABILITY EVIDENCE</p><h2 id="claims-heading">Claims and verification</h2><p>Claims remain pending until an independent reviewer checks current evidence and expiry. The brand cannot self-verify.</p></div><span className={styles.draftBadge}>{claims.length} claim{claims.length === 1 ? "" : "s"}</span></div>

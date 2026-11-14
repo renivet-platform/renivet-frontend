@@ -35,6 +35,7 @@ function errorMessage(error: unknown): string {
 export function AdminOperationsConsole() {
   const [active, setActive] = useState<QueueId>("quality");
   const [sessionReady, setSessionReady] = useState(false);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [sessionError, setSessionError] = useState("");
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [selected, setSelected] = useState<ReviewItem | null>(null);
@@ -64,7 +65,7 @@ export function AdminOperationsConsole() {
 
   useEffect(() => {
     let live = true;
-    getCurrentSession().then(() => { if (live) { setSessionReady(true); setSessionError(""); } })
+    getCurrentSession().then((session) => { if (live) { setSessionReady(true); setSessionUserId(session.user.id); setSessionError(""); } })
       .catch((error: unknown) => { if (live) setSessionError(errorMessage(error)); });
     return () => { live = false; };
   }, []);
@@ -82,6 +83,8 @@ export function AdminOperationsConsole() {
 
   async function decide(decision: string) {
     if (!selected) return;
+    if (typeof selected.submittedBy === "string" && selected.submittedBy === sessionUserId) { setDetailError("Maker-checker protection: a reviewer cannot decide their own submission."); return; }
+    if (active === "claims" && typeof selected.expiresAt === "string" && new Date(selected.expiresAt).getTime() <= Date.now()) { setDetailError("This claim evidence has expired and cannot be verified."); return; }
     if (!confirmedRevision) { setDetailError("Confirm that you reviewed the exact revision and evidence shown here."); return; }
     const id = itemId(active, selected);
     const brandId = display(selected.brandId);
@@ -125,6 +128,9 @@ export function AdminOperationsConsole() {
   }
 
   const title = selected ? display(selected.title ?? selected.categoryLabel ?? selected.claimText ?? selected.styleCode) : "Select a review item";
+  const selfSubmitted = Boolean(selected && typeof selected.submittedBy === "string" && selected.submittedBy === sessionUserId);
+  const expiredClaim = Boolean(selected && active === "claims" && typeof selected.expiresAt === "string" && new Date(selected.expiresAt).getTime() <= Date.now());
+  const decisionBlocked = selfSubmitted || expiredClaim;
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
@@ -165,7 +171,8 @@ export function AdminOperationsConsole() {
           </section> : null}
           {detailError ? <p className={styles.availability} role="alert">{detailError}</p> : null}
           {selected ? <section className={styles.statusPanel} aria-labelledby="detail-title"><p className={styles.eyebrow}>EXACT PERSISTED ITEM</p><h2 id="detail-title">{title}</h2>
-            <dl className={styles.statusFacts}>{Object.entries(selected).filter(([key]) => !["snapshot", "rules", "evidence", "media", "history", "ruleset"].includes(key)).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{display(value)}</dd></div>)}</dl>
+                    <dl className={styles.statusFacts}>{Object.entries(selected).filter(([key]) => !["snapshot", "rules", "evidence", "media", "history", "ruleset"].includes(key)).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{display(value)}</dd></div>)}</dl>
+                    <p className={styles.availability} role="status"><strong>Maker-checker:</strong> submitted by {display(selected.submittedBy)}; current reviewer {display(sessionUserId)}. {selfSubmitted ? "Decision disabled because the submitter cannot review their own work." : expiredClaim ? "Decision disabled because claim evidence is expired." : "Independent reviewer required."}</p>
             {selected.snapshot ? <details><summary>Frozen revision snapshot</summary><pre>{JSON.stringify(selected.snapshot, null, 2)}</pre></details> : null}
             {selected.rules ? <details><summary>Typed taxonomy rules</summary><pre>{JSON.stringify(selected.rules, null, 2)}</pre></details> : null}
             {selected.evidence ? <details><summary>Evidence and expiry metadata</summary><pre>{JSON.stringify(selected.evidence, null, 2)}</pre></details> : null}
@@ -177,11 +184,11 @@ export function AdminOperationsConsole() {
               <label htmlFor="review-comment">Reviewer comment <span>(optional)</span></label><textarea id="review-comment" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={2000} />
               <label htmlFor="review-mfa">Authenticator or recovery code</label><input id="review-mfa" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} required autoComplete="one-time-code" inputMode="text" />
               <div className={styles.cardTop}>
-                {active === "quality" ? <><button type="submit" disabled={busy}>Approve exact revision</button><button type="button" disabled={busy} onClick={() => void decide("REJECTED")}>Reject</button><button type="button" disabled={busy} onClick={() => void decide("CORRECTION_REQUIRED")}>Request correction</button><button type="button" disabled={busy} onClick={() => void decide("RESTRICTED")}>Restrict revision</button></> : null}
-                {active === "pricing" ? <><button type="submit" disabled={busy}>Approve price</button><button type="button" disabled={busy} onClick={() => void decide("REJECT")}>Reject</button></> : null}
-                {active === "claims" ? <><button type="submit" disabled={busy}>Verify claim</button><button type="button" disabled={busy} onClick={() => void decide("REJECT")}>Reject</button></> : null}
-                {active === "taxonomy" ? <button type="submit" disabled={busy || selected.isLeaf === false || selected.retired === true}>Publish this schema version</button> : null}
-                {active === "publishing" ? <>{selected.publicationState === "APPROVED" ? <button type="submit" disabled={busy}>Publish exact approved revision</button> : selected.publicationState === "PUBLISHED" ? <><button type="submit" disabled={busy}>Restrict listing</button><button type="button" disabled={busy} onClick={() => void decide("UNPUBLISH")}>Unpublish</button></> : <button type="submit" disabled={busy}>Unpublish restricted listing</button>}</> : null}
+                        {active === "quality" ? <><button type="submit" disabled={busy || decisionBlocked}>Approve exact revision</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("REJECTED")}>Reject</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("CORRECTION_REQUIRED")}>Request correction</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("RESTRICTED")}>Restrict revision</button></> : null}
+                        {active === "pricing" ? <><button type="submit" disabled={busy || decisionBlocked}>Approve price</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("REJECT")}>Reject</button></> : null}
+                        {active === "claims" ? <><button type="submit" disabled={busy || decisionBlocked}>Verify claim</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("REJECT")}>Reject</button></> : null}
+                        {active === "taxonomy" ? <button type="submit" disabled={busy || decisionBlocked || selected.isLeaf === false || selected.retired === true}>Publish this schema version</button> : null}
+                        {active === "publishing" ? <>{selected.publicationState === "APPROVED" ? <button type="submit" disabled={busy || decisionBlocked}>Publish exact approved revision</button> : selected.publicationState === "PUBLISHED" ? <><button type="submit" disabled={busy || decisionBlocked}>Restrict listing</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("UNPUBLISH")}>Unpublish</button></> : <button type="submit" disabled={busy || decisionBlocked}>Unpublish restricted listing</button>}</> : null}
               </div>
             </form>
           </section> : null}
