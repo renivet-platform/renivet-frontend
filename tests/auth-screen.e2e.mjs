@@ -23,6 +23,7 @@ let phoneRegistrationChallengeRequested = false;
 let phoneRegistrationVerified = false;
 let currentSignInMethod = "phone";
 let currentPhoneVerified = true;
+let currentDestination = { kind: "storefront" };
 let logoutRequests = 0;
 const emailChallengeRequests = [];
 const mockApi = createServer(async (request, response) => {
@@ -70,13 +71,19 @@ const mockApi = createServer(async (request, response) => {
   if (request.url === "/api/v1/auth/sessions" && request.method === "POST") {
     if (body.email === "unknown@example.test") return send(401, { code: "AUTHENTICATION_FAILED", message: "email enumeration detail" });
     currentSignInMethod = "email_password"; currentPhoneVerified = false;
+    currentDestination = body.email === "admin@example.test" ? { kind: "operations" }
+      : body.email === "seller@example.test" ? { kind: "brands", brands: [{ id: "2a6b7c8d-1111-4111-8111-123456789abc", name: "Approved brand" }] }
+        : body.email === "multi-seller@example.test" ? { kind: "brands", brands: [
+          { id: "2a6b7c8d-1111-4111-8111-123456789abc", name: "Approved brand" },
+          { id: "3b7c8d9e-2222-4222-8222-234567890abc", name: "Second approved brand" },
+        ] } : { kind: "storefront" };
     return send(200, { authenticationState: "authenticated", user: { id: "37a7d0bf-8414-4f75-bd11-311c7a442d84" } }, {
       "Set-Cookie": "__Host-renivet_session=synthetic-session; Path=/; Max-Age=1800; HttpOnly; Secure; SameSite=Lax",
     });
   }
   if (request.url === "/api/v1/auth/session" && request.method === "GET") {
     return request.headers.cookie?.includes("__Host-renivet_session=synthetic-session")
-      ? send(200, { authenticationState: "authenticated", user: { id: "37a7d0bf-8414-4f75-bd11-311c7a442d84" }, account: { signInMethod: currentSignInMethod, phoneVerified: currentPhoneVerified }, csrfToken })
+      ? send(200, { authenticationState: "authenticated", user: { id: "37a7d0bf-8414-4f75-bd11-311c7a442d84" }, account: { signInMethod: currentSignInMethod, phoneVerified: currentPhoneVerified }, destination: currentDestination, csrfToken })
       : send(401, { code: "AUTHENTICATION_FAILED", message: "no session" });
   }
   if (request.url === "/api/v1/auth/session" && request.method === "DELETE") {
@@ -261,6 +268,28 @@ try {
   assert.equal(await evaluate("document.getElementById('account-phone') === null && document.body.innerText.includes('Your phone number is verified')"), true, "phone login lands on the phone sign-in account state, not the contact-verification form");
   assert.equal(await evaluate("document.cookie.includes('synthetic-session') === false && location.search === ''"), true, "phone sign-in keeps the session cookie HttpOnly and puts no proof in the URL");
   console.log("PASS phone number -> purpose-bound OTP -> secure authenticated account session");
+
+  // The post-sign-in deferral must use only the destination returned by the session API.
+  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Do this later')?.click()");
+  await waitFor("location.pathname === '/' ");
+  await command("Page.navigate", { url: new URL("sign-in", base).href }); await waitInteractive("signin-email");
+  await enter("signin-email", "admin@example.test"); await enter("signin-password", "pass1234"); await submit();
+  await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
+  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Do this later')?.click()");
+  await waitFor("location.pathname === '/operations'");
+  await command("Page.navigate", { url: new URL("sign-in", base).href }); await waitInteractive("signin-email");
+  await enter("signin-email", "seller@example.test"); await enter("signin-password", "pass1234"); await submit();
+  await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
+  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Do this later')?.click()");
+  await waitFor("location.pathname === '/brands/2a6b7c8d-1111-4111-8111-123456789abc/products'");
+  await command("Page.navigate", { url: new URL("sign-in", base).href }); await waitInteractive("signin-email");
+  await enter("signin-email", "multi-seller@example.test"); await enter("signin-password", "pass1234"); await submit();
+  await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
+  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Do this later')?.click()");
+  await waitFor("document.body.innerText.includes('Choose a brand workspace')");
+  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Second approved brand')?.click()");
+  await waitFor("location.pathname === '/brands/3b7c8d9e-2222-4222-8222-234567890abc/products'");
+  console.log("PASS role-based deferred routing for customer, admin, single-brand seller, and multi-brand choice");
 } finally {
   for (const waiter of pending.values()) waiter.reject(new Error("Closing browser")); pending.clear();
   if (ws && ws.readyState === WebSocket.OPEN) ws.close();

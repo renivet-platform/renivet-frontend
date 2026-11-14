@@ -169,13 +169,29 @@ export interface CurrentSession {
   user: { id: string };
   account: { signInMethod: "phone" | "email_password"; phoneVerified: boolean };
   csrfToken: string;
+  destination: SessionDestination;
 }
+
+export type SessionDestination =
+  | { kind: "storefront" }
+  | { kind: "operations" }
+  | { kind: "brands"; brands: Array<{ id: string; name: string }> };
 
 function isCurrentSession(value: unknown): value is CurrentSession {
   if (!value || typeof value !== "object") return false;
   const record = value as Record<string, unknown>;
   const user = record.user;
   const account = record.account;
+  const destination = record.destination;
+  const validDestination = Boolean(destination && typeof destination === "object" && (() => {
+    const value = destination as Record<string, unknown>;
+    if (value.kind === "storefront" || value.kind === "operations") return true;
+    return value.kind === "brands" && Array.isArray(value.brands) && value.brands.length > 0
+      && value.brands.every((brand) => Boolean(brand && typeof brand === "object"
+        && isUuid((brand as Record<string, unknown>).id)
+        && typeof (brand as Record<string, unknown>).name === "string"
+        && ((brand as Record<string, unknown>).name as string).trim().length > 0));
+  })());
   return record.authenticationState === "authenticated"
     && Boolean(user && typeof user === "object" && isUuid((user as Record<string, unknown>).id))
     && Boolean(account && typeof account === "object"
@@ -183,7 +199,8 @@ function isCurrentSession(value: unknown): value is CurrentSession {
       && typeof (account as Record<string, unknown>).phoneVerified === "boolean")
     && typeof record.csrfToken === "string"
     && record.csrfToken.length >= 32
-    && record.csrfToken.length <= 512;
+    && record.csrfToken.length <= 512
+    && validDestination;
 }
 
 export async function getCurrentSession(): Promise<CurrentSession> {

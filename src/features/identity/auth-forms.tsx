@@ -375,11 +375,13 @@ export function AccountSession() {
   const [state, setState] = useState<"loading" | "ready" | "expired" | "error">("loading");
   const [csrf, setCsrf] = useState(""); const [error, setError] = useState("");
   const [account, setAccount] = useState<CurrentSession["account"] | null>(null);
+  const [destination, setDestination] = useState<CurrentSession["destination"] | null>(null);
+  const [destinationChoiceOpen, setDestinationChoiceOpen] = useState(false);
   const [signOutBusy, setSignOutBusy] = useState(false);
   const [showPhoneSetup, setShowPhoneSetup] = useState(true);
   async function inspect() {
     setState("loading"); setError("");
-    try { const session = await getCurrentSession(); setCsrf(session.csrfToken); setAccount(session.account); setState("ready"); }
+    try { const session = await getCurrentSession(); setCsrf(session.csrfToken); setAccount(session.account); setDestination(session.destination); setState("ready"); }
     catch (cause) {
       if (cause instanceof AuthApiError && cause.status === 401) setState("expired");
       else { setError(messageFor(cause)); setState("error"); }
@@ -393,6 +395,17 @@ export function AccountSession() {
     try { await logoutCurrentSession(csrf); setCsrf(""); setAccount(null); router.replace("/sign-in"); router.refresh(); }
     catch (cause) { setError(messageFor(cause)); }
     finally { setSignOutBusy(false); }
+  }
+  function doThisLater() {
+    if (!destination) { setError("We couldn’t confirm where your account should go. Try again."); return; }
+    if (destination.kind === "storefront") { router.replace("/"); router.refresh(); return; }
+    if (destination.kind === "operations") { router.replace("/operations"); router.refresh(); return; }
+    if (destination.brands.length === 1) {
+      router.replace(`/brands/${encodeURIComponent(destination.brands[0].id)}/products`);
+      router.refresh();
+      return;
+    }
+    setDestinationChoiceOpen(true);
   }
   return <AuthShell eyebrow="Your account" title="Account session" description="This page is shown only after the backend confirms your session.">
     {state === "loading" && <p className={styles.loading} role="status">Checking your session…</p>}
@@ -415,12 +428,25 @@ export function AccountSession() {
             <div className={styles.formLinks}>
               <Link className={styles.link} href="/recover">Reset password with email</Link>
               {account.phoneVerified
-                ? <Link className={styles.link} href="/sign-in">Go to sign-in to use phone</Link>
+                ? <p className={styles.hint}>Your phone is verified and can be used for sign-in.</p>
                 : <button className={styles.secondaryButton} type="button" onClick={() => setShowPhoneSetup(current => !current)}>
-                  {showPhoneSetup ? "Do this later" : "Add a phone number"}
+                  {showPhoneSetup ? "Hide phone setup" : "Add a phone number"}
                 </button>}
+              <button className={styles.secondaryButton} type="button" onClick={doThisLater}>
+                Do this later
+              </button>
             </div>
           </section>
+          {destinationChoiceOpen && destination?.kind === "brands" && <section className={styles.subForm} aria-labelledby="brand-destination-heading">
+            <h2 className={styles.sectionHeading} id="brand-destination-heading">Choose a brand workspace</h2>
+            <p className={styles.hint}>Your account has access to more than one approved brand.</p>
+            <div className={styles.formLinks}>
+              {destination.brands.map((brand) => <button className={styles.secondaryButton} type="button" key={brand.id}
+                onClick={() => { router.replace(`/brands/${encodeURIComponent(brand.id)}/products`); router.refresh(); }}>
+                {brand.name}
+              </button>)}
+            </div>
+          </section>}
           {showPhoneSetup && <PhoneVerificationPanel csrfToken={csrf} initiallyVerified={account.phoneVerified} />}
         </>}
       <button className={styles.primaryButton} type="button" onClick={signOut} disabled={signOutBusy}>
