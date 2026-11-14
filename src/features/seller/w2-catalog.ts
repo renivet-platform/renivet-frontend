@@ -96,3 +96,20 @@ export function hasVariantCombination(options: Record<string, string>, variants:
 export function createIdempotencyKey(): string {
   return crypto.randomUUID();
 }
+
+/** Fingerprints the immutable CAS inputs; the backend builds the authoritative revision snapshot and digest. */
+export async function createSubmissionRequestDigest(input: {
+  productId: string;
+  rowVersion: number;
+  draftContentVersion: number;
+  categorySchemaVersion: number;
+}): Promise<string> {
+  const canonicalRequest = JSON.stringify({
+    productId: input.productId,
+    rowVersion: input.rowVersion,
+    draftContentVersion: input.draftContentVersion,
+    categorySchemaVersion: input.categorySchemaVersion,
+  });
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonicalRequest));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}

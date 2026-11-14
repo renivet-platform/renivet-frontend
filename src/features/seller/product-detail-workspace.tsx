@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { AuthApiError, getCurrentSession } from "@/features/identity/auth-api";
 import type { components, operations } from "@/generated/renivet-api";
-import { canonicalVariantOptions, createIdempotencyKey, hasVariantCombination, type CategoryAttribute, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
+import { canonicalVariantOptions, createIdempotencyKey, createSubmissionRequestDigest, hasVariantCombination, type CategoryAttribute, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import { ProductMediaWorkspace } from "@/features/seller/product-media-workspace";
 import styles from "./product-workspace.module.css";
 
@@ -45,8 +45,12 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
   const [claimExpiry, setClaimExpiry] = useState("");
   const [claimNotice, setClaimNotice] = useState("");
   const [claimSaving, setClaimSaving] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
+  const [submissionNotice, setSubmissionNotice] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const idempotency = useRef<{ hash: string; key: string } | null>(null);
+  const submissionIdempotency = useRef<{ versions: string; key: string } | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -95,6 +99,36 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
         setSaveError("This draft changed in another tab. Reload the latest version before saving again.");
       } else setSaveError(messageFor(error));
     } finally { setSaving(false); }
+  }
+
+  async function submitForReview() {
+    if (!product || !editable || submitting) return;
+    setSubmissionError(""); setSubmissionNotice(""); setSubmitting(true);
+    const versions = `${product.rowVersion}:${product.contentVersion}:${product.categorySchemaVersion}`;
+    if (!submissionIdempotency.current || submissionIdempotency.current.versions !== versions) {
+      submissionIdempotency.current = { versions, key: createIdempotencyKey() };
+    }
+    try {
+      const session = await getCurrentSession();
+      const contentSha256 = await createSubmissionRequestDigest({
+        productId: product.id,
+        rowVersion: product.rowVersion,
+        draftContentVersion: product.contentVersion,
+        categorySchemaVersion: product.categorySchemaVersion,
+      });
+      await w2Request(["brands", brandId, "products", productId, "submit"], {
+        method: "POST",
+        body: { draftContentVersion: product.contentVersion, categorySchemaVersion: product.categorySchemaVersion, contentSha256 },
+        csrfToken: session.csrfToken,
+        idempotencyKey: submissionIdempotency.current.key,
+        ifMatch: `"${product.rowVersion}"`,
+      });
+      submissionIdempotency.current = null;
+      setSubmissionNotice("Submitted for independent review. This exact revision is now frozen while it is reviewed.");
+      setReloadKey((key) => key + 1);
+    } catch (error) {
+      setSubmissionError(messageFor(error));
+    } finally { setSubmitting(false); }
   }
 
   async function createVariant(event: FormEvent<HTMLFormElement>) {
@@ -196,6 +230,13 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
       <div><p className={styles.kicker}>STYLE {product.styleCode} <span aria-hidden="true">·</span> CONTENT VERSION {product.contentVersion}</p><h1 id="detail-title">{product.title}</h1><p className={styles.subtitle}>Your draft is saved privately to this brand. It is not submitted for review or visible to customers.</p></div>
       <span className={styles.state}>{product.publicationState.replaceAll("_", " ")}</span>
     </header>
+
+    {editable && <section className={styles.formPanel} aria-labelledby="submission-heading">
+      <div className={styles.formHeading}><div><p className={styles.kicker}>READY FOR A SEPARATE REVIEW?</p><h2 id="submission-heading">Submit this revision</h2><p>Submission checks the saved product, active SKUs, approved prices and eligible media on the server. Once accepted, this exact revision is frozen for an independent reviewer.</p></div></div>
+      {submissionError && <p className={styles.error} role="alert">{submissionError}</p>}
+      {submissionNotice && <p className={styles.notice} role="status">{submissionNotice}</p>}
+      <div className={styles.formActions}><p>Requires the brand’s current catalog submission permission.</p><button className={styles.primaryButton} type="button" onClick={() => void submitForReview()} disabled={submitting}>{submitting ? "Submitting revision…" : "Submit for independent review"}</button></div>
+    </section>}
 
     <section className={styles.formPanel} aria-labelledby="details-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>PRODUCT DETAILS</p><h2 id="details-heading">Continue where you left off</h2><p>Update the parent product details. Variants, images, prices and claims stay in their own workflow steps.</p></div><span className={styles.draftBadge}>SCHEMA V{product.categorySchemaVersion}</span></div>
