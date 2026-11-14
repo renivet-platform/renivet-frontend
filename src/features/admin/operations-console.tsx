@@ -1,111 +1,191 @@
-import styles from "./operations-console.module.css";
-import { adminOperationAreas } from "./operations-console-model";
+"use client";
 
-const navigation = adminOperationAreas;
-const reviews = adminOperationAreas.filter((area) => area.id !== "overview");
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AuthApiError, getCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
+import { W2ApiError, w2Request } from "@/features/seller/w2-catalog";
+import type { components } from "@/generated/renivet-api";
+import styles from "./operations-console.module.css";
+
+type QueueId = "taxonomy" | "quality" | "pricing" | "claims" | "publishing";
+type ReviewItem = components["schemas"]["AdminReviewItemDto"] & Record<string, unknown>;
+type ReviewPage = Omit<components["schemas"]["AdminReviewQueueResponseDto"], "items"> & { items: ReviewItem[] };
+const queues: Array<{ id: QueueId; title: string; description: string; permission: string }> = [
+  { id: "taxonomy", title: "Taxonomy", description: "Draft category schemas awaiting independent publication.", permission: "taxonomy.approve" },
+  { id: "quality", title: "Product QC", description: "Submitted frozen product revisions awaiting a separate reviewer.", permission: "catalog.review" },
+  { id: "pricing", title: "Pricing", description: "Pending price proposals and effective windows.", permission: "pricing.approve" },
+  { id: "claims", title: "Sustainability claims", description: "Pending claims with evidence status and expiry metadata.", permission: "catalog.review" },
+  { id: "publishing", title: "Publishing", description: "Exact approved revisions ready to publish, restrict or unpublish.", permission: "catalog.publish / catalog.restrict" },
+];
+
+function itemId(queue: QueueId, item: ReviewItem): string | null {
+  const key = queue === "taxonomy" ? "revisionId" : queue === "quality" ? "revisionId" : queue === "pricing" ? "priceId" : queue === "claims" ? "claimId" : "productId";
+  return typeof item[key] === "string" ? item[key] as string : null;
+}
+function display(value: unknown): string { return typeof value === "string" || typeof value === "number" ? String(value) : "—"; }
+function errorMessage(error: unknown): string {
+  const status = error instanceof W2ApiError || error instanceof AuthApiError ? error.status : 0;
+  if (status === 401) return "Your session has expired. Sign in again to continue.";
+  if (status === 403) return "Your account does not have the global admin permission for this review queue.";
+  if (status === 404) return "This review item is no longer pending or available.";
+  if (status === 409 || status === 412) return "This item changed while you were reviewing it. Reload the queue before deciding.";
+  if (status === 503 || status === 0) return "Review data is temporarily unavailable. Try again shortly.";
+  return error instanceof Error ? error.message : "The review request could not be completed.";
+}
 
 export function AdminOperationsConsole() {
+  const [active, setActive] = useState<QueueId>("quality");
+  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionError, setSessionError] = useState("");
+  const [items, setItems] = useState<ReviewItem[]>([]);
+  const [selected, setSelected] = useState<ReviewItem | null>(null);
+  const [queueError, setQueueError] = useState("");
+  const [detailError, setDetailError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
+  const [confirmedRevision, setConfirmedRevision] = useState(false);
+  const [reasonCode, setReasonCode] = useState("");
+  const [comment, setComment] = useState("");
+  const [notice, setNotice] = useState("");
+  const queueRequest = useRef(0);
+  const detailRequest = useRef(0);
+  const area = useMemo(() => queues.find((queue) => queue.id === active)!, [active]);
+
+  const loadQueue = useCallback(async (queue: QueueId) => {
+    const requestId = ++queueRequest.current;
+    detailRequest.current += 1;
+    setLoading(true); setQueueError(""); setSelected(null); setConfirmedRevision(false); setDetailError("");
+    try {
+      const page = await w2Request<ReviewPage>(["admin", "reviews", queue], { query: { limit: "100" } });
+      if (requestId === queueRequest.current) setItems(Array.isArray(page.items) ? page.items : []);
+    } catch (error) { if (requestId === queueRequest.current) { setItems([]); setQueueError(errorMessage(error)); } }
+    finally { if (requestId === queueRequest.current) setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    let live = true;
+    getCurrentSession().then(() => { if (live) { setSessionReady(true); setSessionError(""); } })
+      .catch((error: unknown) => { if (live) setSessionError(errorMessage(error)); });
+    return () => { live = false; };
+  }, []);
+
+  useEffect(() => { if (sessionReady) void loadQueue(active); }, [active, loadQueue, sessionReady]);
+
+  async function openItem(item: ReviewItem) {
+    const requestId = ++detailRequest.current;
+    const id = itemId(active, item);
+    if (!id) { setDetailError("The queue returned an invalid review reference."); return; }
+    setSelected(null); setConfirmedRevision(false); setDetailError(""); setNotice("");
+    try { const value = await w2Request<ReviewItem>(["admin", "reviews", active, id]); if (requestId === detailRequest.current) setSelected(value); }
+    catch (error) { if (requestId === detailRequest.current) setDetailError(errorMessage(error)); }
+  }
+
+  async function decide(decision: string) {
+    if (!selected) return;
+    if (!confirmedRevision) { setDetailError("Confirm that you reviewed the exact revision and evidence shown here."); return; }
+    const id = itemId(active, selected);
+    const brandId = display(selected.brandId);
+    if (!id || (active !== "taxonomy" && !/^[0-9a-f-]{36}$/i.test(brandId))) { setDetailError("This review item is missing its persisted reference."); return; }
+    const normalizedReason = reasonCode.trim().toUpperCase();
+    if (!/^[A-Z][A-Z0-9_]{1,63}$/.test(normalizedReason)) { setDetailError("Enter a reason code using uppercase letters, numbers, and underscores."); return; }
+    if (!/^(?:\d{6}|[A-Z2-7]{26})$/.test(mfaCode.trim().toUpperCase())) { setDetailError("Enter a six-digit authenticator code or unused recovery code."); return; }
+    setBusy(true); setDetailError(""); setNotice("");
+    try {
+      const session = await getCurrentSession();
+      const elevated = await stepUpWithMfa(mfaCode.trim().toUpperCase(), session.csrfToken);
+      setMfaCode("");
+      const idempotencyKey = crypto.randomUUID();
+      let path: string[]; let body: Record<string, unknown>; let ifMatch: string | undefined;
+      if (active === "taxonomy") {
+        if (decision !== "PUBLISH_SCHEMA") throw new Error("Unsupported taxonomy action.");
+        path = ["admin", "catalog", "categories", display(selected.categoryId), "schema-versions", display(selected.version), "publish"];
+        body = {};
+      } else if (active === "pricing") {
+        path = ["admin", "brands", brandId, "variant-prices", id, "decision"];
+        body = { decision, reasonCode: normalizedReason, expectedState: "PENDING", ...(comment.trim() ? { comment: comment.trim() } : {}) };
+      } else if (active === "claims") {
+        path = ["admin", "brands", brandId, "claims", id, "decision"];
+        body = { decision, reasonCode: normalizedReason, ...(comment.trim() ? { comment: comment.trim() } : {}) };
+        ifMatch = `"${display(selected.rowVersion)}"`;
+      } else if (active === "quality") {
+        path = ["admin", "brands", brandId, "products", display(selected.productId), "review"];
+        body = { decision, reasonCode: normalizedReason, expectedRevisionId: display(selected.revisionId), expectedRowVersion: Number(selected.rowVersion), ...(comment.trim() ? { comment: comment.trim() } : {}) };
+      } else {
+        const operation = decision === "PUBLISH" ? "publish" : decision === "RESTRICT" ? "restrict" : "unpublish";
+        path = ["admin", "brands", brandId, "products", display(selected.productId), "publication", operation];
+        body = operation === "publish"
+          ? { approvedRevisionId: selected.revisionId, approvedReviewId: selected.approvalId, expectedProductVersion: Number(selected.rowVersion) }
+          : { reasonCode: normalizedReason, expectedProductVersion: Number(selected.rowVersion), ...(comment.trim() ? { comment: comment.trim() } : {}) };
+      }
+      await w2Request<Record<string, unknown>>(path, { method: "POST", body, csrfToken: elevated.csrfToken, idempotencyKey, ...(ifMatch ? { ifMatch } : {}) });
+      setNotice("Decision recorded. The queue is refreshing from persisted data."); setSelected(null); setConfirmedRevision(false); setReasonCode(""); setComment("");
+      await loadQueue(active);
+    } catch (error) { setDetailError(errorMessage(error)); }
+    finally { setBusy(false); }
+  }
+
+  const title = selected ? display(selected.title ?? selected.categoryLabel ?? selected.claimText ?? selected.styleCode) : "Select a review item";
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
-        <a className={styles.brand} href="#overview" aria-label="Renivet operations home">
-          <span className={styles.brandMark} aria-hidden="true">R</span>
-          <span className={styles.brandName}>renivet<span>OPERATIONS</span></span>
-        </a>
-        <p className={styles.navCaption}>WORKSPACE</p>
-        <nav aria-label="Operations sections" className={styles.navigation}>
-          {navigation.map((area) => (
-            <a key={area.id} className={area.id === "overview" ? styles.navActive : styles.navLink} href={`#${area.id}`}>
-              <span className={styles.navIndex}>{area.index}</span>
-              {area.id === "quality" ? "Quality review" : area.id === "publishing" ? "Publishing" : area.id === "overview" ? "Overview" : area.title}
-            </a>
-          ))}
+        <a className={styles.brand} href="#overview" aria-label="Renivet operations home"><span className={styles.brandMark} aria-hidden="true">R</span><span className={styles.brandName}>renivet<span>OPERATIONS</span></span></a>
+        <p className={styles.navCaption}>REVIEW QUEUES</p>
+        <nav aria-label="Operations review queues" className={styles.navigation}>
+          {queues.map((queue, index) => <button key={queue.id} type="button" className={active === queue.id ? styles.navActive : styles.navLink} onClick={() => { setActive(queue.id); setNotice(""); }}>
+            <span className={styles.navIndex}>{String(index + 1).padStart(2, "0")}</span>{queue.title}
+          </button>)}
         </nav>
-        <div className={styles.sidebarNote}>
-          <span className={styles.noteMark} aria-hidden="true">i</span>
-          <p>Administrative actions require a verified platform role and fresh backend authorization.</p>
-        </div>
-        <div className={styles.sidebarFoot}>
-          <span className={styles.avatar} aria-hidden="true">R</span>
-          <span><strong>Operations workspace</strong><small>W2 · preview</small></span>
-        </div>
+        <div className={styles.sidebarNote}><span className={styles.noteMark} aria-hidden="true">i</span><p>Review access is checked by the backend against global W1 admin permissions.</p></div>
+        <div className={styles.sidebarFoot}><span className={styles.avatar} aria-hidden="true">R</span><span><strong>Operations workspace</strong><small>W2 · admin review</small></span></div>
       </aside>
-
       <main className={styles.main} id="overview" aria-labelledby="operations-title">
-        <header className={styles.topbar}>
-          <p><span>Workspace</span><span aria-hidden="true">/</span><strong>Operations</strong></p>
-          <span className={styles.previewBadge}><span aria-hidden="true" /> API-gated preview</span>
-        </header>
-
+        <header className={styles.topbar}><p><span>Workspace</span><span aria-hidden="true">/</span><strong>Operations</strong></p><span className={styles.previewBadge}><span aria-hidden="true" /> Authenticated review</span></header>
         <div className={styles.content}>
-          <div className={styles.safetyBanner} role="note">
-            <span className={styles.safetyIcon} aria-hidden="true">i</span>
-            <div><strong>No protected data is loaded.</strong><p>This screen describes the review workflows. It does not read seller data or perform administrative actions.</p></div>
-            <span className={styles.previewLabel}>PREVIEW</span>
-          </div>
-
-          <section className={styles.hero} aria-labelledby="operations-title">
-            <div>
-              <p className={styles.eyebrow}>RENIVET · PLATFORM OPERATIONS</p>
-              <h1 id="operations-title">Review work,<br /><em>with context.</em></h1>
-              <p className={styles.heroCopy}>A careful review begins with the current revision, its evidence, and a clear record of who can decide.</p>
-            </div>
-            <div className={styles.heroAside}>
-              <span className={styles.heroGlyph} aria-hidden="true">✳</span>
-              <p>Every approval should point to the exact version reviewed.</p>
-              <span>W2 · OPERATIONS PRINCIPLE</span>
-            </div>
-          </section>
-
-          <section className={styles.statusPanel} aria-labelledby="readiness-title">
-            <div className={styles.statusHeading}>
-              <div><p className={styles.eyebrow}>CURRENT CONNECTION</p><h2 id="readiness-title">Review workspace readiness</h2></div>
-              <span className={styles.statusPill}><span aria-hidden="true" /> Source-audited preview</span>
-            </div>
-            <p className={styles.statusCopy}>This page is a source-audited readiness preview, not a live API health check. It does not call reviewer APIs or load protected records; statuses below describe the registered backend routes and known missing reads.</p>
-            <div className={styles.statusFacts}>
-              <div><span>Data source</span><strong>No live data loaded</strong></div>
-              <div><span>Reviewer authorization</span><strong>Backend required</strong></div>
-              <div><span>Decision controls</span><strong>Gated</strong></div>
-            </div>
-          </section>
-
-          <section className={styles.reviewSection} aria-labelledby="areas-title">
-            <div className={styles.sectionTitle}>
-              <div><p className={styles.eyebrow}>REVIEW AREAS</p><h2 id="areas-title">A clear path through each decision.</h2></div>
-              <p>Choose an area to see what is ready and what the system still needs.</p>
-            </div>
+          <section className={styles.hero} aria-labelledby="operations-title"><div><p className={styles.eyebrow}>RENIVET · PLATFORM OPERATIONS</p><h1 id="operations-title">Review work,<br /><em>with context.</em></h1><p className={styles.heroCopy}>Each decision is tied to the persisted revision, its evidence and an independent reviewer.</p></div>
+            <div className={styles.heroAside}><span className={styles.heroGlyph} aria-hidden="true">✳</span><p>Fresh authorization is required for every decision.</p><span>{area.permission}</span></div></section>
+          {sessionError ? <section className={styles.statusPanel} role="alert"><h2>Sign in required</h2><p>{sessionError}</p><a href="/sign-in">Go to sign in</a></section> : null}
+          {sessionReady ? <section className={styles.reviewSection} aria-labelledby="queue-title">
+            <div className={styles.sectionTitle}><div><p className={styles.eyebrow}>LIVE REVIEW QUEUE</p><h2 id="queue-title">{area.title}</h2><p>{area.description}</p></div><button className={styles.navLink} type="button" onClick={() => void loadQueue(active)} disabled={loading}>{loading ? "Loading…" : "Refresh"}</button></div>
+            {notice ? <p className={styles.availability} role="status">{notice}</p> : null}
+            {queueError ? <div className={styles.availability} role="alert"><p>{queueError}</p><button type="button" onClick={() => void loadQueue(active)}>Retry</button></div> : null}
+            {loading && !queueError ? <p role="status">Loading persisted review items…</p> : null}
+            {!loading && !queueError && items.length === 0 ? <div className={styles.availability} role="status"><strong>Queue is empty</strong><p>No persisted review items are currently available to this admin permission.</p></div> : null}
             <div className={styles.reviewGrid}>
-              {reviews.map((area) => (
-                <article key={area.id} id={area.id} className={styles.reviewCard} aria-labelledby={`${area.id}-title`}>
-                  <div className={styles.cardTop}><span className={styles.cardIndex}>{area.index}</span><span className={styles.gatedBadge}>Gated</span></div>
-                  <p className={styles.cardEyebrow}>{area.eyebrow}</p>
-                  <h3 id={`${area.id}-title`}>{area.title}</h3>
-                  <p className={styles.cardCopy}>{area.description}</p>
-                  <div className={styles.availability} role="status">
-                    <strong>{area.apiStatus}</strong>
-                    <p>{area.availability}</p>
-                  </div>
-                  <div className={styles.routeInventory}>
-                    <h4>Registered API routes</h4>
-                    {area.registeredRoutes.length > 0 ? (
-                      <ul aria-label={`${area.title} registered API routes`}>
-                        {area.registeredRoutes.map((route) => <li key={route}><code>{route}</code></li>)}
-                      </ul>
-                    ) : <p>No registered route is listed for this workflow.</p>}
-                    {area.id === "pricing" || area.id === "claims" ? <p>Queue and safe detail reads are missing.</p> : null}
-                  </div>
-                  <ul className={styles.gateList} aria-label={`${area.title} requirements`}>{area.gates.map((gate) => <li key={gate}>{gate}</li>)}</ul>
-                  <button className={styles.disabledAction} type="button" disabled aria-disabled="true">Review action unavailable</button>
-                </article>
-              ))}
+              {!queueError && items.map((item) => {
+                const id = itemId(active, item);
+                return <article key={id ?? JSON.stringify(item)} className={styles.reviewCard}>
+                  <div className={styles.cardTop}><span className={styles.cardIndex}>{display(item.brandName ?? item.categoryCode ?? item.status)}</span><span className={styles.gatedBadge}>{display(item.status ?? item.publicationState ?? "Pending")}</span></div>
+                  <h3>{display(item.title ?? item.categoryLabel ?? item.claimText ?? item.sku ?? item.styleCode ?? id)}</h3>
+                  <p className={styles.cardCopy}>Brand: {display(item.brandName)} · Submitted: {display(item.submittedAt)}</p>
+                  <p className={styles.cardCopy}>Revision: {display(item.revisionId ?? item.version)} · Version: {display(item.rowVersion ?? item.contentVersion)}</p>
+                  <button className={styles.disabledAction} type="button" disabled={!id} onClick={() => void openItem(item)}>Review details</button>
+                </article>;
+              })}
             </div>
-          </section>
-
-          <footer className={styles.footer}>
-            <span>RENIVET · OPERATIONS</span>
-            <span>G07 · G08 · G14 · G17 remain open</span>
-          </footer>
+          </section> : null}
+          {detailError ? <p className={styles.availability} role="alert">{detailError}</p> : null}
+          {selected ? <section className={styles.statusPanel} aria-labelledby="detail-title"><p className={styles.eyebrow}>EXACT PERSISTED ITEM</p><h2 id="detail-title">{title}</h2>
+            <dl className={styles.statusFacts}>{Object.entries(selected).filter(([key]) => !["snapshot", "rules", "evidence", "media", "history", "ruleset"].includes(key)).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{display(value)}</dd></div>)}</dl>
+            {selected.snapshot ? <details><summary>Frozen revision snapshot</summary><pre>{JSON.stringify(selected.snapshot, null, 2)}</pre></details> : null}
+            {selected.rules ? <details><summary>Typed taxonomy rules</summary><pre>{JSON.stringify(selected.rules, null, 2)}</pre></details> : null}
+            {selected.evidence ? <details><summary>Evidence and expiry metadata</summary><pre>{JSON.stringify(selected.evidence, null, 2)}</pre></details> : null}
+            {selected.media ? <details><summary>Media safety status</summary><pre>{JSON.stringify(selected.media, null, 2)}</pre></details> : null}
+            {selected.history ? <details><summary>Price review history</summary><pre>{JSON.stringify(selected.history, null, 2)}</pre></details> : null}
+            <form onSubmit={(event) => { event.preventDefault(); void decide(active === "taxonomy" ? "PUBLISH_SCHEMA" : active === "publishing" ? (selected.publicationState === "PUBLISHED" ? "RESTRICT" : selected.publicationState === "RESTRICTED" ? "UNPUBLISH" : "PUBLISH") : active === "quality" ? "APPROVED" : active === "claims" ? "VERIFY" : "APPROVE"); }}>
+              <label className={styles.confirmation}><input type="checkbox" checked={confirmedRevision} onChange={(event) => setConfirmedRevision(event.target.checked)} /> I reviewed the exact revision and evidence shown above.</label>
+              <label htmlFor="review-reason">Reason code</label><input id="review-reason" value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} required maxLength={64} autoComplete="off" />
+              <label htmlFor="review-comment">Reviewer comment <span>(optional)</span></label><textarea id="review-comment" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={2000} />
+              <label htmlFor="review-mfa">Authenticator or recovery code</label><input id="review-mfa" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} required autoComplete="one-time-code" inputMode="text" />
+              <div className={styles.cardTop}>
+                {active === "quality" ? <><button type="submit" disabled={busy}>Approve exact revision</button><button type="button" disabled={busy} onClick={() => void decide("REJECTED")}>Reject</button><button type="button" disabled={busy} onClick={() => void decide("CORRECTION_REQUIRED")}>Request correction</button><button type="button" disabled={busy} onClick={() => void decide("RESTRICTED")}>Restrict revision</button></> : null}
+                {active === "pricing" ? <><button type="submit" disabled={busy}>Approve price</button><button type="button" disabled={busy} onClick={() => void decide("REJECT")}>Reject</button></> : null}
+                {active === "claims" ? <><button type="submit" disabled={busy}>Verify claim</button><button type="button" disabled={busy} onClick={() => void decide("REJECT")}>Reject</button></> : null}
+                {active === "taxonomy" ? <button type="submit" disabled={busy || selected.isLeaf === false || selected.retired === true}>Publish this schema version</button> : null}
+                {active === "publishing" ? <>{selected.publicationState === "APPROVED" ? <button type="submit" disabled={busy}>Publish exact approved revision</button> : selected.publicationState === "PUBLISHED" ? <><button type="submit" disabled={busy}>Restrict listing</button><button type="button" disabled={busy} onClick={() => void decide("UNPUBLISH")}>Unpublish</button></> : <button type="submit" disabled={busy}>Unpublish restricted listing</button>}</> : null}
+              </div>
+            </form>
+          </section> : null}
+          <footer className={styles.footer}><span>RENIVET · OPERATIONS</span><span>Writes require global W1 permission, fresh MFA and CSRF.</span></footer>
         </div>
       </main>
     </div>

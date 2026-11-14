@@ -59,3 +59,18 @@ describe("W2 API proxy allowlist", () => {
     assert.equal(isSameOriginMutation(crossOrigin), false);
   });
 });
+
+describe("admin review proxy allowlist", () => {
+  it("maps only the review queues, details and decision routes", () => {
+    for (const queue of ["taxonomy", "quality", "pricing", "claims", "publishing"]) {
+      assert.equal(resolveW2BackendPath(["admin", "reviews", queue], "GET"), `/api/v1/admin/reviews/${queue}`);
+      assert.equal(resolveW2BackendPath(["admin", "reviews", queue, productId], "GET"), `/api/v1/admin/reviews/${queue}/${productId}`);
+    }
+    assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "variant-prices", productId, "decision"], "POST"), `/api/v1/admin/brands/${brandId}/variant-prices/${productId}/decision`);
+    assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "claims", productId, "decision"], "POST"), `/api/v1/admin/brands/${brandId}/claims/${productId}/decision`);
+    assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "products", productId, "review"], "POST"), `/api/v1/admin/brands/${brandId}/products/${productId}/review`);
+    assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "products", productId, "publication", "publish"], "POST"), `/api/v1/admin/brands/${brandId}/products/${productId}/publication/publish`);
+    assert.equal(resolveW2BackendPath(["admin", "reviews", "other"], "GET"), null);
+    assert.equal(resolveW2BackendPath(["admin", "reviews", "quality", ".."], "GET"), null);
+  });
+});

@@ -1,9 +1,8 @@
 # Admin UI
 
-## Operations review preview
+## Operations review console
 
-- `/operations` presents the W2 taxonomy, QC, pricing, claims, and publication review areas in a responsive, accessible console.
-- The page is a non-sensitive UI preview. It does not load protected data and does not verify admin identity, so it is not an authorization boundary or a live operations tool.
-- The current backend registers taxonomy draft/publish and price/claim decision mutations, but the frontend has no verified server-side admin-role guard and the API lacks the reviewer queues and safe read context needed to select a decision target. QC decision/queue and publication/restriction routes are not registered in the runtime OpenAPI.
-- Decision controls are therefore unavailable. Do not enable them until a protected reviewer read API, role/MFA/CSRF integration, immutable revision/evidence context, maker-checker enforcement, and permission-denial tests are implemented.
-- W2 runtime gates G07, G08, G14, and G17 remain open. This screen does not satisfy the real-API/security-evidence acceptance criteria for REN2-100.
+- `/operations` loads persisted taxonomy, QC, pricing, claim-evidence, and publication queues through the same-origin W2 BFF.
+- NestJS requires global W1 permissions for every queue and exact detail read. A 403 is shown as a permission state; route groups and client state do not grant access.
+- Decisions re-fetch the W1 session, require MFA step-up and session CSRF, use idempotency keys, and send exact revision/row-version identifiers. Backend transactions recheck permissions, maker-checker constraints, state and version.
+- W2 remains disabled unless `RENIVET_W2_PORTAL_ENABLED=true`. No taxonomy data or review records are seeded. The W1 permission assignments and operational release gates remain owner-controlled.
