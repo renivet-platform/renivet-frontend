@@ -432,23 +432,25 @@ export function AccountSession() {
                 : <button className={styles.secondaryButton} type="button" onClick={() => setShowPhoneSetup(current => !current)}>
                   {showPhoneSetup ? "Hide phone setup" : "Add a phone number"}
                 </button>}
-              <button className={styles.secondaryButton} type="button" onClick={doThisLater}>
-                Do this later
-              </button>
             </div>
           </section>
-          {destinationChoiceOpen && destination?.kind === "brands" && <section className={styles.subForm} aria-labelledby="brand-destination-heading">
-            <h2 className={styles.sectionHeading} id="brand-destination-heading">Choose a brand workspace</h2>
-            <p className={styles.hint}>Your account has access to more than one approved brand.</p>
-            <div className={styles.formLinks}>
-              {destination.brands.map((brand) => <button className={styles.secondaryButton} type="button" key={brand.id}
-                onClick={() => { router.replace(`/brands/${encodeURIComponent(brand.id)}/products`); router.refresh(); }}>
-                {brand.name}
-              </button>)}
-            </div>
-          </section>}
           {showPhoneSetup && <PhoneVerificationPanel csrfToken={csrf} initiallyVerified={account.phoneVerified} />}
         </>}
+      <div className={styles.formLinks}>
+        <button className={styles.secondaryButton} type="button" onClick={doThisLater}>
+          Do this later
+        </button>
+      </div>
+      {destinationChoiceOpen && destination?.kind === "brands" && <section className={styles.subForm} aria-labelledby="brand-destination-heading">
+        <h2 className={styles.sectionHeading} id="brand-destination-heading">Choose a brand workspace</h2>
+        <p className={styles.hint}>Your account has access to more than one approved brand.</p>
+        <div className={styles.formLinks}>
+          {destination.brands.map((brand) => <button className={styles.secondaryButton} type="button" key={brand.id}
+            onClick={() => { router.replace(`/brands/${encodeURIComponent(brand.id)}/products`); router.refresh(); }}>
+            {brand.name}
+          </button>)}
+        </div>
+      </section>}
       <button className={styles.primaryButton} type="button" onClick={signOut} disabled={signOutBusy}>
         {signOutBusy ? "Signing out…" : "Sign out"}
       </button></div>}

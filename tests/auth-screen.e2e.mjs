@@ -270,6 +270,8 @@ try {
   console.log("PASS phone number -> purpose-bound OTP -> secure authenticated account session");
 
   // The post-sign-in deferral must use only the destination returned by the session API.
+  assert.equal(await evaluate("[...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Do this later')"), true,
+    "phone-authenticated accounts can defer optional setup and continue to their role destination");
   await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Do this later')?.click()");
   await waitFor("location.pathname === '/' ");
   await command("Page.navigate", { url: new URL("sign-in", base).href }); await waitInteractive("signin-email");
