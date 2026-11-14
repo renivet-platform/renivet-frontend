@@ -16,11 +16,41 @@ describe("REN2-100 admin operations console", () => {
       assert.equal(area.actionAvailable, false, `${area.id} must not imply an unverified action is usable`);
     }
 
-    assert.match(adminOperationAreas.find((area) => area.id === "taxonomy")!.availability, /draft and publish endpoints are registered/i);
-    assert.match(adminOperationAreas.find((area) => area.id === "pricing")!.availability, /no reviewer queue or safe read-by-id/i);
-    assert.match(adminOperationAreas.find((area) => area.id === "claims")!.availability, /no reviewer queue or safe evidence read/i);
-    assert.match(adminOperationAreas.find((area) => area.id === "quality")!.availability, /no registered review queue or decision route/i);
-    assert.match(adminOperationAreas.find((area) => area.id === "publishing")!.availability, /no registered publish or restriction route/i);
+    const taxonomy = adminOperationAreas.find((area) => area.id === "taxonomy")!;
+    assert.equal(taxonomy.apiStatus, "Partial API");
+    assert.deepEqual(taxonomy.registeredRoutes, [
+      "POST /api/v1/admin/catalog/categories/{categoryId}/schema-versions",
+      "POST /api/v1/admin/catalog/categories/{categoryId}/schema-versions/{version}/publish",
+    ]);
+    assert.match(taxonomy.availability, /category list and safe revision read/i);
+
+    const quality = adminOperationAreas.find((area) => area.id === "quality")!;
+    assert.equal(quality.apiStatus, "No review API");
+    assert.deepEqual(quality.registeredRoutes, []);
+
+    const pricing = adminOperationAreas.find((area) => area.id === "pricing")!;
+    assert.equal(pricing.apiStatus, "Decision API only");
+    assert.deepEqual(pricing.registeredRoutes, ["POST /api/v1/admin/brands/{brandId}/variant-prices/{priceId}/decision"]);
+    assert.match(pricing.availability, /queue and safe proposal detail read/i);
+
+    const claims = adminOperationAreas.find((area) => area.id === "claims")!;
+    assert.equal(claims.apiStatus, "Decision API only");
+    assert.deepEqual(claims.registeredRoutes, ["POST /api/v1/admin/brands/{brandId}/claims/{claimId}/decision"]);
+    assert.match(claims.availability, /queue and safe evidence read/i);
+
+    const publishing = adminOperationAreas.find((area) => area.id === "publishing")!;
+    assert.equal(publishing.apiStatus, "No API route");
+    assert.deepEqual(publishing.registeredRoutes, []);
+  });
+
+  it("renders registered API coverage separately from unavailable reviewer workflows", () => {
+    const component = readFileSync("src/features/admin/operations-console.tsx", "utf8");
+
+    assert.match(component, /Registered API routes/);
+    assert.match(component, /Queue and safe detail reads are missing/);
+    assert.match(component, /Gated/);
+    assert.doesNotMatch(component, /Not available yet/);
+    assert.doesNotMatch(component, /W2 Â·|âœ³/);
   });
 
   it("renders as a non-sensitive server page with labelled navigation and no API fetch", () => {
