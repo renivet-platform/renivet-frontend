@@ -7,7 +7,7 @@
 .navCaption, .eyebrow { margin: 0; color: #61776d; font-size: 10px; font-weight: 750; letter-spacing: .15em; }
 .navCaption { padding: 0 10px 10px; }
 .navigation { display: grid; gap: 4px; }
-.navLink, .navActive { display: flex; min-height: 44px; align-items: center; gap: 12px; padding: 0 10px; border-radius: 9px; color: #52665d; font-size: 13px; font-weight: 600; text-decoration: none; transition: background .16s ease, color .16s ease; }
+.navLink, .navActive { display: flex; min-height: 44px; align-items: center; gap: 12px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: #52665d; font-size: 13px; font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; transition: background .16s ease, color .16s ease; }
 .navLink:hover { background: #f4f7f3; color: #174c3e; }
 .navActive { background: #eaf1ed; color: #174c3e; }
 .navIndex { display: grid; width: 26px; height: 26px; place-items: center; border: 1px solid #e0e7e1; border-radius: 7px; color: #5d6e64; font-size: 9px; font-variant-numeric: tabular-nums; }
@@ -77,9 +77,25 @@
 .routeInventory ul + p { margin-top: 6px; }
 .gateList { display: flex; flex-wrap: wrap; gap: 6px; margin: 11px 0 14px; padding: 0; list-style: none; }
 .gateList li { padding: 5px 7px; border-radius: 5px; background: #f2f4ef; color: #5e6c62; font-size: 9px; }
-.disabledAction { width: 100%; min-height: 36px; margin-top: auto; border: 1px solid #e4e8e3; border-radius: 7px; background: #f7f8f5; color: #607067; cursor: not-allowed; font: inherit; font-size: 10px; font-weight: 650; }
+.disabledAction { width: 100%; min-height: 36px; margin-top: auto; border: 1px solid #c8d8cd; border-radius: 7px; background: #edf4ef; color: #174c3e; cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; }
+.disabledAction:hover { background: #dcebe1; }
+.disabledAction:disabled, .reviewCard button:disabled { cursor: not-allowed; opacity: .58; }
+.reviewCard form, .statusPanel form { display: grid; gap: 8px; margin-top: 18px; }
+.reviewCard label, .statusPanel form label { color: #344f43; font-size: 11px; font-weight: 700; }
+.reviewCard label span, .statusPanel form label span { color: #617168; font-weight: 400; }
+.reviewCard input, .reviewCard textarea, .statusPanel form input:not([type="checkbox"]), .statusPanel form textarea { width: 100%; min-height: 38px; padding: 8px 10px; border: 1px solid #cfd8d1; border-radius: 6px; background: #fff; color: #102d25; font: inherit; font-size: 13px; }
+.reviewCard textarea, .statusPanel form textarea { min-height: 74px; resize: vertical; }
+.reviewCard form button, .statusPanel form button { min-height: 36px; padding: 7px 11px; border: 1px solid #b6cbbd; border-radius: 7px; background: #edf4ef; color: #174c3e; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.confirmation { display: flex; align-items: start; gap: 8px; margin: 6px 0; line-height: 1.5; }
+.confirmation input { width: 16px; height: 16px; flex: 0 0 auto; margin: 1px 0 0; accent-color: #174c3e; }
+.statusPanel details { margin-top: 12px; padding: 10px 12px; border: 1px solid #e1e7e0; border-radius: 7px; background: #fbfcfa; color: #344f43; font-size: 12px; }
+.statusPanel details summary { cursor: pointer; font-weight: 700; }
+.statusPanel pre { max-height: 380px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: #304d3f; font-size: 11px; }
+.statusPanel dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; margin-top: 18px; }
+.statusPanel dt { color: #5d6c63; font-size: 10px; }
+.statusPanel dd { margin: 3px 0 0; overflow-wrap: anywhere; color: #294d3d; font-size: 12px; }
 .footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 28px; padding-top: 14px; border-top: 1px solid #e3e5dc; color: #5f7067; font-size: 9px; font-weight: 700; letter-spacing: .07em; }
-.navLink:focus-visible, .navActive:focus-visible, .brand:focus-visible, .disabledAction:focus-visible { outline: 3px solid #b9d3c3; outline-offset: 3px; }
+.navLink:focus-visible, .navActive:focus-visible, .brand:focus-visible, .disabledAction:focus-visible, .reviewCard button:focus-visible, .reviewCard input:focus-visible, .reviewCard textarea:focus-visible, .statusPanel button:focus-visible, .statusPanel input:focus-visible, .statusPanel textarea:focus-visible, .confirmation input:focus-visible { outline: 3px solid #b9d3c3; outline-offset: 3px; }
 
 @media (max-width: 960px) {
   .sidebar { width: 214px; }
@@ -115,6 +131,7 @@
   .sectionTitle h2 { font-size: 22px; }
   .reviewGrid { grid-template-columns: 1fr; }
   .reviewCard { min-height: auto; }
+  .statusPanel dl { grid-template-columns: 1fr; }
   .footer { align-items: start; flex-direction: column; }
 }
 

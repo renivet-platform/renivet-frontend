@@ -5,6 +5,7 @@
 - `src/app/(storefront)/page.tsx` owns `/` without changing the URL; storefront routes go alongside it.
 - `(auth)`, `(customer)`, `(seller)` and `(admin)` reserve route-group boundaries. They **do not provide public pages or authorize any access**.
 - `src/app/api/health/route.ts` is the existing backend connectivity probe; `src/app/health/page.tsx` is a static frontend liveness page. Neither is a production readiness signal.
+- `/operations` is an authenticated-data client workspace, not a route-level authorization boundary. It reads only through the constrained same-origin W2 proxy; NestJS global W1 permissions authorize reads and decisions. Keep `RENIVET_W2_PORTAL_ENABLED` disabled until owner release gates are cleared.
 
 Do not add another `page.tsx` resolving to `/` or create duplicate routes across groups. Route groups do not affect URL paths or enforce permissions. All account/seller/admin routes must implement *server-side* authorization after REN-GOV-001 approval.
 

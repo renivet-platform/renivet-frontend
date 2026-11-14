@@ -14,6 +14,35 @@ export type W2Method = "GET" | "POST" | "PATCH" | "DELETE";
 /** Exact allowlist for the registered catalog APIs used by the first seller slice. */
 export function resolveW2BackendPath(segments: string[], method: string): string | null {
   if (segments.some((segment) => !segment || segment === "." || segment === ".." || segment.includes("/") || segment.includes("\\"))) return null;
+  if (segments[0] === "admin" && segments[1] === "reviews" && ["taxonomy", "quality", "pricing", "claims", "publishing"].includes(segments[2] ?? "")) {
+    if (method === "GET" && segments.length === 3) return `/api/v1/admin/reviews/${segments[2]}`;
+    if (method === "GET" && segments.length === 4 && uuid.test(segments[3]!)) return `/api/v1/admin/reviews/${segments[2]}/${segments[3]}`;
+    return null;
+  }
+  if (segments[0] === "admin" && segments[1] === "catalog" && segments[2] === "categories" && segments.length >= 4
+    && uuid.test(segments[3]!)) {
+    if (segments.length === 5 && segments[4] === "schema-versions" && method === "POST") return `/api/v1/admin/catalog/categories/${segments[3]}/schema-versions`;
+    if (segments.length === 7 && segments[4] === "schema-versions" && /^\d{1,6}$/.test(segments[5]!) && segments[6] === "publish" && method === "POST") {
+      return `/api/v1/admin/catalog/categories/${segments[3]}/schema-versions/${segments[5]}/publish`;
+    }
+    return null;
+  }
+  if (segments[0] === "admin" && segments[1] === "brands" && segments.length >= 5 && uuid.test(segments[2]!)) {
+    const brandId = segments[2]!;
+    if (segments[3] === "variant-prices" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "decision" && method === "POST") {
+      return `/api/v1/admin/brands/${brandId}/variant-prices/${segments[4]}/decision`;
+    }
+    if (segments[3] === "claims" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "decision" && method === "POST") {
+      return `/api/v1/admin/brands/${brandId}/claims/${segments[4]}/decision`;
+    }
+    if (segments[3] === "products" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "review" && method === "POST") {
+      return `/api/v1/admin/brands/${brandId}/products/${segments[4]}/review`;
+    }
+    if (segments[3] === "products" && segments.length === 7 && uuid.test(segments[4]!) && segments[5] === "publication"
+      && ["publish", "restrict", "unpublish"].includes(segments[6]!) && method === "POST") {
+      return `/api/v1/admin/brands/${brandId}/products/${segments[4]}/publication/${segments[6]}`;
+    }
+  }
   const [root, brandId, resource, resourceId, subresource] = segments;
   if (root !== "brands" || !brandId || !uuid.test(brandId)) return null;
   if (resource === "media" && segments.length === 3 && method === "POST") return `/api/v1/brands/${brandId}/media/uploads`;
