@@ -68,6 +68,13 @@
 .availability { padding: 11px 12px; border-left: 2px solid #c6a85d; border-radius: 0 7px 7px 0; background: #fbf9f2; }
 .availability strong { color: #665832; font-size: 10px; }
 .availability p { margin: 4px 0 0; color: #5e6659; font-size: 10px; line-height: 1.5; }
+.routeInventory { margin-top: 10px; padding: 10px 11px; border: 1px solid #e6e9e2; border-radius: 7px; background: #fbfcfa; }
+.routeInventory h4 { margin: 0 0 6px; color: #425c4f; font-size: 10px; font-weight: 750; }
+.routeInventory ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.routeInventory li { min-width: 0; }
+.routeInventory code { display: block; overflow-wrap: anywhere; color: #43594d; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 9px; line-height: 1.45; }
+.routeInventory p { margin: 0; color: #5e6c62; font-size: 9px; line-height: 1.45; }
+.routeInventory ul + p { margin-top: 6px; }
 .gateList { display: flex; flex-wrap: wrap; gap: 6px; margin: 11px 0 14px; padding: 0; list-style: none; }
 .gateList li { padding: 5px 7px; border-radius: 5px; background: #f2f4ef; color: #5e6c62; font-size: 9px; }
 .disabledAction { width: 100%; min-height: 36px; margin-top: auto; border: 1px solid #e4e8e3; border-radius: 7px; background: #f7f8f5; color: #607067; cursor: not-allowed; font: inherit; font-size: 10px; font-weight: 650; }

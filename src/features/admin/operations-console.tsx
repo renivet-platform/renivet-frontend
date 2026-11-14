@@ -60,13 +60,13 @@ export function AdminOperationsConsole() {
           <section className={styles.statusPanel} aria-labelledby="readiness-title">
             <div className={styles.statusHeading}>
               <div><p className={styles.eyebrow}>CURRENT CONNECTION</p><h2 id="readiness-title">Review workspace readiness</h2></div>
-              <span className={styles.statusPill}><span aria-hidden="true" /> Not connected</span>
+              <span className={styles.statusPill}><span aria-hidden="true" /> Source-audited preview</span>
             </div>
-            <p className={styles.statusCopy}>The UI is ready to present the review areas. Protected queues and reviewer identity are not connected in this frontend, so no live work is shown here.</p>
+            <p className={styles.statusCopy}>This page is a source-audited readiness preview, not a live API health check. It does not call reviewer APIs or load protected records; statuses below describe the registered backend routes and known missing reads.</p>
             <div className={styles.statusFacts}>
-              <div><span>Data source</span><strong>Not connected</strong></div>
+              <div><span>Data source</span><strong>No live data loaded</strong></div>
               <div><span>Reviewer authorization</span><strong>Backend required</strong></div>
-              <div><span>Decision controls</span><strong>Unavailable</strong></div>
+              <div><span>Decision controls</span><strong>Gated</strong></div>
             </div>
           </section>
 
@@ -78,13 +78,22 @@ export function AdminOperationsConsole() {
             <div className={styles.reviewGrid}>
               {reviews.map((area) => (
                 <article key={area.id} id={area.id} className={styles.reviewCard} aria-labelledby={`${area.id}-title`}>
-                  <div className={styles.cardTop}><span className={styles.cardIndex}>{area.index}</span><span className={styles.gatedBadge}>GATED</span></div>
+                  <div className={styles.cardTop}><span className={styles.cardIndex}>{area.index}</span><span className={styles.gatedBadge}>Gated</span></div>
                   <p className={styles.cardEyebrow}>{area.eyebrow}</p>
                   <h3 id={`${area.id}-title`}>{area.title}</h3>
                   <p className={styles.cardCopy}>{area.description}</p>
                   <div className={styles.availability} role="status">
-                    <strong>Not available yet</strong>
+                    <strong>{area.apiStatus}</strong>
                     <p>{area.availability}</p>
+                  </div>
+                  <div className={styles.routeInventory}>
+                    <h4>Registered API routes</h4>
+                    {area.registeredRoutes.length > 0 ? (
+                      <ul aria-label={`${area.title} registered API routes`}>
+                        {area.registeredRoutes.map((route) => <li key={route}><code>{route}</code></li>)}
+                      </ul>
+                    ) : <p>No registered route is listed for this workflow.</p>}
+                    {area.id === "pricing" || area.id === "claims" ? <p>Queue and safe detail reads are missing.</p> : null}
                   </div>
                   <ul className={styles.gateList} aria-label={`${area.title} requirements`}>{area.gates.map((gate) => <li key={gate}>{gate}</li>)}</ul>
                   <button className={styles.disabledAction} type="button" disabled aria-disabled="true">Review action unavailable</button>
