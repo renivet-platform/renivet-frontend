@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import type { Category } from "../src/features/seller/w2-catalog";
 import { canonicalVariantOptions, categoryDraftVersion, categoryLabel, hasVariantCombination, selectableCategories } from "../src/features/seller/w2-catalog";
@@ -36,5 +37,18 @@ describe("REN2-97 SKU option uniqueness", () => {
   it("allows a SKU to keep its own current option combination during edit", () => {
     const current = [{ id: "sku-1", options: { color: "Blue", size: "M" }, variantState: "DRAFT" }];
     assert.equal(hasVariantCombination({ size: "M", color: "Blue" }, current, "sku-1"), false);
+  });
+});
+
+describe("REN2-97 price proposal editor", () => {
+  it("requires an explicit INR rule version and preserves the safe mutation contract", () => {
+    const source = readFileSync("src/features/seller/product-detail-workspace.tsx", "utf8");
+    assert.match(source, /ruleVersion/);
+    assert.match(source, /sellingPriceMinor/);
+    assert.match(source, /mrpMinor/);
+    assert.match(source, /proposeVariantPrice/);
+    assert.match(source, /ifMatch: `"\$\{product\.rowVersion\}"`/);
+    assert.match(source, /idempotencyKey: createIdempotencyKey\(\)/);
+    assert.match(source, /currency: "INR"/);
   });
 });
