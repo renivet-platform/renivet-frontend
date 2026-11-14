@@ -343,7 +343,7 @@ function PhoneVerificationPanel({ csrfToken, initiallyVerified }: { csrfToken: s
     <hr className={styles.separator} />
     <div>
       <h2 className={styles.sectionHeading} id="phone-verification-heading">Phone number</h2>
-      <p className={styles.hint}>Add and verify an Indian mobile number for contact and account recovery. It won’t sign you in by phone.</p>
+      <p className={styles.hint}>{initiallyVerified ? "Your phone is verified and can be used for SMS sign-in. Reset your password through your verified email." : "Add and verify an Indian mobile number for SMS sign-in. Reset your password through your verified email."}</p>
     </div>
     {phase === "verified" ? <div className={styles.form}>
       <p className={styles.successBox} role="status">Your phone number is verified for this account.</p>
@@ -376,6 +376,7 @@ export function AccountSession() {
   const [csrf, setCsrf] = useState(""); const [error, setError] = useState("");
   const [account, setAccount] = useState<CurrentSession["account"] | null>(null);
   const [signOutBusy, setSignOutBusy] = useState(false);
+  const [showPhoneSetup, setShowPhoneSetup] = useState(true);
   async function inspect() {
     setState("loading"); setError("");
     try { const session = await getCurrentSession(); setCsrf(session.csrfToken); setAccount(session.account); setState("ready"); }
@@ -404,7 +405,24 @@ export function AccountSession() {
           <p className={styles.hint}>Your phone number is verified and is used to sign in with a one-time code. You don’t need to add it again here.</p>
           {account.phoneVerified && <p className={styles.successBox} role="status">Phone number verified</p>}
         </section>
-        : <PhoneVerificationPanel csrfToken={csrf} initiallyVerified={account?.phoneVerified ?? false} />}
+        : <>
+          <section className={styles.subForm} aria-labelledby="account-recovery-heading">
+            <hr className={styles.separator} />
+            <h2 className={styles.sectionHeading} id="account-recovery-heading">Account recovery</h2>
+            <p className={styles.hint}>{account.phoneVerified
+              ? "Reset your password with your verified email. If you can’t access that email, use Phone number on the sign-in page to get back into your account."
+              : "Reset your password with your verified email. If you can’t access that email, add and verify a phone to use SMS sign-in as another way back into your account, or do it later."}</p>
+            <div className={styles.formLinks}>
+              <Link className={styles.link} href="/recover">Reset password with email</Link>
+              {account.phoneVerified
+                ? <Link className={styles.link} href="/sign-in">Go to sign-in to use phone</Link>
+                : <button className={styles.secondaryButton} type="button" onClick={() => setShowPhoneSetup(current => !current)}>
+                  {showPhoneSetup ? "Do this later" : "Add a phone number"}
+                </button>}
+            </div>
+          </section>
+          {showPhoneSetup && <PhoneVerificationPanel csrfToken={csrf} initiallyVerified={account.phoneVerified} />}
+        </>}
       <button className={styles.primaryButton} type="button" onClick={signOut} disabled={signOutBusy}>
         {signOutBusy ? "Signing out…" : "Sign out"}
       </button></div>}
