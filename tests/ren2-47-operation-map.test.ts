@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 
 type Operation = {
   operationId: string;
+  implementedBy?: string;
   route: string;
   role: "seller" | "admin";
   availability: "registered" | "gated";
@@ -39,6 +40,10 @@ describe("REN2-95 W2 operation map", () => {
     assert.match(map.scopeNote, /pinned candidate contains 47 unique operationId values/i);
     assert.equal(ids.length, map.candidateOperationCount);
     assert.equal(new Set(ids).size, ids.length, "candidate operations must not be double mapped");
+    const sellerSubmission = map.operations.find((operation) => operation.operationId === "submitProductForReview");
+    assert.equal(sellerSubmission?.availability, "registered", "REN2-71 exposes the seller submission route on current main");
+    assert.equal(sellerSubmission?.presentation, "interactive", "the seller draft editor must expose the registered submission action");
+    assert.ok(backendOperationIds.has(sellerSubmission?.implementedBy ?? sellerSubmission?.operationId ?? ""), "the pinned API contract must include the merged seller submission route");
 
     for (const operation of map.operations) {
       assert.ok(operation.route.startsWith("/"), `${operation.operationId} needs a screen or headless route`);
@@ -53,7 +58,7 @@ describe("REN2-95 W2 operation map", () => {
         "price proposal stays out of the UI until a supported source provides the required ruleVersion");
       if (["updateProductVariant", "deactivateProductVariant"].includes(operation.operationId)) assert.equal(operation.presentation, "interactive",
         `${operation.operationId} is available through an authenticated seller draft action`);
-      assert.equal(backendOperationIds.has(operation.operationId), operation.availability === "registered",
+      assert.equal(backendOperationIds.has(operation.implementedBy ?? operation.operationId), operation.availability === "registered",
         `${operation.operationId} availability must match generated backend OpenAPI`);
     }
   });
