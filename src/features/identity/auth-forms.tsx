@@ -396,9 +396,9 @@ export function AccountSession() {
   }
   return <AuthShell eyebrow="Your account" title="Account session" description="This page is shown only after the backend confirms your session.">
     {state === "loading" && <p className={styles.loading} role="status">Checking your session…</p>}
-    {state === "ready" && <div className={styles.form}><p className={styles.successBox} role="status">You are signed in.</p>
+    {state === "ready" && account && <div className={styles.form}><p className={styles.successBox} role="status">You are signed in.</p>
       {error && <FormMessage error={error} status="" />}
-      {account?.signInMethod === "phone"
+      {account.signInMethod === "phone"
         ? <section className={styles.subForm} aria-labelledby="phone-sign-in-heading">
           <hr className={styles.separator} />
           <h2 className={styles.sectionHeading} id="phone-sign-in-heading">Phone sign-in</h2>
