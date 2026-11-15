@@ -27,6 +27,11 @@ export function resolveW2BackendPath(segments: string[], method: string): string
     }
     return null;
   }
+  if (segments[0] === "admin" && segments[1] === "catalog" && segments[2] === "categories") {
+    if (segments.length === 3 && method === "GET") return "/api/v1/admin/catalog/categories";
+    if (segments.length === 4 && segments[3] === "attributes" && method === "GET") return "/api/v1/admin/catalog/categories/attributes";
+    return null;
+  }
   if (segments[0] === "admin" && segments[1] === "brands" && segments.length >= 5 && uuid.test(segments[2]!)) {
     const brandId = segments[2]!;
     if (segments[3] === "variant-prices" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "decision" && method === "POST") {
