@@ -25,6 +25,7 @@ export function resolveW2BackendPath(segments: string[], method: string): string
   if (segments[0] === "admin" && segments[1] === "catalog" && segments[2] === "categories" && segments.length >= 4
     && uuid.test(segments[3]!)) {
     if (segments.length === 5 && segments[4] === "schema-versions" && method === "POST") return `/api/v1/admin/catalog/categories/${segments[3]}/schema-versions`;
+    if (segments.length === 5 && segments[4] === "activate" && method === "POST") return `/api/v1/admin/catalog/categories/${segments[3]}/activate`;
     if (segments.length === 7 && segments[4] === "schema-versions" && /^\d{1,6}$/.test(segments[5]!) && segments[6] === "publish" && method === "POST") {
       return `/api/v1/admin/catalog/categories/${segments[3]}/schema-versions/${segments[5]}/publish`;
     }
