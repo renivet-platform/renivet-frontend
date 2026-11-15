@@ -10,7 +10,7 @@ This document records the implementation and verification evidence for the W2 br
 | REN2-96 | `src/features/seller/product-workspace.tsx`, `product-detail-workspace.tsx` | `tests/ren2-47-catalog-state.test.ts`, live API proxy coverage |
 | REN2-97 | `src/features/seller/product-detail-workspace.tsx`, media, price and claim editors | `tests/ren2-47-catalog-state.test.ts`, `tests/ren2-47-api-integration.test.ts` |
 | REN2-98 | `src/features/seller/import-workspace.tsx`, `import-workspace-state.ts` | `tests/ren2-47-import-state.test.ts`, live API proxy coverage |
-| REN2-99 | Existing inventory availability route remains explicitly gated; no unregistered stock authority is exposed | `tests/ren2-47-api-integration.test.ts` |
+| REN2-99 | Inventory balances, locations and movement history call the opt-in persisted backend inventory APIs; the backend remains disabled by default | `tests/ren2-47-api-integration.test.ts`, `tests/w2-proxy.test.ts` |
 | REN2-100 | `src/features/admin/operations-console.tsx` with five persisted queues, detail views and maker-checker decisions | `tests/ren2-100-admin-console.test.ts`, admin review proxy coverage |
 
 ## Required runtime gates
@@ -21,7 +21,7 @@ This document records the implementation and verification evidence for the W2 br
 - Admin review requires owner-managed global grants and two independent MFA-enabled reviewers. No grants or review rows are seeded by this change.
 - Real seller-created persisted records are required to exercise the five admin queues; an empty queue is a valid result until those records exist.
 - Seller price proposals now require an explicit server-issued INR `ruleVersion`; the UI never invents a pricing rule.
-- REN2-99 inventory remains a truthful gated screen because no authoritative inventory API is registered; no stock data or actions are fabricated.
+- REN2-99 inventory is wired to persisted balances, locations and movements. The backend opt-in remains disabled by default until G07/G08/G17 runtime evidence is approved; the UI shows the backend error/empty state rather than inventing stock.
 
 ## Verification run
 

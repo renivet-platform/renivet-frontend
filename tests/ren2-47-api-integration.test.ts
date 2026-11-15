@@ -41,14 +41,14 @@ describe("REN2-47 live API coverage", () => {
     assert.match(component, /Confirm deactivation/);
   });
 
-  it("provides an inventory route without pretending unregistered stock APIs are live", () => {
+  it("provides an inventory route backed by the protected inventory APIs", () => {
     assert.ok(existsSync("src/app/(seller)/brands/[brandId]/inventory/page.tsx"));
     const page = readFileSync("src/app/(seller)/brands/[brandId]/inventory/page.tsx", "utf8");
     const surface = readFileSync("src/features/seller/inventory-availability.tsx", "utf8");
     assert.match(page, /w2PortalEnabled/);
     assert.match(page, /brandId/);
-    assert.match(surface, /inventory API routes are not registered/i);
-    assert.match(surface, /No stock data is loaded/);
-    assert.doesNotMatch(surface, /fetch\s*\(/);
+    assert.match(surface, /Authoritative balances/);
+    assert.match(surface, /w2Request/);
+    assert.match(surface, /Create location/);
   });
 });

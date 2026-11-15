@@ -3,7 +3,7 @@ import { resolveApiBaseUrl } from "@/lib/api-url";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const maxBodyBytes = 64 * 1024;
 const maxResponseBytes = 1024 * 1024;
-const queryKeys = new Set(["cursor", "limit", "categoryId", "reviewState", "visibility"]);
+const queryKeys = new Set(["cursor", "limit", "categoryId", "reviewState", "visibility", "variantId", "locationId"]);
 
 export function w2PortalEnabled(value = process.env.RENIVET_W2_PORTAL_ENABLED): boolean {
   return value === "true";
@@ -45,6 +45,13 @@ export function resolveW2BackendPath(segments: string[], method: string): string
   }
   const [root, brandId, resource, resourceId, subresource] = segments;
   if (root !== "brands" || !brandId || !uuid.test(brandId)) return null;
+  if (resource === "access" && segments.length === 3 && method === "GET") return `/api/v1/brands/${brandId}/access`;
+  if (resource === "access" && resourceId === "team" && segments.length === 4 && method === "GET") return `/api/v1/brands/${brandId}/access/team`;
+  if (resource === "inventory" && resourceId && segments.length === 4 && method === "GET" && ["balances", "observations", "adjustments", "movements", "reconciliations"].includes(resourceId)) return `/api/v1/brands/${brandId}/inventory/${resourceId}`;
+  if (resource === "inventory" && resourceId && segments.length === 4 && method === "POST" && ["locations", "balances", "opening-receipts", "observations", "adjustments", "movements", "cycle-counts", "transfers", "returns"].includes(resourceId)) return `/api/v1/brands/${brandId}/inventory/${resourceId}`;
+  if (resource === "inventory" && resourceId === "observations" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "propose-adjustment" && method === "POST") return `/api/v1/brands/${brandId}/inventory/observations/${segments[4]}/propose-adjustment`;
+  if (resource === "inventory" && resourceId === "reconciliations" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "resolve" && method === "POST") return `/api/v1/brands/${brandId}/inventory/reconciliations/${segments[4]}/resolve`;
+  if (resource === "inventory" && resourceId === "transfers" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "receive" && method === "POST") return `/api/v1/brands/${brandId}/inventory/transfers/${segments[4]}/receive`;
   if (resource === "media" && segments.length === 3 && method === "POST") return `/api/v1/brands/${brandId}/media/uploads`;
   if (resource === "media" && resourceId && uuid.test(resourceId) && subresource === "complete" && segments.length === 5 && method === "POST") {
     return `/api/v1/brands/${brandId}/media/${resourceId}/complete`;
@@ -168,6 +175,7 @@ export async function proxyW2Request(request: Request, segments: string[]): Prom
     seenQuery.add(key);
     if (key === "limit" && (!/^\d{1,3}$/.test(value) || Number(value) < 1 || Number(value) > 100)) return jsonResponse({ code: "W2_REQUEST_INVALID", message: "The query is invalid." }, 400);
     if (key === "categoryId" && !uuid.test(value)) return jsonResponse({ code: "W2_REQUEST_INVALID", message: "The query is invalid." }, 400);
+    if ((key === "variantId" || key === "locationId") && !uuid.test(value)) return jsonResponse({ code: "W2_REQUEST_INVALID", message: "The query is invalid." }, 400);
     if (key === "reviewState" && !["NOT_SUBMITTED", "DRAFT", "SUBMITTED", "APPROVED", "REJECTED", "SUPERSEDED"].includes(value)) return jsonResponse({ code: "W2_REQUEST_INVALID", message: "The query is invalid." }, 400);
     if (key === "visibility" && !["PUBLIC", "PRIVATE", "RESTRICTED"].includes(value)) return jsonResponse({ code: "W2_REQUEST_INVALID", message: "The query is invalid." }, 400);
     targetUrl.searchParams.append(key, value);

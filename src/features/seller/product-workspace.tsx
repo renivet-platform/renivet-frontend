@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { AuthApiError, getCurrentSession } from "@/features/identity/auth-api";
 import { categoryDraftVersion, categoryLabel, createIdempotencyKey, selectableCategories, type Category, type CategoryAttribute, type Paged, type ProductPage, type ProductSummary, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import styles from "./product-workspace.module.css";
+import { BrandAccessPanel } from "./brand-access-panel";
 
 type CreateDraftReceipt = { productId: string; publicationState: "DRAFT"; categorySchemaVersion: number };
 
@@ -147,6 +148,8 @@ export function ProductWorkspace({ brandId }: { brandId: string }) {
           {showForm ? "Close draft form" : "Create product draft"}
         </button></div>
       </header>
+
+      <BrandAccessPanel brandId={brandId} />
 
       {showForm && <section className={styles.formPanel} aria-labelledby="draft-title">
         <div className={styles.formHeading}><div><p className={styles.kicker}>STEP 1 · PRODUCT BASICS</p><h2 id="draft-title">Create a product draft</h2><p>Choose a category and save the basics. Variants, images, pricing and evidence can be added later.</p></div><span className={styles.draftBadge}>SAVES AS DRAFT</span></div>
