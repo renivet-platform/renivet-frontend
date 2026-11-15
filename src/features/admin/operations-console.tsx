@@ -136,6 +136,7 @@ export function AdminOperationsConsole() {
       <aside className={styles.sidebar}>
         <a className={styles.brand} href="#overview" aria-label="Renivet operations home"><span className={styles.brandMark} aria-hidden="true">R</span><span className={styles.brandName}>renivet<span>OPERATIONS</span></span></a>
         <p className={styles.navCaption}>REVIEW QUEUES</p>
+        <a className={styles.navLink} href="/brand-approvals">Brand approvals</a>
         <nav aria-label="Operations review queues" className={styles.navigation}>
           {queues.map((queue, index) => <button key={queue.id} type="button" className={active === queue.id ? styles.navActive : styles.navLink} onClick={() => { setActive(queue.id); setNotice(""); }}>
             <span className={styles.navIndex}>{String(index + 1).padStart(2, "0")}</span>{queue.title}
