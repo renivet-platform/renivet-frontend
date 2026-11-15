@@ -25,6 +25,7 @@ describe("W2 API proxy allowlist", () => {
   });
 
   it("maps only the registered category and product draft routes", () => {
+    assert.equal(resolveW2BackendPath(["admin", "catalog", "categories", productId, "activate"], "POST"), `/api/v1/admin/catalog/categories/${productId}/activate`);
     assert.equal(resolveW2BackendPath(["brands", brandId, "categories"], "GET"), `/api/v1/brands/${brandId}/categories`);
     assert.equal(resolveW2BackendPath(["brands", brandId, "categories", productId, "schema-versions", "3"], "GET"), `/api/v1/brands/${brandId}/categories/${productId}/schema-versions/3`);
     assert.equal(resolveW2BackendPath(["brands", brandId, "products"], "GET"), `/api/v1/brands/${brandId}/products`);
