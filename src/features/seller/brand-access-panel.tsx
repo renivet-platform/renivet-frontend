@@ -6,7 +6,7 @@ import styles from "./product-workspace.module.css";
 
 type AccessGrant = { roleCode: string; permissionCode: string };
 type AccessSummary = { brandName?: string; brandState?: string; membershipState?: string; permissions?: AccessGrant[] };
-type TeamMember = { userId: string; membershipState: string; permissions: AccessGrant[] };
+type TeamMember = { userId: string; memberName?: string; membershipState: string; permissions: AccessGrant[] };
 
 export function BrandAccessPanel({ brandId }: { brandId: string }) {
   const [summary, setSummary] = useState<AccessSummary | null>(null);
@@ -33,7 +33,7 @@ export function BrandAccessPanel({ brandId }: { brandId: string }) {
     <div className={styles.formHeading}><div><p className={styles.kicker}>ACCESS AND MEMBERSHIP</p><h2 id="brand-access-heading">Brand permissions</h2><p>Membership and permissions are resolved by the backend. This view never grants access.</p></div>{summary && <span className={styles.draftBadge}>{summary.membershipState ?? "UNKNOWN"}</span>}</div>
     {error ? <p className={styles.error} role="alert">{error}</p> : summary && <>
       <div className={styles.schemaPanel}><div><p className={styles.kicker}>YOUR MEMBERSHIP</p><h3>{summary.brandName ?? brandId}</h3><p>{summary.brandState ?? "Brand state unavailable"} · {summary.membershipState ?? "Membership unavailable"}</p></div><ul className={styles.attributeList}>{(summary.permissions ?? []).map((permission) => <li key={`${permission.roleCode}-${permission.permissionCode}`}><span>{permission.permissionCode}</span><small>{permission.roleCode}</small></li>)}</ul></div>
-      {teamError ? <p className={styles.readOnlyNotice} role="status">{teamError}</p> : <div className={styles.tableWrap}><table className={styles.variantTable}><caption>Redacted team permission view</caption><thead><tr><th>Member</th><th>State</th><th>Roles and permissions</th></tr></thead><tbody>{team.length === 0 ? <tr><td colSpan={3}>No team members are persisted for this brand.</td></tr> : team.map((member) => <tr key={member.userId}><th>Member {member.userId.slice(0, 8)}</th><td>{member.membershipState}</td><td>{member.permissions.length ? member.permissions.map((permission) => `${permission.roleCode}: ${permission.permissionCode}`).join(" · ") : "No active permission grant"}</td></tr>)}</tbody></table></div>}
+      {teamError ? <p className={styles.readOnlyNotice} role="status">{teamError}</p> : <div className={styles.tableWrap}><table className={styles.variantTable}><caption>Redacted team permission view</caption><thead><tr><th>Member</th><th>State</th><th>Roles and permissions</th></tr></thead><tbody>{team.length === 0 ? <tr><td colSpan={3}>No team members are persisted for this brand.</td></tr> : team.map((member) => <tr key={member.userId}><th>{member.memberName ?? "Member"}</th><td>{member.membershipState}</td><td>{member.permissions.length ? member.permissions.map((permission) => `${permission.roleCode}: ${permission.permissionCode}`).join(" · ") : "No active permission grant"}</td></tr>)}</tbody></table></div>}
     </>}
   </section>;
 }
