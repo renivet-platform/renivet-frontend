@@ -85,6 +85,24 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
   const productFields = useMemo(() => schema?.attributes.filter((attribute) => attribute.scope === "PRODUCT") ?? [], [schema]);
   const variantFields = useMemo(() => schema?.attributes.filter((attribute) => attribute.scope === "VARIANT") ?? [], [schema]);
   const editable = product?.publicationState === "DRAFT" || product?.publicationState === "INCOMPLETE";
+  const readinessChecks = useMemo(() => {
+    if (!product) return [];
+    const requiredAttributesComplete = productFields.filter((field) => field.required).every((field) => {
+      const value = attributes[field.code];
+      return value !== null && value !== undefined && value !== "" && (!Array.isArray(value) || value.length > 0);
+    });
+    const activeVariants = product.variants.filter((variant) => variant.variantState !== "INACTIVE");
+    const hasApprovedPrice = activeVariants.length > 0 && activeVariants.every((variant) => variant.priceVersions?.some((price) => price.priceState === "APPROVED") ?? false);
+    const hasEligibleMedia = product.mediaLinks.some((link) => link.scanState === "CLEAN" && link.rightsState === "ATTESTED");
+    return [
+      { label: "Product title", ready: product.title.trim().length > 0 },
+      { label: "Pinned category schema", ready: Boolean(schema) && product.categorySchemaVersion > 0 },
+      { label: "Required attributes", ready: requiredAttributesComplete },
+      { label: "At least one active SKU", ready: activeVariants.length > 0 },
+      { label: "Approved price for every active SKU", ready: hasApprovedPrice },
+      { label: "Clean, rights-attested media", ready: hasEligibleMedia },
+    ];
+  }, [attributes, product, productFields, schema]);
 
   async function saveDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -286,6 +304,11 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
       <div><p className={styles.kicker}>STYLE {product.styleCode} <span aria-hidden="true">·</span> CONTENT VERSION {product.contentVersion}</p><h1 id="detail-title">{product.title}</h1><p className={styles.subtitle}>Your draft is saved privately to this brand. It is not submitted for review or visible to customers.</p></div>
       <span className={styles.state}>{product.publicationState.replaceAll("_", " ")}</span>
     </header>
+
+    {editable && <section className={styles.formPanel} aria-labelledby="readiness-heading">
+      <div className={styles.formHeading}><div><p className={styles.kicker}>SUBMISSION READINESS</p><h2 id="readiness-heading">Ready for independent review?</h2><p>These checks mirror the server-side submission gates. A green item is only a client-side indication; the backend remains authoritative.</p></div><span className={styles.draftBadge}>{readinessChecks.filter((check) => check.ready).length}/{readinessChecks.length} ready</span></div>
+      <ul className={styles.readinessList}>{readinessChecks.map((check) => <li key={check.label} className={check.ready ? styles.readinessReady : styles.readinessBlocked}><span aria-hidden="true">{check.ready ? "✓" : "!"}</span><span>{check.label}</span><strong>{check.ready ? "Ready" : "Needs attention"}</strong></li>)}</ul>
+    </section>}
 
     {editable && <section className={styles.formPanel} aria-labelledby="submission-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>READY FOR A SEPARATE REVIEW?</p><h2 id="submission-heading">Submit this revision</h2><p>Submission checks the saved product, active SKUs, approved prices and eligible media on the server. Once accepted, this exact revision is frozen for an independent reviewer.</p></div></div>

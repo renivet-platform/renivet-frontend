@@ -39,6 +39,23 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+
+  async function putPrivateUpload(url: URL, headers: Record<string, string>, body: File): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      const request = new XMLHttpRequest();
+      request.open("PUT", url.toString(), true);
+      request.withCredentials = false;
+      Object.entries(headers).forEach(([name, value]) => request.setRequestHeader(name, value));
+      request.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) setUploadProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      });
+      request.addEventListener("load", () => request.status >= 200 && request.status < 300 ? resolve() : reject(new Error("The private image upload did not complete. Try again with a new upload.")));
+      request.addEventListener("error", () => reject(new Error("The private image upload could not reach storage. Try again.")));
+      request.addEventListener("abort", () => reject(new Error("The private image upload was cancelled.")));
+      request.send(body);
+    });
+  }
 
   async function upload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setNotice("");
@@ -49,7 +66,7 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
     if (!rightsAttested) { setError("Confirm that your brand has the rights required to use this image."); return; }
     if (!altText.trim()) { setError("Add concise alt text so this image is accessible."); return; }
     if (!/^(?:\d{6}|[A-Z2-7]{26})$/.test(mfaCode.trim().toUpperCase())) { setError("Enter a six-digit authenticator code or an unused recovery code."); return; }
-    setBusy(true);
+    setBusy(true); setUploadProgress(0);
     try {
       const digest = await sha256(file);
       const session = await getCurrentSession();
@@ -60,8 +77,8 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
       });
       const uploadUrl = new URL(intent.uploadUrl);
       if (uploadUrl.protocol !== "https:" || intent.uploadMethod !== "PUT") throw new Error("Upload intent is invalid.");
-      const putResponse = await fetch(uploadUrl, { method: "PUT", headers: intent.headers, body: file, credentials: "omit", redirect: "error" });
-      if (!putResponse.ok) throw new Error("The private image upload did not complete. Try again with a new upload.");
+      await putPrivateUpload(uploadUrl, intent.headers, file);
+      setUploadProgress(100);
       const receipt = await w2Request<CompleteReceipt>(["brands", brandId, "media", intent.mediaAssetId, "complete"], {
         method: "POST", body: { sha256: digest, sizeBytes: file.size }, csrfToken: elevated.csrfToken, idempotencyKey: createIdempotencyKey(),
       });
@@ -70,7 +87,7 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
       setStatus(await w2Request<MediaStatus>(["brands", brandId, "media", intent.mediaAssetId]));
       setMfaCode("");
     } catch (caught) { setError(safeError(caught)); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setUploadProgress(null); }
   }
 
   async function checkStatus() {
@@ -116,7 +133,9 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
     </div>
     {mediaId && status && <div className={styles.schemaPanel} role="status"><div><p className={styles.kicker}>SCAN STATUS</p><h3>{status.scanState} · {status.rightsState}</h3><p>{status.scanState === "CLEAN" && status.rightsState === "ATTESTED" ? "Checks passed. You can attach this image now." : "This image stays private until all checks pass."}</p></div><div className={styles.mediaActions}><button type="button" className={styles.secondaryButton} disabled={busy} onClick={checkStatus}>Check status</button>{status.scanState === "CLEAN" && status.rightsState === "ATTESTED" && <button type="button" className={styles.primaryButton} disabled={busy} onClick={attach}>Attach image</button>}</div></div>}
     {error && <p className={styles.error} role="alert">{error}</p>}{notice && <p className={styles.notice} role="status">{notice}</p>}
-    {!mediaId && <div className={styles.formActions}><p>No image is made public by this step.</p><button type="submit" className={styles.primaryButton} disabled={busy}>{busy ? "Uploading securely…" : "Upload image"}</button></div>}</form>}
+    {!mediaId && <div className={styles.formActions}><p>No image is made public by this step.</p><button type="submit" className={styles.primaryButton} disabled={busy}>{busy ? "Uploading securely…" : "Upload image"}</button></div>}
+    {uploadProgress !== null && <div className={styles.uploadProgress} role="status" aria-live="polite"><div className={styles.uploadProgressLabel}><span>Private upload progress</span><span>{uploadProgress}%</span></div><progress max="100" value={uploadProgress}>{uploadProgress}%</progress></div>}
+    </form>}
     {!editable && <p className={styles.readOnlyNotice} role="status">Images cannot be changed while the product is in {product.publicationState.toLowerCase().replaceAll("_", " ")} state.</p>}
   </section>;
 }

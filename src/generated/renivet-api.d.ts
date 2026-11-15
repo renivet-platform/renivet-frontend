@@ -244,6 +244,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/brands/{brandId}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the authenticated member’s brand access summary */
+        get: operations["getBrandMembershipSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brands/{brandId}/access/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read redacted brand team membership and permissions */
+        get: operations["listBrandTeamPermissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/brands/{brandId}/products/{productId}/review": {
         parameters: {
             query?: never;
@@ -482,6 +516,26 @@ export interface paths {
         get: operations["getAdminPublicationReview"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/brands/{brandId}/application-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve or reject a pending brand application
+         * @description Admin-only W1 application decision. Requires independent checker, recent MFA, session-bound CSRF and an idempotent event id.
+         */
+        post: operations["decideBrandApplicationReview"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2307,6 +2361,44 @@ export interface operations {
             };
         };
     };
+    getBrandMembershipSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brandId: unknown;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listBrandTeamPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                brandId: unknown;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     decideAdminProductQcReview: {
         parameters: {
             query?: never;
@@ -2642,6 +2734,40 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminReviewItemDto"];
                 };
+            };
+        };
+    };
+    decideBrandApplicationReview: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                brandId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    applicantUserId: string;
+                    /** Format: uuid */
+                    checkedByUserId: string;
+                    /** @enum {string} */
+                    decision: "approved" | "rejected";
+                    /** Format: uuid */
+                    eventId: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

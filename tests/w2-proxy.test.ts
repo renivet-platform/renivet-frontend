@@ -44,7 +44,7 @@ describe("W2 API proxy allowlist", () => {
     assert.equal(resolveW2BackendPath(["brands", brandId, "products"], "DELETE"), null);
     assert.equal(resolveW2BackendPath(["brands", "not-a-uuid", "products"], "GET"), null);
     assert.equal(resolveW2BackendPath(["brands", brandId, "products", "..", "admin"], "GET"), null);
-    assert.equal(resolveW2BackendPath(["brands", brandId, "inventory", "balances"], "GET"), null);
+    assert.equal(resolveW2BackendPath(["brands", brandId, "inventory", "balances"], "GET"), `/api/v1/brands/${brandId}/inventory/balances`);
   });
 
   it("keeps the configured API prefix exactly once", () => {

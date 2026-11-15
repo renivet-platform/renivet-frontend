@@ -2,12 +2,12 @@
 
 ## Owner-approved approach
 
-For this implementation pass, show inventory as gated until the approved backend API and security/runtime evidence exist. Do not display sample balances as if they were real, calculate available-to-sell stock in the browser, or activate dormant inventory routes.
+The inventory surface now reads persisted balances and movement history and can create locations through the protected API. Do not display sample balances as if they were real or calculate available-to-sell stock in the browser. The backend routes are opt-in and remain disabled by default until the approved runtime evidence exists.
 
 ## Current UI
 
-The code-first W2 preview includes an Inventory section that says the feature is unavailable and explains that authoritative stock must come from the backend. The registered backend OpenAPI has no inventory endpoints for the required location, balance, observation, adjustment, count, or reconciliation workflows.
+The code-first W2 workspace includes a live-data Inventory section for balances, location creation and movement history. It fails closed with a retryable error when the backend opt-in is disabled or permissions are missing. The backend OpenAPI now includes the inventory operations behind `RENIVET_INVENTORY_API_ENABLED=true`.
 
 ## Acceptance boundary
 
-This safely implements the provisional unavailable state. It does **not** implement the live stock table, locations, observations, adjustments, cycle counts, reconciliation, freshness, or maker-checker interactions. Those remain open until route registration and the required G07/G08/G17 security and runtime evidence are approved and tested.
+The UI does not seed records or bypass permissions. Full runtime activation still requires G07/G08/G17 evidence, owner-managed inventory grants, disposable PostgreSQL verification and real persisted records; those release gates remain open.
