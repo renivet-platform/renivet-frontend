@@ -63,7 +63,7 @@ export async function w2Request<T>(segments: string[], options: {
   if (!response.ok) {
     const record = body && typeof body === "object" ? body as Record<string, unknown> : {};
     const code = typeof record.code === "string" && /^[A-Z0-9_]{1,80}$/.test(record.code) ? record.code : "W2_REQUEST_FAILED";
-    const message = typeof record.message === "string" && record.message.length <= 300 ? record.message : safeMessage(response.status);
+    const message = response.status < 500 && typeof record.message === "string" && record.message.length <= 300 ? record.message : safeMessage(response.status);
     throw new W2ApiError(code, message, response.status);
   }
   return body as T;

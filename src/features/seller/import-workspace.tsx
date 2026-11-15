@@ -29,6 +29,24 @@ const profileMappings: Record<SourceProfile, Array<[string, string]>> = {
   GENERIC: [["title", "title"], ["styleCode", "styleCode"], ["sku", "sku"], ["categoryCode", "categoryCode"]],
 };
 
+const templateHeaders: Record<SourceProfile, string[]> = {
+  SHOPIFY: ["Handle", "Title", "Variant SKU", "Product Category", "Option1 Value", "Option2 Value", "Variant Price"],
+  UNICOMMERCE: ["skuCode", "name", "categoryCode", "color", "size", "maxRetailPrice", "imageUrl"],
+  RENIVET: ["styleCode", "title", "sku", "categoryCode", "color", "size", "mrp"],
+  GENERIC: ["title", "styleCode", "sku", "categoryCode"],
+};
+
+function downloadTemplate(profile: SourceProfile) {
+  const headers = templateHeaders[profile];
+  const csv = `${headers.join(",")}\n${headers.map(() => "").join(",")}\n`;
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `renivet-${profile.toLowerCase()}-product-template.csv`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 function errorText(error: unknown): string {
   if (error instanceof W2ApiError || error instanceof AuthApiError) return error.message;
   return "The import could not be completed. No unconfirmed changes were applied.";
@@ -165,14 +183,14 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
     <header className={styles.header}><div><p className={styles.kicker}>BRAND WORKSPACE / DATA IMPORT</p><h1 id="imports-title">Import products safely</h1><p className={styles.subtitle}>Upload privately, map columns, review a frozen preview, then confirm explicitly.</p></div><span className={styles.draftBadge}>NO STOCK WRITES</span></header>
     {!batchId ? <section className={styles.formPanel} aria-labelledby="upload-heading"><div className={styles.formHeading}><div><p className={styles.kicker}>STEP 1 · SOURCE</p><h2 id="upload-heading">Choose an export</h2><p>CSV and XLSX files are uploaded to private storage using a short-lived signed URL. The import only stages catalogue data until you confirm.</p></div></div>
       <form onSubmit={startImport} noValidate><div className={styles.formGrid}>
-        <div className={styles.field}><label htmlFor="import-profile">Source profile</label><select id="import-profile" value={profile} onChange={(event) => { const selected = event.target.value as SourceProfile; setProfile(selected); setMappingRows(profileMappings[selected].map(([source, target], id) => ({ id, source, target }))); }}>{(["UNICOMMERCE", "SHOPIFY", "RENIVET", "GENERIC"] as SourceProfile[]).map((item) => <option key={item} value={item}>{item === "UNICOMMERCE" ? "Unicommerce / Uniware" : item === "SHOPIFY" ? "Shopify" : item}</option>)}</select><small>XLSX uploads use the backend’s RENIVET_XLSX source contract; edit mappings below to fit the selected export.</small></div>
+        <div className={styles.field}><label htmlFor="import-profile">Source profile</label><select id="import-profile" value={profile} onChange={(event) => { const selected = event.target.value as SourceProfile; setProfile(selected); setMappingRows(profileMappings[selected].map(([source, target], id) => ({ id, source, target }))); }}>{(["UNICOMMERCE", "SHOPIFY", "RENIVET", "GENERIC"] as SourceProfile[]).map((item) => <option key={item} value={item}>{item === "UNICOMMERCE" ? "Unicommerce / Uniware" : item === "SHOPIFY" ? "Shopify" : item}</option>)}</select><small>XLSX uploads use the backend’s RENIVET_XLSX source contract; edit mappings below to fit the selected export.</small><button type="button" className={styles.textButton} onClick={() => downloadTemplate(profile)}>Download Excel-compatible CSV template</button></div>
         <div className={styles.field}><label htmlFor="import-mode">Conflict handling</label><select id="import-mode" value={mode} onChange={(event) => setMode(event.target.value as CreateRequest["mode"])}><option value="REVIEW_CONFLICT">Review conflicts before changes</option><option value="CREATE_ONLY">Create new records only</option><option value="UPDATE_MATCHED">Update matched records</option><option value="SKIP_EXISTING">Skip records that already exist</option></select></div>
         <div className={styles.fieldWide}><label htmlFor="import-file">Source file</label><input id="import-file" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><small>CSV or XLSX, up to 100 MiB. File contents are never placed in the URL or application logs.</small></div>
         <div className={styles.field}><label htmlFor="source-as-of">Export created at</label><input id="source-as-of" type="datetime-local" value={sourceAsOf} onChange={(event) => setSourceAsOf(event.target.value)} /></div>
         <div className={styles.field}><label htmlFor="import-mfa">Authenticator or recovery code</label><input id="import-mfa" autoComplete="one-time-code" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} maxLength={26} /><small>Required for private file access and import mutations.</small></div>
       </div>
       {error && <p className={styles.error} role="alert">{error}</p>}{notice && <p className={styles.notice} role="status">{notice}</p>}
-      <div className={styles.formActions}><p>Available active categories: {categoryError || selectable.length}</p><button type="submit" className={styles.primaryButton} disabled={busy}>{busy ? "Uploading and staging…" : "Upload and start mapping"}</button></div>
+      <div className={styles.formActions}><p>{categoryError ? categoryError : selectable.length ? `Available active categories: ${selectable.length}` : "No active leaf categories are published yet. An admin must publish taxonomy before category mapping is available."}</p><button type="submit" className={styles.primaryButton} disabled={busy}>{busy ? "Uploading and staging…" : "Upload and start mapping"}</button></div>
       </form>
     </section> : <>
       <section className={styles.formPanel} aria-labelledby="mapping-heading"><div className={styles.formHeading}><div><p className={styles.kicker}>STEP 2 · FIELD MAPPING</p><h2 id="mapping-heading">Match source columns</h2><p>Edit the sample mappings to match your file. Keep source column names exact. Each destination may be used once.</p></div><span className={styles.draftBadge}>BATCH {batchId.slice(0, 8)}</span></div>
