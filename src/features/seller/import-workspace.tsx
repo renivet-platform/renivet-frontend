@@ -5,6 +5,7 @@ import { AuthApiError, getCurrentSession, stepUpWithMfa } from "@/features/ident
 import type { operations } from "@/generated/renivet-api";
 import { categoryLabel, createIdempotencyKey, selectableCategories, type Category, type Paged, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import { isStaleImportPreview, validateImportFieldMappings } from "@/features/seller/import-workspace-state";
+import { buildImportTemplateCsv, type SourceProfile } from "@/features/seller/import-templates";
 import styles from "./product-workspace.module.css";
 
 type UploadRequest = operations["beginCatalogImportUpload"]["requestBody"]["content"]["application/json"];
@@ -14,7 +15,6 @@ type MappingReceipt = operations["saveImportMapping"]["responses"][200]["content
 type ImportPreview = operations["getCatalogImportPreview"]["responses"][200]["content"]["application/json"];
 type Confirmation = operations["confirmCatalogImport"]["responses"][202]["content"]["application/json"];
 type ImportResults = operations["getImportResults"]["responses"][200]["content"]["application/json"];
-type SourceProfile = "SHOPIFY" | "UNICOMMERCE" | "RENIVET" | "GENERIC";
 type MappingRow = { id: number; source: string; target: string };
 type CategoryMappingRow = { id: number; source: string; target: string };
 
@@ -29,16 +29,8 @@ const profileMappings: Record<SourceProfile, Array<[string, string]>> = {
   GENERIC: [["title", "title"], ["styleCode", "styleCode"], ["sku", "sku"], ["categoryCode", "categoryCode"]],
 };
 
-const templateHeaders: Record<SourceProfile, string[]> = {
-  SHOPIFY: ["Handle", "Title", "Variant SKU", "Product Category", "Option1 Value", "Option2 Value", "Variant Price"],
-  UNICOMMERCE: ["skuCode", "name", "categoryCode", "color", "size", "maxRetailPrice", "imageUrl"],
-  RENIVET: ["styleCode", "title", "sku", "categoryCode", "color", "size", "mrp"],
-  GENERIC: ["title", "styleCode", "sku", "categoryCode"],
-};
-
 function downloadTemplate(profile: SourceProfile) {
-  const headers = templateHeaders[profile];
-  const csv = `${headers.join(",")}\n${headers.map(() => "").join(",")}\n`;
+  const csv = buildImportTemplateCsv(profile);
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
   const anchor = document.createElement("a");
   anchor.href = url;
