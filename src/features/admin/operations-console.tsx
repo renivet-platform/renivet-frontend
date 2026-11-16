@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AuthApiError, getCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
+import { AuthApiError, getCurrentSession, logoutCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
 import { W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import type { components } from "@/generated/renivet-api";
 import styles from "./operations-console.module.css";
@@ -41,7 +41,9 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
   const [active, setActive] = useState<QueueId>(initialQueue);
   const [sessionReady, setSessionReady] = useState(false);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const [sessionCsrfToken, setSessionCsrfToken] = useState("");
   const [sessionError, setSessionError] = useState("");
+  const [signOutBusy, setSignOutBusy] = useState(false);
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [selected, setSelected] = useState<ReviewItem | null>(null);
   const [queueError, setQueueError] = useState("");
@@ -70,7 +72,7 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
 
   useEffect(() => {
     let live = true;
-    getCurrentSession().then((session) => { if (live) { setSessionReady(true); setSessionUserId(session.user.id); setSessionError(""); } })
+    getCurrentSession().then((session) => { if (live) { setSessionReady(true); setSessionUserId(session.user.id); setSessionCsrfToken(session.csrfToken); setSessionError(""); } })
       .catch((error: unknown) => { if (live) setSessionError(errorMessage(error)); });
     return () => { live = false; };
   }, []);
@@ -91,6 +93,14 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
     router.replace(reviewQueuePath(active, id));
     try { const value = await w2Request<ReviewItem>(["admin", "reviews", active, id]); if (requestId === detailRequest.current) setSelected(value); }
     catch (error) { if (requestId === detailRequest.current) setDetailError(errorMessage(error)); }
+  }
+
+  async function signOut() {
+    if (signOutBusy || !sessionCsrfToken) return;
+    setSignOutBusy(true); setSessionError("");
+    try { await logoutCurrentSession(sessionCsrfToken); router.replace("/sign-in"); router.refresh(); }
+    catch (error) { setSessionError(errorMessage(error)); }
+    finally { setSignOutBusy(false); }
   }
 
   async function decide(decision: string) {
@@ -159,7 +169,7 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
         <div className={styles.sidebarFoot}><span className={styles.avatar} aria-hidden="true">R</span><span><strong>Operations workspace</strong><small>W2 · admin review</small></span></div>
       </aside>
       <main className={styles.main} id="overview" aria-labelledby="operations-title">
-        <header className={styles.topbar}><p><span>Workspace</span><span aria-hidden="true">/</span><strong>Operations</strong></p><div className={styles.topbarActions}>{initialItemId ? <a className={styles.navLink} href={reviewQueuePath(active)}>Back to queue</a> : null}<span className={styles.previewBadge}><span aria-hidden="true" /> Authenticated review</span></div></header>
+        <header className={styles.topbar}><p><span>Workspace</span><span aria-hidden="true">/</span><strong>Operations</strong></p><div className={styles.topbarActions}>{initialItemId ? <a className={styles.navLink} href={reviewQueuePath(active)}>Back to queue</a> : null}{sessionReady ? <button className={styles.sessionButton} type="button" onClick={() => void signOut()} disabled={signOutBusy}>{signOutBusy ? "Signing out…" : "Sign out"}</button> : sessionError ? <a className={styles.sessionButton} href="/sign-in">Sign in</a> : null}<span className={styles.previewBadge}><span aria-hidden="true" /> Authenticated review</span></div></header>
         <div className={styles.content}>
           <section className={styles.hero} aria-labelledby="operations-title"><div><p className={styles.eyebrow}>RENIVET · PLATFORM OPERATIONS</p><h1 id="operations-title">Review work,<br /><em>with context.</em></h1><p className={styles.heroCopy}>Each decision is tied to the persisted revision, its evidence and an independent reviewer.</p></div>
             <div className={styles.heroAside}><span className={styles.heroGlyph} aria-hidden="true">✳</span><p>Fresh authorization is required for every decision.</p><span>{area.permission}</span></div></section>
