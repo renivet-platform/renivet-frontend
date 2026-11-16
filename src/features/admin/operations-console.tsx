@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AuthApiError, getCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
 import { W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import type { components } from "@/generated/renivet-api";
 import styles from "./operations-console.module.css";
+import { reviewQueuePath, type AdminReviewQueue } from "./admin-route-utils";
 
-type QueueId = "taxonomy" | "quality" | "pricing" | "claims" | "publishing";
+type QueueId = AdminReviewQueue;
 type ReviewItem = components["schemas"]["AdminReviewItemDto"] & Record<string, unknown>;
 type ReviewPage = Omit<components["schemas"]["AdminReviewQueueResponseDto"], "items"> & { items: ReviewItem[] };
 const queues: Array<{ id: QueueId; title: string; description: string; permission: string }> = [
@@ -32,8 +34,11 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "The review request could not be completed.";
 }
 
-export function AdminOperationsConsole() {
-  const [active, setActive] = useState<QueueId>("quality");
+export { isQueueId, reviewQueuePath } from "./admin-route-utils";
+
+export function AdminOperationsConsole({ initialQueue = "quality", initialItemId }: { initialQueue?: QueueId; initialItemId?: string } = {}) {
+  const router = useRouter();
+  const [active, setActive] = useState<QueueId>(initialQueue);
   const [sessionReady, setSessionReady] = useState(false);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [sessionError, setSessionError] = useState("");
@@ -72,11 +77,18 @@ export function AdminOperationsConsole() {
 
   useEffect(() => { if (sessionReady) void loadQueue(active); }, [active, loadQueue, sessionReady]);
 
+  useEffect(() => {
+    if (!sessionReady || !initialItemId || !items.length) return;
+    const item = items.find((candidate) => itemId(active, candidate) === initialItemId);
+    if (item) void openItem(item);
+  }, [active, initialItemId, items, sessionReady]);
+
   async function openItem(item: ReviewItem) {
     const requestId = ++detailRequest.current;
     const id = itemId(active, item);
     if (!id) { setDetailError("The queue returned an invalid review reference."); return; }
     setSelected(null); setConfirmedRevision(false); setDetailError(""); setNotice("");
+    router.replace(reviewQueuePath(active, id));
     try { const value = await w2Request<ReviewItem>(["admin", "reviews", active, id]); if (requestId === detailRequest.current) setSelected(value); }
     catch (error) { if (requestId === detailRequest.current) setDetailError(errorMessage(error)); }
   }
@@ -139,7 +151,7 @@ export function AdminOperationsConsole() {
         <a className={styles.navLink} href="/brand-approvals">Brand approvals</a>
         <a className={styles.navLink} href="/taxonomy">Taxonomy authoring</a>
         <nav aria-label="Operations review queues" className={styles.navigation}>
-          {queues.map((queue, index) => <button key={queue.id} type="button" className={active === queue.id ? styles.navActive : styles.navLink} onClick={() => { setActive(queue.id); setNotice(""); }}>
+          {queues.map((queue, index) => <button key={queue.id} type="button" className={active === queue.id ? styles.navActive : styles.navLink} onClick={() => { setActive(queue.id); setNotice(""); router.replace(reviewQueuePath(queue.id)); }}>
             <span className={styles.navIndex}>{String(index + 1).padStart(2, "0")}</span>{queue.title}
           </button>)}
         </nav>
@@ -147,7 +159,7 @@ export function AdminOperationsConsole() {
         <div className={styles.sidebarFoot}><span className={styles.avatar} aria-hidden="true">R</span><span><strong>Operations workspace</strong><small>W2 · admin review</small></span></div>
       </aside>
       <main className={styles.main} id="overview" aria-labelledby="operations-title">
-        <header className={styles.topbar}><p><span>Workspace</span><span aria-hidden="true">/</span><strong>Operations</strong></p><span className={styles.previewBadge}><span aria-hidden="true" /> Authenticated review</span></header>
+        <header className={styles.topbar}><p><span>Workspace</span><span aria-hidden="true">/</span><strong>Operations</strong></p><div className={styles.topbarActions}>{initialItemId ? <a className={styles.navLink} href={reviewQueuePath(active)}>Back to queue</a> : null}<span className={styles.previewBadge}><span aria-hidden="true" /> Authenticated review</span></div></header>
         <div className={styles.content}>
           <section className={styles.hero} aria-labelledby="operations-title"><div><p className={styles.eyebrow}>RENIVET · PLATFORM OPERATIONS</p><h1 id="operations-title">Review work,<br /><em>with context.</em></h1><p className={styles.heroCopy}>Each decision is tied to the persisted revision, its evidence and an independent reviewer.</p></div>
             <div className={styles.heroAside}><span className={styles.heroGlyph} aria-hidden="true">✳</span><p>Fresh authorization is required for every decision.</p><span>{area.permission}</span></div></section>
