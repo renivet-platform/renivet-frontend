@@ -33,6 +33,14 @@ export function BrandWorkspaceHome({ brandId }: { brandId: string }) {
   useEffect(() => { void load(); }, [brandId]);
 
   const brandPath = `/brands/${encodeURIComponent(brandId)}`;
+  const workflowCards = [
+    { key: "drafts", title: "Draft editor", detail: "Create or resume a product draft with a pinned taxonomy version and live validation.", href: `${brandPath}/products`, action: "Open draft editor" },
+    { key: "product-details", title: "Variants, media & claims", detail: "Open a persisted product to manage its SKU matrix, private media, pricing and evidence.", href: `${brandPath}/products`, action: "Open product catalogue" },
+    { key: "imports", title: "Import wizard", detail: "Use Shopify, Unicommerce/Uniware, Renivet or generic mappings with a frozen preview and retry path.", href: `${brandPath}/imports`, action: "Start an import" },
+    { key: "inventory", title: "Stock console", detail: "Read the authoritative inventory ledger and submit controlled adjustments when the backend permits them.", href: `${brandPath}/inventory`, action: "Open inventory" },
+    { key: "onboarding", title: "Onboarding & eligibility", detail: "Track the persisted application, verification and catalogue-eligibility status for this brand.", href: `${brandPath}/onboarding`, action: "View onboarding" },
+    { key: "team", title: "Team access", detail: "Review redacted members and backend-resolved roles without granting access from the UI.", href: `${brandPath}/team`, action: "Review team access" },
+  ] as const;
   return <main className={styles.page} aria-labelledby="workspace-title"><div className={styles.shell}>
     <nav className={styles.breadcrumb} aria-label="Breadcrumb"><Link href="/account">Account</Link><span aria-hidden="true">/</span><span>Brand workspace</span></nav>
     <header className={styles.header}><div><p className={styles.kicker}>RENIVET BRAND WORKSPACE</p><h1 id="workspace-title">{access?.brandName ?? "Your brand workspace"}</h1><p className={styles.subtitle}>Create drafts, bring existing catalogue data across safely, and keep every operational change traceable.</p></div><span className={styles.state}>{loading ? "Loading access" : access?.membershipState ?? "Access status unavailable"}</span></header>
@@ -44,6 +52,12 @@ export function BrandWorkspaceHome({ brandId }: { brandId: string }) {
       <article className={styles.card}><h2>Bulk imports</h2><p>Download the selected source template, upload privately, map columns, review a frozen preview, and retry only failed rows.</p><Link className={styles.cardLink} href={`${brandPath}/imports`}>Import products →</Link></article>
       <article className={styles.card}><h2>Inventory</h2><p>Read authoritative stock balances and submit controlled, audited adjustments through the inventory ledger.</p><Link className={styles.cardLink} href={`${brandPath}/inventory`}>Open inventory →</Link></article>
       <article className={styles.card}><h2>Access &amp; team</h2><p>Review the current membership, redacted team members, and permission grants resolved by the backend.</p><Link className={styles.cardLink} href={`${brandPath}/team`}>Review access →</Link></article>
+    </section>
+    <section className={styles.workflowSection} aria-labelledby="workflow-map-title">
+      <div className={styles.workflowHeading}><div><p className={styles.kicker}>LIVE W2 WORKFLOW MAP</p><h2 id="workflow-map-title">Everything your brand can do here</h2><p>Each destination uses persisted data and backend authorization. If a prerequisite is missing, the destination explains the gate instead of showing a fake success state.</p></div><span className={styles.workflowCount}>{loading ? "Checking access..." : `${workflowCards.length} live destinations`}</span></div>
+      <div className={styles.workflowGrid}>
+        {workflowCards.map((card, index) => <article className={styles.workflowCard} key={card.key}><div className={styles.workflowCardHeader}><span className={styles.workflowStatus}>LIVE</span><span className={styles.workflowIndex}>{String(index + 1).padStart(2, "0")}</span></div><h3>{card.title}</h3><p>{card.detail}</p><Link className={styles.cardLink} href={card.href}>{card.action} -&gt;</Link></article>)}
+      </div>
     </section>
     <h2 className={styles.sectionTitle}>A safer path from draft to review</h2>
     <section className={styles.steps} aria-label="Product workflow steps">
