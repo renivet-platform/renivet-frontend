@@ -104,7 +104,8 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
       const request: UploadRequest = { sourceKind, fileName: file.name, mimeType: isXlsx ? xlsxMime : "text/csv", byteLength: file.size, sha256: sha };
       const intent = await w2Request<UploadIntent>(["brands", brandId, "product-imports", "uploads"], { method: "POST", body: request, csrfToken, idempotencyKey: createIdempotencyKey() });
       const uploadUrl = new URL(intent.uploadUrl);
-      if (uploadUrl.protocol !== "https:" || intent.uploadMethod !== "PUT") throw new Error("The private upload intent is invalid.");
+      const localUpload = uploadUrl.protocol === "http:" && ["127.0.0.1", "localhost"].includes(uploadUrl.hostname);
+      if ((!localUpload && uploadUrl.protocol !== "https:") || intent.uploadMethod !== "PUT") throw new Error("The private upload intent is invalid.");
       const uploaded = await fetch(uploadUrl, { method: "PUT", headers: intent.headers, body: file, credentials: "omit", redirect: "error" });
       if (!uploaded.ok) throw new Error("The private file upload did not complete. Start again with a new upload intent.");
       const createBody: CreateRequest = { sourceKind: sourceKind as CreateRequest["sourceKind"], sourceAsOf: new Date(sourceAsOf).toISOString(), fileUploadId: intent.fileUploadId, mode };
