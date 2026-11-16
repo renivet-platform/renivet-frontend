@@ -25,6 +25,9 @@
 .topbar p { display: flex; align-items: center; gap: 10px; margin: 0; color: #5d6d63; font-size: 12px; }
 .topbar strong { color: #203d33; font-weight: 650; }
 .topbarActions { display: flex; align-items: center; gap: 14px; }
+.sessionButton { display: inline-flex; min-height: 36px; align-items: center; justify-content: center; padding: 0 12px; border: 1px solid #c8d8cd; border-radius: 8px; background: #fff; color: #174c3e; font-size: 12px; font-weight: 700; text-decoration: none; cursor: pointer; }
+.sessionButton:hover:not(:disabled) { background: #edf4ef; }
+.sessionButton:disabled { cursor: wait; opacity: .65; }
 .previewBadge { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #e9e4d2; border-radius: 99px; background: #fffdf7; color: #6e6244; font-size: 10px; font-weight: 700; letter-spacing: .03em; }
 .previewBadge > span, .statusPill > span { width: 7px; height: 7px; border-radius: 50%; background: #d2a341; box-shadow: 0 0 0 3px #f5edd8; }
 .content { width: min(1180px, 100%); margin-inline: auto; padding: 24px clamp(24px, 5vw, 72px) 34px; }
@@ -96,7 +99,7 @@
 .statusPanel dt { color: #5d6c63; font-size: 10px; }
 .statusPanel dd { margin: 3px 0 0; overflow-wrap: anywhere; color: #294d3d; font-size: 12px; }
 .footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 28px; padding-top: 14px; border-top: 1px solid #e3e5dc; color: #5f7067; font-size: 9px; font-weight: 700; letter-spacing: .07em; }
-.navLink:focus-visible, .navActive:focus-visible, .brand:focus-visible, .disabledAction:focus-visible, .reviewCard button:focus-visible, .reviewCard input:focus-visible, .reviewCard textarea:focus-visible, .statusPanel button:focus-visible, .statusPanel input:focus-visible, .statusPanel textarea:focus-visible, .confirmation input:focus-visible { outline: 3px solid #b9d3c3; outline-offset: 3px; }
+.navLink:focus-visible, .navActive:focus-visible, .brand:focus-visible, .sessionButton:focus-visible, .disabledAction:focus-visible, .reviewCard button:focus-visible, .reviewCard input:focus-visible, .reviewCard textarea:focus-visible, .statusPanel button:focus-visible, .statusPanel input:focus-visible, .statusPanel textarea:focus-visible, .confirmation input:focus-visible { outline: 3px solid #b9d3c3; outline-offset: 3px; }
 
 @media (max-width: 960px) {
   .sidebar { width: 214px; }
