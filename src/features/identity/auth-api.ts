@@ -12,6 +12,8 @@ type SetPhoneRequest = operations["setPhoneForVerification"]["requestBody"]["con
 type SetPhoneResponse = operations["setPhoneForVerification"]["responses"][202]["content"]["application/json"];
 type MfaStepUpRequest = operations["stepUpWithMfa"]["requestBody"]["content"]["application/json"];
 type MfaStepUpResponse = operations["stepUpWithMfa"]["responses"][200]["content"]["application/json"];
+type MfaEnrollmentResponse = components["schemas"]["MfaEnrollmentResponseDto"];
+type MfaEnabledResponse = components["schemas"]["MfaEnabledResponseDto"];
 // NestJS currently documents logout's JSON example without a response schema, so validate this narrow shape at runtime.
 type LogoutResponse = { status: "logged_out" };
 type CsrfToken = operations["logoutCurrentSession"]["parameters"]["header"]["X-CSRF-Token"];
@@ -220,6 +222,32 @@ export async function stepUpWithMfa(code: MfaStepUpRequest["code"], csrfToken: C
     throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
   }
   return response as MfaStepUpResponse;
+}
+
+export async function beginMfaEnrollment(csrfToken: CsrfToken): Promise<MfaEnrollmentResponse> {
+  const response = await requestJson<unknown>("/api/auth/mfa/enrollments", {
+    ...jsonPost({}),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+  });
+  if (!response || typeof response !== "object") throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  const value = response as Record<string, unknown>;
+  if (value.state !== "enrollment_pending" || typeof value.provisioningUri !== "string") {
+    throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  }
+  return response as MfaEnrollmentResponse;
+}
+
+export async function confirmMfaEnrollment(code: string, csrfToken: CsrfToken): Promise<MfaEnabledResponse> {
+  const response = await requestJson<unknown>("/api/auth/mfa/enrollments/verify", {
+    ...jsonPost({ code }),
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+  });
+  if (!response || typeof response !== "object") throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  const value = response as Record<string, unknown>;
+  if (value.state !== "enabled" || !Array.isArray(value.recoveryCodes) || typeof value.csrfToken !== "string") {
+    throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
+  }
+  return response as MfaEnabledResponse;
 }
 
 export async function logoutCurrentSession(csrfToken: CsrfToken): Promise<LogoutResponse> {

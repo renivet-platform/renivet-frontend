@@ -42,6 +42,7 @@ function isAllowedAuthOperation(path: string, method: AuthMethod): boolean {
   if (["/auth/register", "/auth/sessions", "/auth/challenges", "/auth/phone"].includes(path)) return method === "POST";
   if (path === "/auth/session") return method === "GET" || method === "DELETE";
   if (path === "/auth/mfa/step-up") return method === "POST";
+  if (path === "/auth/mfa/enrollments" || path === "/auth/mfa/enrollments/verify") return method === "POST";
   const match = /^\/auth\/challenges\/([^/]+)\/verify$/.exec(path);
   return method === "POST" && Boolean(match && isValidChallengeId(match[1]));
 }
@@ -117,14 +118,14 @@ export async function proxyAuthRequest(request: Request, path: string, method: A
   const upstreamHeaders = new Headers({ Accept: "application/json" });
   if (body !== undefined) upstreamHeaders.set("Content-Type", "application/json");
   const cookie = request.headers.get("cookie");
-  if (cookie && (path === "/auth/session" || path === "/auth/sessions" || path === "/auth/phone" || path === "/auth/mfa/step-up")) {
+  if (cookie && (path === "/auth/session" || path === "/auth/sessions" || path === "/auth/phone" || path === "/auth/mfa/step-up" || path === "/auth/mfa/enrollments" || path === "/auth/mfa/enrollments/verify")) {
     upstreamHeaders.set("Cookie", cookie);
   }
   if (method !== "GET") {
     upstreamHeaders.set("Origin", request.headers.get("origin")!);
     upstreamHeaders.set("Sec-Fetch-Site", "same-origin");
   }
-  if (method === "DELETE" || path === "/auth/phone" || path === "/auth/mfa/step-up") {
+  if (method === "DELETE" || path === "/auth/phone" || path === "/auth/mfa/step-up" || path === "/auth/mfa/enrollments" || path === "/auth/mfa/enrollments/verify") {
     const csrfToken = request.headers.get("x-csrf-token");
     if (!csrfToken || csrfToken.length > 512) {
       return jsonResponse({
