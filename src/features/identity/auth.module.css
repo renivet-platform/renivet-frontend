@@ -299,6 +299,7 @@
 .label { color: var(--auth-ink); font-size: .9rem; font-weight: 650; }
 
 .input,
+.textarea,
 .passwordInput {
   width: 100%;
   min-height: 3.15rem;
@@ -315,6 +316,7 @@
 .input::placeholder,
 .passwordInput::placeholder { color: #66746c; opacity: 1; }
 .input:focus-visible,
+.textarea:focus-visible,
 .passwordInput:focus-visible { border-color: var(--auth-focus); box-shadow: 0 0 0 3px rgba(11, 107, 83, .12); }
 
 .link:focus-visible,
