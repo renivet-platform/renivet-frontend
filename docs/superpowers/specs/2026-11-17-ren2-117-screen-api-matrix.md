@@ -1,19 +1,21 @@
 # REN2-117 Screen and API Matrix (Draft for Owner Review)
 
-**Source archive:** `C:\Users\AYAN\Downloads\renivet (2).zip`
-**SHA-256:** `e2c759281cb35cb9be689cf52e824bfa83120fd45769f39c6b6fcbd3cf05c81d` (verified)
+**Approved handoff, Part 1 (source and desktop):** SHA-256 `88F91F16862B24B9451DDEA07E3D9EACDD97D91084295A43C773BB6D1C92FD72` (verified; attached to Linear REN2-117).
+**Approved handoff, Part 2 (mobile and additional states):** SHA-256 `02530F2FA95A61D643E9DBA9B65D54B7488F7314A7ADC819A5338F8E18B27A7B` (verified; attached to Linear REN2-117).
+**Earlier source archive:** `renivet (2).zip`, SHA-256 `e2c759281cb35cb9be689cf52e824bfa83120fd45769f39c6b6fcbd3cf05c81d` (verified; superseded by the two-part handoff).
 **Canonical design directory:** `renivet/w1-w2-ideal-prototype-2026-11-17/`
 **Source inventory:** 40 prototype routes; 168 designed states; 81 exercised controls.
-**Review state:** Draft. No independent UX/accessibility sign-off is claimed.
+**Review state:** Owner review required. No independent UX/accessibility sign-off is claimed.
 
 ## REN2-117 implementation checkpoint
 
-- Shared seller/admin workspace shell implemented on existing route groups; seller navigation is derived from a validated UUID route segment and does not establish authorization.
-- Existing product, import, inventory, identity, and operations features remain connected to their current same-origin APIs and backend gates. No new API or database contract was introduced in this checkpoint.
-- Added semantic global design tokens, visible keyboard focus, reduced-motion handling, a responsive mobile navigation bar, and route navigation tests.
+- This matrix contains 40 unique prototype IDs plus current route/API parity. The approved two-part handoff is attached to Linear REN2-117 with the verified checksums above.
+- Shared seller/admin workspace shell and role-scoped routes use the existing Next.js app; seller brand selection uses authenticated session destinations and does not itself grant authorization.
+- Existing product, import, inventory, identity, and operations features remain connected to same-origin APIs and existing gates. No backend API, database contract, release flag, or migration was changed.
+- Added approved design tokens, visible keyboard focus, reduced-motion handling, responsive navigation, single-input OTP presentation, server-session-constrained sign-in return routing, real-data seller dashboard summaries and operations queue counts, and explicit unavailable states for contract-gated workflows.
 - Removed unverified “LIVE” / “live destinations” labels from the seller workspace workflow map.
-- **Not accepted as full REN2-117 completion:** all 40 prototype screens have not been individually ported and reviewed; missing sensitive API contracts remain out of scope until approved; shopper W3 remains context-only; browser-based desktop/mobile visual QA was not executed because the browser access host was unavailable. The feature gates remain unchanged.
-- Verification on this checkpoint: frontend tests 70/70 PASS; lint PASS; typecheck PASS; production build PASS; `git diff --check` PASS. Browser visual QA: NOT EXECUTED. Backend integration against disposable PostgreSQL/Redis: NOT EXECUTED (no backend changes in this checkpoint).
+- **Not accepted as full REN2-117 completion:** independent visual/accessibility/device QA and integrated journey tests have not run; contract/owner-blocked workflows remain tracked; shopper W3 remains context-only. No rollout or cutover is implied. Feature gates remain unchanged.
+- Verification: focused REN2-117 tests 8/8 PASS; full frontend tests 75/75 PASS; lint PASS; typecheck PASS; production build PASS; `git diff --check` PASS. Browser visual QA and real FEâ†”BE environment tests: NOT EXECUTED.
 
 This matrix records the current app routes and API state as found on frontend `origin/main` (`62dfa153`) and backend `origin/main` (`93c6c0e`). The prototype is a visual and interaction reference; its data and simulated outcomes are not production behavior. The Linear issue and current OpenAPI are authoritative where they differ from prototype notes.
 

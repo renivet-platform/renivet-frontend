@@ -142,3 +142,19 @@
 @media (prefers-reduced-motion: reduce) {
   .navLink, .navActive { transition: none; }
 }
+
+/* Shared Renivet 2.0 operations palette; permissions and review behavior remain in the feature/API layer. */
+.shell{background:#f6f4ef;color:#1b2420}
+.sidebar{background:#fff;border-color:#e1ddd3}
+.brandMark{background:#1f5a45;color:#fff}
+.brandName span,.navCaption,.eyebrow,.sidebarNote,.statusCopy,.cardCopy,.statusFacts{color:#5d6963}
+.navLink:hover,.navActive{background:#e4eee8;color:#163f31}
+.main,.content{background:#f6f4ef}
+.topbar{border-color:#e1ddd3;background:#fff}
+.hero,.statusPanel,.reviewCard,.routeInventory,.safetyBanner{border-color:#e1ddd3;border-radius:12px;background:#fff}
+.sectionTitle,.hero h1,.hero h2{font-family:inherit;color:#1b2420;letter-spacing:normal}
+.statusPill,.gatedBadge{border-color:#e1ddd3;background:#e4eee8;color:#163f31}
+.sessionButton,.disabledAction{min-height:44px;border-color:#e1ddd3}
+.reviewCard:hover{border-color:#b9c8be;background:#faf9f6}
+.approve{min-height:44px;background:#1f5a45}
+.linkButton{min-height:44px;color:#163f31}

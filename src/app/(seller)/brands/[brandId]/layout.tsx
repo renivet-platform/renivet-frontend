@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { WorkspaceShell } from "@/components/layout/workspace-shell";
 
-export default function BrandLayout({ children }: { children: ReactNode }) {
-  return <WorkspaceShell role="seller">{children}</WorkspaceShell>;
+/** Brand navigation is shared by the parent /brands layout. */
+export default function BrandRouteLayout({ children }: { children: ReactNode }) {
+  return children;
 }

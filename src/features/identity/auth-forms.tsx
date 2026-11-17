@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState, type RefObject } from "react";
 import {
   AuthApiError,
   beginMfaEnrollment,
@@ -24,6 +24,7 @@ import {
 import type { CurrentSession } from "./auth-api";
 import { isAcceptedPassphrase, MAX_PASSPHRASE_LENGTH, MIN_PASSPHRASE_LENGTH, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber, phoneContactErrorMessage } from "./auth-policy";
 import { AuthShell } from "./auth-shell";
+import { appendReturnTarget, resolvePostSignInPath } from "./auth-routing";
 import styles from "./auth.module.css";
 
 function messageFor(error: unknown): string {
@@ -39,6 +40,21 @@ function FormMessage({ error, status, id }: { error: string; status: string; id?
   if (error) return <p id={id} className={styles.errorBox} role="alert">{error}</p>;
   if (status) return <p className={styles.statusBox} role="status">{status}</p>;
   return null;
+}
+
+function OtpInput({ id, value, onChange, inputRef, describedBy, invalid = false }: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  inputRef?: RefObject<HTMLInputElement | null>;
+  describedBy?: string;
+  invalid?: boolean;
+}) {
+  const activeIndex = Math.min(value.length, 5);
+  return <div className={`${styles.otp} ${invalid ? styles.otpInvalid : ""}`}>
+    <input ref={inputRef} id={id} className={styles.otpNative} name="one-time-code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={value} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(event) => onChange(normalizeOtpEntry(event.currentTarget.value))} />
+    <div className={styles.otpCells} aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <span className={`${styles.otpCell} ${index === activeIndex ? styles.otpCellActive : ""}`} key={index}>{value[index] ?? ""}</span>)}</div>
+  </div>;
 }
 
 function MfaEnrollmentPanel({ csrfToken, onCsrfToken }: { csrfToken: string; onCsrfToken: (value: string) => void }) {
@@ -81,7 +97,7 @@ function MfaEnrollmentPanel({ csrfToken, onCsrfToken }: { csrfToken: string; onC
       <textarea id="mfa-provisioning-uri" className={styles.textarea} value={uri} readOnly rows={4} />
       <p className={styles.hint}>Copy this URI into your authenticator app, then enter the current six-digit code.</p>
       <label className={styles.label} htmlFor="mfa-enrollment-code">Authenticator code</label>
-      <input id="mfa-enrollment-code" className={styles.input} inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/[^0-9]/g, ""))} required />
+      <OtpInput id="mfa-enrollment-code" value={code} onChange={setCode} />
       <button className={styles.primaryButton} type="submit" disabled={busy || code.length !== 6}>{busy ? "Confirming…" : "Confirm MFA"}</button>
     </form>}
     {state === "enabled" && <div className={styles.successBox} role="status">
@@ -109,11 +125,11 @@ function PasswordField({ id, label, autoComplete, value, onChange }: {
   </div>;
 }
 
-export function SignInForm() {
+export function SignInForm({ nextPath }: { nextPath?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [method, setMethod] = useState<"email" | "phone">("email");
+  const [method, setMethod] = useState<"email" | "phone">("phone");
   const [phone, setPhone] = useState("");
   const [challengeId, setChallengeId] = useState("");
   const [code, setCode] = useState("");
@@ -121,6 +137,15 @@ export function SignInForm() {
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const codeInput = useRef<HTMLInputElement>(null);
+  async function continueAfterSignIn() {
+    try {
+      const session = await getCurrentSession();
+      router.replace(resolvePostSignInPath(nextPath, session.destination));
+    } catch {
+      router.replace("/account");
+    }
+    router.refresh();
+  }
   useEffect(() => { if (challengeId) codeInput.current?.focus(); }, [challengeId]);
   async function submitEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError("");
@@ -128,7 +153,7 @@ export function SignInForm() {
     setBusy(true);
     try {
       await createPasswordSession({ email: normalizeEmail(email), password });
-      setPassword(""); router.replace("/account"); router.refresh();
+      setPassword(""); await continueAfterSignIn();
     } catch (cause) { setError(messageFor(cause)); }
     finally { setBusy(false); }
   }
@@ -150,7 +175,7 @@ export function SignInForm() {
     setBusy(true);
     try {
       await verifyPhoneLogin(challengeId, code);
-      setCode(""); router.replace("/account"); router.refresh();
+      setCode(""); await continueAfterSignIn();
     } catch (cause) { setError(messageFor(cause)); }
     finally { setBusy(false); }
   }
@@ -165,7 +190,7 @@ export function SignInForm() {
         <div className={styles.field}><label className={styles.label} htmlFor="signin-email">Email address</label>
           <input className={styles.input} id="signin-email" name="email" type="email" autoComplete="username" inputMode="email" maxLength={254} required value={email} onChange={event => setEmail(event.currentTarget.value)} /></div>
         <PasswordField id="signin-password" label="Password" autoComplete="current-password" value={password} onChange={setPassword} />
-        <div className={styles.formLinks}><Link className={styles.link} href="/recover">Forgot password?</Link><Link className={styles.link} href="/register">Create account</Link></div>
+        <div className={styles.formLinks}><Link className={styles.link} href={appendReturnTarget("/recover", nextPath)}>Forgot password?</Link><Link className={styles.link} href={appendReturnTarget("/register", nextPath)}>Create account</Link></div>
         <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
       </form> : !challengeId ? <form className={styles.form} onSubmit={requestPhoneCode}>
         <FormMessage error={error} status={status} />
@@ -173,12 +198,12 @@ export function SignInForm() {
           <input className={styles.input} id="signin-phone" name="tel" type="tel" autoComplete="tel" inputMode="tel" maxLength={20} required value={phone} aria-describedby="signin-phone-hint" onChange={event => setPhone(event.currentTarget.value)} />
           <p id="signin-phone-hint" className={styles.hint}>Use the verified Indian mobile number on your account.</p></div>
         <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Sending code…" : "Send sign-in code"}</button>
-        <p className={styles.hint}>New to Renivet? <Link className={styles.link} href="/register">Create an account</Link></p>
+        <p className={styles.hint}>New to Renivet? <Link className={styles.link} href={appendReturnTarget("/register", nextPath)}>Create an account</Link></p>
       </form> : <form className={styles.form} onSubmit={verifyPhoneCode}>
         <FormMessage error={error} status={status} />
         <p className={styles.statusBox} role="status">Enter the six-digit code sent to your verified phone.</p>
         <div className={styles.field}><label className={styles.label} htmlFor="signin-phone-code">Six-digit sign-in code</label>
-          <input ref={codeInput} className={styles.input} id="signin-phone-code" name="one-time-code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={event => setCode(normalizeOtpEntry(event.currentTarget.value))} />
+          <OtpInput inputRef={codeInput} id="signin-phone-code" value={code} onChange={setCode} />
           <p className={styles.hint}>The code expires in five minutes. Never share it.</p></div>
         <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Signing in…" : "Verify code and sign in"}</button>
         <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => { setChallengeId(""); setCode(""); setError(""); setStatus(""); }}>Use a different number</button>
@@ -187,7 +212,7 @@ export function SignInForm() {
   </AuthShell>;
 }
 
-export function RegisterForm() {
+export function RegisterForm({ nextPath }: { nextPath?: string }) {
   const router = useRouter();
   const [method, setMethod] = useState<"phone" | "email">("phone");
   const [phone, setPhone] = useState(""); const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
@@ -195,6 +220,15 @@ export function RegisterForm() {
   const [error, setError] = useState(""); const [status, setStatus] = useState(""); const [busy, setBusy] = useState(false);
   const codeInput = useRef<HTMLInputElement>(null);
   const successLink = useRef<HTMLAnchorElement>(null);
+  async function continueAfterSignIn() {
+    try {
+      const session = await getCurrentSession();
+      router.replace(resolvePostSignInPath(nextPath, session.destination));
+    } catch {
+      router.replace("/account");
+    }
+    router.refresh();
+  }
   useEffect(() => { if (challengeId) codeInput.current?.focus(); }, [challengeId]);
   useEffect(() => { if (verified) successLink.current?.focus(); }, [verified]);
 
@@ -227,7 +261,7 @@ export function RegisterForm() {
     try {
       if (method === "phone") {
         await verifyPhoneRegistration(challengeId, code);
-        setCode(""); router.replace("/account"); router.refresh();
+        setCode(""); await continueAfterSignIn();
       } else {
         await verifyChallenge(challengeId, { purpose: "email_verification", code });
         setCode(""); setChallengeId(""); setVerified(true);
@@ -249,7 +283,7 @@ export function RegisterForm() {
   }
 
   return <AuthShell eyebrow="Join Renivet" title="Create your account" description={method === "phone" ? "Use your phone number and a one-time SMS code. No password is needed." : "Start with an email address and a password. We’ll ask you to verify your email."}>
-    {verified ? <div className={styles.form}><p className={styles.successBox} role="status" tabIndex={-1}>Your email is verified. You can now sign in.</p><Link ref={successLink} className={styles.primaryButton} href="/sign-in">Go to sign in</Link></div>
+    {verified ? <div className={styles.form}><p className={styles.successBox} role="status" tabIndex={-1}>Your email is verified. You can now sign in.</p><Link ref={successLink} className={styles.primaryButton} href={appendReturnTarget("/sign-in", nextPath)}>Go to sign in</Link></div>
       : <>
       <div role="group" aria-label="Registration method" className={styles.methodSelector}>
         <button className={styles.secondaryButton} type="button" aria-pressed={method === "phone"} onClick={() => { setMethod("phone"); setChallengeId(""); setCode(""); setError(""); setStatus(""); }}>Phone number</button>
@@ -269,13 +303,12 @@ export function RegisterForm() {
           <p className={styles.hint}>We won’t reveal whether an email address already has an account.</p>
         </>}
         <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Sending code…" : method === "phone" ? "Continue with phone" : "Create account"}</button>
-        <p className={styles.hint}>Already have an account? <Link className={styles.link} href="/sign-in">Sign in</Link></p>
+        <p className={styles.hint}>Already have an account? <Link className={styles.link} href={appendReturnTarget("/sign-in", nextPath)}>Sign in</Link></p>
       </form> : <form className={styles.form} onSubmit={verify}>
         <FormMessage id="register-code-error" error={error} status={status} />
         <p className={styles.statusBox} role="status">Enter the six-digit code sent to <strong>{method === "phone" ? phone : normalizeEmail(email)}</strong>. It expires in five minutes.</p>
         <div className={styles.field}><label className={styles.label} htmlFor="register-code">Six-digit verification code</label>
-          <input ref={codeInput} className={styles.input} id="register-code" name="one-time-code" type="text" inputMode="numeric" autoComplete="one-time-code"
-            pattern="[0-9]{6}" maxLength={6} required value={code} aria-invalid={error ? true : undefined} aria-describedby={error ? "register-code-error" : "register-code-hint"} onChange={event => { setCode(normalizeOtpEntry(event.currentTarget.value)); setError(""); }} />
+          <OtpInput inputRef={codeInput} id="register-code" value={code} invalid={Boolean(error)} describedBy={error ? "register-code-error" : "register-code-hint"} onChange={(value) => { setCode(value); setError(""); }} />
           <p id="register-code-hint" className={styles.hint}>You can paste the full code. Never share it with anyone.</p></div>
         <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Verifying…" : method === "phone" ? "Verify and create account" : "Verify email"}</button>
         <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void resend()}>{busy ? "Sending…" : "Resend code"}</button>
@@ -283,7 +316,7 @@ export function RegisterForm() {
       </form>}</>}
   </AuthShell>;
 }
-export function RecoveryForm() {
+export function RecoveryForm({ nextPath }: { nextPath?: string }) {
   const [email, setEmail] = useState(""); const [challengeId, setChallengeId] = useState(""); const [resetDone, setResetDone] = useState(false);
   const [code, setCode] = useState(""); const [newPassword, setNewPassword] = useState("");
   const [error, setError] = useState(""); const [status, setStatus] = useState(""); const [busy, setBusy] = useState(false);
@@ -321,7 +354,7 @@ export function RecoveryForm() {
     finally { setBusy(false); }
   }
   return <AuthShell eyebrow="Account recovery" title="Reset your password" description="Request a one-time code using the email on your account.">
-    {resetDone ? <div className={styles.form}><p className={styles.successBox} role="status">If the code was valid, your password has been reset.</p><Link ref={signInLink} className={styles.primaryButton} href="/sign-in">Sign in with your new password</Link></div>
+    {resetDone ? <div className={styles.form}><p className={styles.successBox} role="status">If the code was valid, your password has been reset.</p><Link ref={signInLink} className={styles.primaryButton} href={appendReturnTarget("/sign-in", nextPath)}>Sign in with your new password</Link></div>
       : !challengeId ? <form className={styles.form} onSubmit={request}>
       <FormMessage id="recovery-form-error" error={error} status={status} />
       <div className={styles.field}><label className={styles.label} htmlFor="recovery-email">Email address</label>
@@ -329,13 +362,12 @@ export function RecoveryForm() {
           required value={email} aria-invalid={error ? true : undefined} aria-describedby={error ? "recovery-form-error" : "recovery-email-hint"} onChange={event => { setEmail(event.currentTarget.value); setError(""); }} />
         <p className={styles.hint} id="recovery-email-hint">For your privacy, the response is the same whether the address is eligible.</p></div>
       <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Requesting code…" : "Send recovery code"}</button>
-      <Link className={styles.link} href="/sign-in">Back to sign in</Link>
+      <Link className={styles.link} href={appendReturnTarget("/sign-in", nextPath)}>Back to sign in</Link>
     </form> : <form className={styles.form} onSubmit={reset}>
       <FormMessage id="recovery-code-error" error={error} status={status} />
       <p className={styles.statusBox} role="status">Enter the six-digit code sent to the email address. It expires in five minutes.</p>
       <div className={styles.field}><label className={styles.label} htmlFor="recovery-code">Six-digit recovery code</label>
-        <input ref={codeInput} className={styles.input} id="recovery-code" name="one-time-code" type="text" inputMode="numeric" autoComplete="one-time-code"
-          pattern="[0-9]{6}" maxLength={6} required value={code} aria-invalid={error ? true : undefined} aria-describedby={error ? "recovery-code-error" : "recovery-code-hint"} onChange={event => { setCode(normalizeOtpEntry(event.currentTarget.value)); setError(""); }} />
+        <OtpInput inputRef={codeInput} id="recovery-code" value={code} invalid={Boolean(error)} describedBy={error ? "recovery-code-error" : "recovery-code-hint"} onChange={(value) => { setCode(value); setError(""); }} />
         <p className={styles.hint} id="recovery-code-hint">You can paste the full code. Never share it with anyone.</p></div>
       <PasswordField id="recovery-password" label="New password" autoComplete="new-password" value={newPassword} onChange={setNewPassword} />
       <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Resetting password…" : "Reset password"}</button>
@@ -405,8 +437,7 @@ function PhoneVerificationPanel({ csrfToken, initiallyVerified }: { csrfToken: s
       <FormMessage error={error} status={status} />
       <div className={styles.field}>
         <label className={styles.label} htmlFor="account-phone-code">Six-digit verification code</label>
-        <input className={styles.input} id="account-phone-code" name="one-time-code" type="text" inputMode="numeric" autoComplete="one-time-code"
-          pattern="[0-9]{6}" maxLength={6} required value={code} onChange={event => setCode(normalizeOtpEntry(event.currentTarget.value))} />
+        <OtpInput id="account-phone-code" value={code} onChange={setCode} />
       </div>
       <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Verifying…" : "Verify phone number"}</button>
       <button className={styles.secondaryButton} type="button" disabled={busy} onClick={changeNumber}>Use a different number</button>
@@ -460,7 +491,7 @@ export function AccountSession() {
     }
     setDestinationChoiceOpen(true);
   }
-  return <AuthShell eyebrow="Your account" title="Account session" description="This page is shown only after the backend confirms your session.">
+  return <AuthShell eyebrow="Your account" title="Account & security" description="Manage sign-in and security for the account verified by your current Renivet session.">
     {state === "loading" && <p className={styles.loading} role="status">Checking your session…</p>}
     {state === "ready" && account && <div className={styles.form}><p className={styles.successBox} role="status">You are signed in.</p>
       {error && <FormMessage error={error} status="" />}
