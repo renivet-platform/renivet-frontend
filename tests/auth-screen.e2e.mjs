@@ -122,6 +122,13 @@ try {
   const evaluate = async expression => (await command("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true })).result?.value;
   const waitFor = async expression => { for (let i = 0; i < 80; i++) { const value = await evaluate(expression); if (value) return value; await sleep(100); } throw new Error("Timed out waiting for browser condition: " + expression + "\nPage: " + await evaluate("document.body.innerText")); };
   const waitInteractive = id => waitFor(`(() => { const input=document.getElementById(${JSON.stringify(id)}); return !!input && Object.keys(input).some(key => key.startsWith('__reactProps')) })()`);
+  const selectEmailSignIn = async () => {
+    await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.includes('Email and password'))");
+    await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.includes('Email and password') && Object.keys(button).some(key => key.startsWith('__reactProps')))");
+    await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Email and password'))?.click()");
+    await waitFor("document.querySelector('[aria-label=\"Sign-in method\"] button[aria-pressed=\"true\"]')?.textContent.includes('Email and password')");
+    await waitInteractive("signin-email");
+  };
   const enter = async (id, value) => evaluate(`(() => { const input=document.getElementById(${JSON.stringify(id)}); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set; setter.call(input,${JSON.stringify(value)}); input.dispatchEvent(new Event('input',{bubbles:true})); input.dispatchEvent(new Event('change',{bubbles:true})); return true })()`);
   const submit = () => evaluate("document.querySelector('form').requestSubmit(); true");
   for (const [route, title, fields] of [
@@ -132,9 +139,11 @@ try {
     for (const width of [320, 390]) {
       await command("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: true });
       await command("Page.navigate", { url: new URL(route, base).href });
-      if (route === "register") {
+      if (route === "register" || route === "sign-in") {
         await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.includes('Email and password'))");
+        await sleep(250); // Ensure the App Router client has hydrated the server-rendered method selector.
         await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Email and password'))?.click()");
+        if (route === "sign-in") await waitFor("document.querySelector('[aria-label=\"Sign-in method\"] button[aria-pressed=\"true\"]')?.textContent.includes('Email and password')");
       }
       const page = await waitFor(`(() => {
         const main = document.querySelector('main');
@@ -178,6 +187,8 @@ try {
   await enter("register-phone", testPhone); await submit(); await waitInteractive("register-code");
   assert.equal(await evaluate("document.activeElement?.id === 'register-code'"), true, "phone registration focuses the OTP input after requesting a challenge");
   await enter("register-code", "123456"); await submit();
+  await waitFor("location.pathname === '/' && document.body.innerText.includes('A more thoughtful way to get dressed.')");
+  await command("Page.navigate", { url: new URL("account", base).href });
   await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
   assert.equal(phoneRegistrationChallengeRequested && phoneRegistrationVerified, true, "signup sends phone_registration and verifies that same purpose");
   assert.equal(await evaluate("document.getElementById('account-phone') === null && document.body.innerText.includes('Your phone number is verified')"), true, "phone-only account does not ask the user to verify the sign-in phone a second time");
@@ -206,8 +217,10 @@ try {
   await waitFor("document.body.innerText.includes('Your email is verified')");
   assert.equal(await evaluate("location.search === '' && document.cookie.includes('synthetic-session') === false"), true, "verification keeps challenge/code/session out of URL and document.cookie");
   await command("Page.navigate", { url: new URL("sign-in", base).href });
-  await waitInteractive("signin-email");
+  await selectEmailSignIn();
   await enter("signin-email", "buyer@example.test"); await enter("signin-password", "pass1234"); await submit();
+  await waitFor("location.pathname === '/' && document.body.innerText.includes('A more thoughtful way to get dressed.')");
+  await command("Page.navigate", { url: new URL("account", base).href });
   await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
   assert.equal(await evaluate("document.getElementById('account-phone') !== null"), true, "email/password account can add an optional verified contact phone");
   assert.equal(await evaluate("document.cookie.includes('synthetic-session')"), false, "HttpOnly session cookie is not readable by page JavaScript");
@@ -229,7 +242,7 @@ try {
   await waitFor("document.body.innerText.includes('Your session has expired')");
   console.log("PASS registration, email verification, secure session cookie, session inspection, logout, expired-session flow");
 
-  await command("Page.navigate", { url: new URL("sign-in", base).href }); await waitInteractive("signin-email");
+  await command("Page.navigate", { url: new URL("sign-in", base).href }); await selectEmailSignIn();
   await enter("signin-email", "unknown@example.test"); await enter("signin-password", "pass1234"); await submit();
   await waitFor("document.body.innerText.includes('We couldn’t sign you in with those details.')");
   assert.equal(await evaluate("!document.body.innerText.includes('enumeration detail')"), true, "login failure does not expose backend detail");
@@ -263,6 +276,8 @@ try {
   await waitInteractive("signin-phone-code");
   assert.equal(await evaluate("document.activeElement?.id === 'signin-phone-code'"), true, "phone login focuses the OTP field after requesting a challenge");
   await enter("signin-phone-code", "123456"); await submit();
+  await waitFor("location.pathname === '/' && document.body.innerText.includes('A more thoughtful way to get dressed.')");
+  await command("Page.navigate", { url: new URL("account", base).href });
   await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
   assert.equal(phoneLoginChallengeRequested && phoneLoginVerified, true, "phone sign-in requests the phone_login purpose and verifies it through the same-origin BFF");
   assert.equal(await evaluate("document.getElementById('account-phone') === null && document.body.innerText.includes('Your phone number is verified')"), true, "phone login lands on the phone sign-in account state, not the contact-verification form");
@@ -274,23 +289,18 @@ try {
     "phone-authenticated accounts can defer optional setup and continue to their role destination");
   await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Do this later')?.click()");
   await waitFor("location.pathname === '/' ");
-  await command("Page.navigate", { url: new URL("sign-in", base).href }); await waitInteractive("signin-email");
+  await command("Page.navigate", { url: new URL("sign-in", base).href }); await selectEmailSignIn();
   await enter("signin-email", "admin@example.test"); await enter("signin-password", "pass1234"); await submit();
-  await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
-  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Do this later')?.click()");
   await waitFor("location.pathname === '/operations'");
-  await command("Page.navigate", { url: new URL("sign-in", base).href }); await waitInteractive("signin-email");
+  await command("Page.navigate", { url: new URL("sign-in", base).href }); await selectEmailSignIn();
   await enter("signin-email", "seller@example.test"); await enter("signin-password", "pass1234"); await submit();
-  await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
-  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Do this later')?.click()");
-  await waitFor("location.pathname === '/brands/2a6b7c8d-1111-4111-8111-123456789abc/products'");
-  await command("Page.navigate", { url: new URL("sign-in", base).href }); await waitInteractive("signin-email");
+  await waitFor("location.pathname === '/brands/2a6b7c8d-1111-4111-8111-123456789abc/workspace'");
+  assert.equal(await evaluate("document.body.innerText.includes('workspace is not open yet')"), true, "seller lands on the authorized brand route while the W2 release gate stays closed");
+  await command("Page.navigate", { url: new URL("sign-in", base).href }); await selectEmailSignIn();
   await enter("signin-email", "multi-seller@example.test"); await enter("signin-password", "pass1234"); await submit();
-  await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
-  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Do this later')?.click()");
-  await waitFor("document.body.innerText.includes('Choose a brand workspace')");
-  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.trim() === 'Second approved brand')?.click()");
-  await waitFor("location.pathname === '/brands/3b7c8d9e-2222-4222-8222-234567890abc/products'");
+  await waitFor("location.pathname === '/brands' && document.body.innerText.includes('Your brands')");
+  await evaluate("[...document.querySelectorAll('article')].find(card => card.innerText.includes('Second approved brand'))?.querySelector('a')?.click()");
+  await waitFor("location.pathname === '/brands/3b7c8d9e-2222-4222-8222-234567890abc/workspace'");
   console.log("PASS role-based deferred routing for customer, admin, single-brand seller, and multi-brand choice");
 } finally {
   for (const waiter of pending.values()) waiter.reject(new Error("Closing browser")); pending.clear();

@@ -15,7 +15,7 @@
 - Added approved design tokens, visible keyboard focus, reduced-motion handling, responsive navigation, single-input OTP presentation, server-session-constrained sign-in return routing, real-data seller dashboard summaries and operations queue counts, and explicit unavailable states for contract-gated workflows.
 - Removed unverified “LIVE” / “live destinations” labels from the seller workspace workflow map.
 - **Not accepted as full REN2-117 completion:** independent visual/accessibility/device QA and integrated journey tests have not run; contract/owner-blocked workflows remain tracked; shopper W3 remains context-only. No rollout or cutover is implied. Feature gates remain unchanged.
-- Verification: focused REN2-117 tests 8/8 PASS; full frontend tests 75/75 PASS; lint PASS; typecheck PASS; production build PASS; `git diff --check` PASS. Browser visual QA and real FEâ†”BE environment tests: NOT EXECUTED.
+- Verification: focused REN2-117 tests 8/8 PASS; full frontend tests 75/75 PASS; lint PASS; typecheck PASS; production build PASS; `git diff --check` PASS. Local Chrome visual check of the storefront passed at 1440px and 390px with no overflow; auth browser E2E passed against its synthetic API. Full 40-screen visual parity, independent accessibility/device sign-off, and real integrated FEâ†”BE journeys: NOT EXECUTED.
 
 This matrix records the current app routes and API state as found on frontend `origin/main` (`62dfa153`) and backend `origin/main` (`93c6c0e`). The prototype is a visual and interaction reference; its data and simulated outcomes are not production behavior. The Linear issue and current OpenAPI are authoritative where they differ from prototype notes.
 

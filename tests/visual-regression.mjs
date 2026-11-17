@@ -101,17 +101,17 @@ try {
       await sleep(250);
     }
     assert.ok(m, size + ": page not ready");
-    assert.equal(m.title, "New platform foundation");
-    assert.equal(m.display, "flex", size + ": Tailwind flex not loaded");
-    assert.equal(m.direction, "column", size + ": flex-column missing");
-    assert.equal(m.fontSize, "36px", size + ": Tailwind text-4xl missing");
-    assert.equal(m.fontWeight, "600", size + ": Tailwind semibold missing");
-    assert.equal(m.background, "rgb(255, 255, 255)", size + ": background changed");
-    assert.equal(m.color, "rgb(3, 20, 0)", size + ": forest token changed");
+    assert.equal(m.title, "A more thoughtful way to get dressed.");
+    assert.equal(m.display, mobile ? "flex" : "grid", size + ": approved responsive hero layout changed");
+    if (mobile) assert.equal(m.direction, "column", size + ": mobile hero must stack");
+    assert.equal(m.fontSize, mobile ? "40px" : "58px", size + ": approved storefront heading scale changed");
+    assert.equal(m.fontWeight, "500", size + ": approved heading weight changed");
+    assert.equal(m.background, "rgb(246, 244, 239)", size + ": approved canvas token changed");
+    assert.equal(m.color, "rgb(27, 36, 32)", size + ": approved ink token changed");
     assert.ok(m.documentWidth <= width, size + ": horizontal overflow");
     assert.ok(m.right <= width + 1, size + ": content overflows");
-    assert.ok(m.height >= height - 1, size + ": min-h-screen missing");
-    if (!mobile) assert.ok(m.width >= 700 && m.width <= 770, "max-w-3xl changed");
+    assert.ok(m.height > 0, size + ": hero content is not rendered");
+    if (!mobile) assert.ok(m.width >= 1000 && m.width <= 1100, "desktop storefront hero width changed");
     const screenshot = await command("Page.captureScreenshot", { format: "png", fromSurface: true });
     const buffer = Buffer.from(screenshot.data, "base64");
     assert.equal(buffer.subarray(1, 4).toString(), "PNG");
