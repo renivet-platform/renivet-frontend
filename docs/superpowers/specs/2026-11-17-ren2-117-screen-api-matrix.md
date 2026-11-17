@@ -21,7 +21,7 @@ This matrix records the current app routes and API state as found on frontend `o
 
 ## Screen-to-route-to-API matrix
 
-| ID | Prototype screen / wave | Current route | Proposed production route | Current API/feature evidence | Classification and next action  | Auth role | Desktop / mobile | Progress | Feature gate | CI proof |
+| ID | Prototype screen / wave | Current route | Proposed production route | Current API/feature evidence | Classification and next action  | Auth role | Desktop / mobile | Progress at baseline (pre-change) | Feature gate | CI proof |
 |---|---|---|---|---|---|---|---|---|---|---|
 | CU-01 | New in Â· W3 context | `/` | `/` | No public catalogue/search API identified | D â€” retain as design target; do not claim live browse until W3 contract is approved  | Shopper (public) | Desktop and mobile (390px) | Current route/flow present or partially present; redesign not started | W3 scope pending | Not executed for REN2-117 |
 | CU-03 | Product Â· W3 context | None | `/products/[productId]` | Seller-only brand product reads exist; no public product detail API identified | D â€” W3 contract required  | Shopper (public) | Desktop and mobile (390px) | No current route; not started | W3 scope pending | Not executed for REN2-117 |
