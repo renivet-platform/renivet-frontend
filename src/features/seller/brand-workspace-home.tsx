@@ -54,9 +54,9 @@ export function BrandWorkspaceHome({ brandId }: { brandId: string }) {
       <article className={styles.card}><h2>Access &amp; team</h2><p>Review the current membership, redacted team members, and permission grants resolved by the backend.</p><Link className={styles.cardLink} href={`${brandPath}/team`}>Review access →</Link></article>
     </section>
     <section className={styles.workflowSection} aria-labelledby="workflow-map-title">
-      <div className={styles.workflowHeading}><div><p className={styles.kicker}>LIVE W2 WORKFLOW MAP</p><h2 id="workflow-map-title">Everything your brand can do here</h2><p>Each destination uses persisted data and backend authorization. If a prerequisite is missing, the destination explains the gate instead of showing a fake success state.</p></div><span className={styles.workflowCount}>{loading ? "Checking access..." : `${workflowCards.length} live destinations`}</span></div>
+      <div className={styles.workflowHeading}><div><p className={styles.kicker}>WORKSPACE AREAS</p><h2 id="workflow-map-title">Brand workflows</h2><p>These links open the relevant workspace screens. Availability and permissions are checked by Renivet services when each screen loads.</p></div><span className={styles.workflowCount}>{loading ? "Checking access..." : `${workflowCards.length} workspace areas`}</span></div>
       <div className={styles.workflowGrid}>
-        {workflowCards.map((card, index) => <article className={styles.workflowCard} key={card.key}><div className={styles.workflowCardHeader}><span className={styles.workflowStatus}>LIVE</span><span className={styles.workflowIndex}>{String(index + 1).padStart(2, "0")}</span></div><h3>{card.title}</h3><p>{card.detail}</p><Link className={styles.cardLink} href={card.href}>{card.action} -&gt;</Link></article>)}
+        {workflowCards.map((card, index) => <article className={styles.workflowCard} key={card.key}><div className={styles.workflowCardHeader}><span className={styles.workflowStatus}>WORKSPACE</span><span className={styles.workflowIndex}>{String(index + 1).padStart(2, "0")}</span></div><h3>{card.title}</h3><p>{card.detail}</p><Link className={styles.cardLink} href={card.href}>{card.action} -&gt;</Link></article>)}
       </div>
     </section>
     <h2 className={styles.sectionTitle}>A safer path from draft to review</h2>
