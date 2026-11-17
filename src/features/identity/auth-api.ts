@@ -1,4 +1,5 @@
 import type { components, operations } from "@/generated/renivet-api";
+import { normalizeMfaEnforcementMode, type MfaEnforcementMode } from "./mfa-policy";
 
 type RegisterRequest = operations["registerWithEmailAndPassword"]["requestBody"]["content"]["application/json"];
 type RegisterResponse = operations["registerWithEmailAndPassword"]["responses"][202]["content"]["application/json"];
@@ -171,6 +172,7 @@ export interface CurrentSession {
   user: { id: string };
   account: { signInMethod: "phone" | "email_password"; phoneVerified: boolean };
   csrfToken: string;
+  mfaEnforcementMode: MfaEnforcementMode;
   destination: SessionDestination;
 }
 
@@ -208,7 +210,8 @@ function isCurrentSession(value: unknown): value is CurrentSession {
 export async function getCurrentSession(): Promise<CurrentSession> {
   const body = await requestJson<unknown>("/api/auth/session", { method: "GET" });
   if (!isCurrentSession(body)) throw new AuthApiError(fallbackError.code, fallbackError.message, 503);
-  return body;
+  const value = body as CurrentSession & Record<string, unknown>;
+  return { ...value, mfaEnforcementMode: normalizeMfaEnforcementMode(value.mfaEnforcementMode) };
 }
 
 export async function stepUpWithMfa(code: MfaStepUpRequest["code"], csrfToken: CsrfToken): Promise<MfaStepUpResponse> {

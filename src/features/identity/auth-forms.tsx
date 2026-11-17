@@ -71,7 +71,7 @@ function MfaEnrollmentPanel({ csrfToken, onCsrfToken }: { csrfToken: string; onC
   return <section className={styles.subForm} aria-labelledby="mfa-enrollment-heading">
     <hr className={styles.separator} />
     <h2 className={styles.sectionHeading} id="mfa-enrollment-heading">Authenticator app MFA</h2>
-    <p className={styles.hint}>Protect import and admin actions with a fresh six-digit code. Your secret is shown only once.</p>
+      <p className={styles.hint}>Optional: add an authenticator app for another layer of account protection. Your secret is shown only once.</p>
     {error && <FormMessage error={error} status="" />}
     {state === "idle" && <button className={styles.secondaryButton} type="button" onClick={() => void start()} disabled={busy}>
       {busy ? "Starting enrollment…" : "Set up MFA"}

@@ -16,9 +16,11 @@ describe("REN2-100 authenticated admin review console", () => {
     assert.doesNotMatch(source, /Review action unavailable/);
   });
 
-  it("requires fresh MFA, session CSRF and an idempotency key for every decision", () => {
+  it("steps up only when the server reports enforced MFA and keeps CSRF/idempotency on every decision", () => {
     const source = readFileSync("src/features/admin/operations-console.tsx", "utf8");
     assert.match(source, /stepUpWithMfa/);
+    assert.match(source, /shouldRequestMfaStepUp\(session\.mfaEnforcementMode\)/);
+    assert.match(source, /sessionReady && shouldRequestMfaStepUp\(mfaEnforcementMode\) \? .*id="review-mfa".*required/);
     assert.match(source, /csrfToken/);
     assert.match(source, /idempotencyKey/);
     assert.match(source, /expectedRevisionId/);
