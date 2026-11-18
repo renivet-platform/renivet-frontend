@@ -21,12 +21,12 @@ export function SellerApplicationScreen() {
   }
 
   return <main className={styles.page} data-screen-id="SE-02" aria-labelledby="application-title">
-    <header className={styles.topbar}><Link href="/" className={styles.wordmark}>RENIVET</Link><nav aria-label="Brand workspace"><Link href="/brands">Your brands</Link><span aria-hidden="true">/</span><span>Application</span></nav><span className={styles.preview}>Preview only · not saved</span></header>
+    <header className={styles.topbar}><Link href="/" className={styles.wordmark}>RENIVET</Link><nav aria-label="Brand workspace"><Link href="/brands">Your brands</Link><span aria-hidden="true">/</span><span>Application</span></nav><span className={styles.preview} role="status">Design preview · not saved</span></header>
     <div className={styles.shell}>
       <aside className={styles.sidebar}><span className={styles.brandMark} aria-hidden="true">R</span><p className={styles.kicker}>BRAND WORKSPACE</p><strong>New application</strong><Link href="/brands">Switch brand</Link></aside>
       <div className={styles.mainContent}>
         <div className={styles.breadcrumb}><Link href="/brands">Your brands</Link><span>/</span><span>Application</span><span>/</span><span>{current}</span></div>
-        <header className={styles.heading}><p className={styles.kicker}>SELLER APPLICATION · STEP {step + 1} OF {steps.length}</p><h1 id="application-title">Apply to sell on Renivet</h1><p>Enter business and brand information. This browser preview does not transmit or save it.</p></header>
+        <header className={styles.heading}><p className={styles.kicker}>SELLER APPLICATION · STEP {step + 1} OF {steps.length}</p><h1 id="application-title">Apply to sell on Renivet</h1><p>Enter business and brand information to preview the five-step application. There is no save or submit API yet; do not enter sensitive information in this demonstration.</p></header>
         <ol className={styles.stepper} aria-label="Application steps">{steps.map((label, index) => <li key={label} className={index === step ? styles.activeStep : index < step ? styles.doneStep : ""} aria-current={index === step ? "step" : undefined}><span>{index + 1}</span>{label}</li>)}</ol>
         <section className={styles.panel} aria-labelledby="step-title">
           <div className={styles.panelHeading}><div><p className={styles.kicker}>APPLICATION DETAILS</p><h2 id="step-title">{current}</h2></div><span className={styles.stepCount}>{step + 1} / {steps.length}</span></div>
