@@ -104,6 +104,7 @@ export function resolveW2BackendPath(segments: string[], method: string): string
   if (resource === "variants" && resourceId && uuid.test(resourceId) && segments[4] === "prices" && segments.length === 5 && (method === "GET" || method === "PATCH")) {
     return `/api/v1/brands/${brandId}/variants/${resourceId}/prices`;
   }
+  if (resource === "product-imports" && segments.length === 3 && method === "GET") return `/api/v1/brands/${brandId}/product-imports`;
   if (resource === "product-imports" && segments.length === 3 && method === "POST") return `/api/v1/brands/${brandId}/product-imports`;
   if (resource === "product-imports" && resourceId === "uploads" && segments.length === 4 && method === "POST") return `/api/v1/brands/${brandId}/product-imports/uploads`;
   if (resource === "product-imports" && resourceId && uuid.test(resourceId) && segments.length === 5) {
