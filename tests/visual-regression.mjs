@@ -122,7 +122,7 @@ try {
 
   async function inspectAdmin(size, width, height, mobile) {
     const adminScreens = [
-      ["/operations/sign-in", "AD-01", "Sign in to Renivet"],
+      ["/operations/sign-in", "AD-01", "Renivet staff sign in"],
       ["/operations", "AD-02", null],
       ["/brand-approvals", "AD-03", null],
       ["/brand-approvals/11111111-1111-4111-8111-111111111111", "AD-04", null],
@@ -159,6 +159,41 @@ try {
       const filepath = path.join(output, "admin-" + id + "-" + size + ".png");
       await writeFile(filepath, buffer);
       console.log("PASS " + size + " " + id + " admin screen: " + filepath, state);
+    }
+  }
+
+  // REN2-117: screenshot candidates for the W1 secondary screens, distinct from
+  // the CU-08 sign-in artwork. The screenshots are evidence, not visual approval.
+  async function inspectW1Screens(size, width, height, mobile) {
+    const screens = [
+      ["/register", "CU-09A", "Create your account"],
+      ["/recover", "CU-09C", "Reset your password"],
+      ["/reset-password", "CU-09D", "Reset your password"],
+      ["/welcome", "CU-09W", "You’re in the right place"],
+      ["/account", "CU-09E", "Account & security"],
+    ];
+    await command("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile });
+    for (const [route, id, expectedTitle] of screens) {
+      await command("Page.navigate", { url: new URL(route, url).href });
+      let state;
+      const expression = "(() => { const wrapper=document.querySelector('[data-screen-id]'); const h1=wrapper?.querySelector('h1'); return document.readyState === 'complete' && wrapper && h1 ? { id:wrapper.dataset.screenId, title:h1.textContent.trim(), width:document.documentElement.scrollWidth, viewport:innerWidth, height:wrapper.getBoundingClientRect().height } : null })()";
+      for (let i=0; i<60; i++) {
+        const answer = await command("Runtime.evaluate", { expression, returnByValue: true });
+        state = answer.result?.value;
+        if (state) break;
+        await sleep(200);
+      }
+      assert.ok(state, size + " " + route + ": W1 screen did not load");
+      assert.equal(state.id, id, size + " " + route + ": screen identifier mismatch");
+      assert.equal(state.title, expectedTitle, size + " " + route + ": heading changed");
+      assert.ok(state.width <= width, size + " " + route + ": horizontal overflow");
+      assert.ok(state.height > 0, size + " " + route + ": content did not render");
+      const shot = await command("Page.captureScreenshot", { format: "png", fromSurface: true });
+      const bytes = Buffer.from(shot.data, "base64");
+      assert.equal(bytes.subarray(1,4).toString(), "PNG");
+      const filepath = path.join(output, "w1-" + id + "-" + size + ".png");
+      await writeFile(filepath, bytes);
+      console.log("PASS " + size + " " + id + " W1 prototype screen:", filepath);
     }
   }
 
@@ -201,6 +236,8 @@ try {
   await inspect("mobile", 390, 844, true);
   await inspectAdmin("desktop", 1280, 900, false);
   await inspectAdmin("mobile", 390, 844, true);
+  await inspectW1Screens("desktop", 1280, 900, false);
+  await inspectW1Screens("mobile", 390, 844, true);
   await inspectPrivacy("desktop", 1280, 900, false);
   await inspectPrivacy("mobile", 390, 844, true);
 } finally {

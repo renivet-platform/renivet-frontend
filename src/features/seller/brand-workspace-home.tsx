@@ -4,14 +4,23 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { W2ApiError, w2Request, type ProductPage } from "@/features/seller/w2-catalog";
 import { summarizeProducts } from "@/features/seller/brand-workspace-model";
-import styles from "./brand-workspace.module.css";
+import styles from "./brand-home-prototype.module.css";
 
 type AccessSummary = { brandName?: string; brandState?: string; membershipState?: string };
 
 function errorMessage(error: unknown) {
-  return error instanceof W2ApiError ? error.message : "The brand workspace could not be loaded. Try again shortly.";
+  if (error instanceof W2ApiError) {
+    if (error.status === 401) return "Your session expired. Sign in again to continue.";
+    if (error.status === 403) return "Your account cannot access this brand workspace.";
+    if (error.status === 503) return "The workspace is temporarily unavailable.";
+  }
+  return "We could not load the brand workspace. Please try again.";
 }
 
+/** REN2-117 SE-07 · Visual implementation of the approved 17-Nov prototype.
+ * The original prototype's fictional tasks/counts are intentionally excluded:
+ * all metrics and attention rows below come from the existing W2 NestJS API.
+ */
 export function BrandWorkspaceHome({ brandId }: { brandId: string }) {
   const [access, setAccess] = useState<AccessSummary | null>(null);
   const [productCount, setProductCount] = useState<number | null>(null);
@@ -27,8 +36,12 @@ export function BrandWorkspaceHome({ brandId }: { brandId: string }) {
       w2Request<AccessSummary>(["brands", brandId, "access"]),
       w2Request<ProductPage>(["brands", brandId, "products"], { query: { limit: "50" } }),
     ]);
-    if (accessResult.status === "fulfilled") setAccess(accessResult.value);
-    else setError(errorMessage(accessResult.reason));
+    if (accessResult.status === "fulfilled") {
+      setAccess(accessResult.value);
+    } else {
+      setAccess(null);
+      setError(errorMessage(accessResult.reason));
+    }
     if (productsResult.status === "fulfilled") {
       setProductCount(productsResult.value.totalCount);
       setProducts(productsResult.value.items);
@@ -48,42 +61,75 @@ export function BrandWorkspaceHome({ brandId }: { brandId: string }) {
   const brandPath = `/brands/${encodeURIComponent(brandId)}`;
   const summary = summarizeProducts(products);
   const attentionProducts = products.filter((product) => product.publicationState === "REJECTED" || product.publicationState === "RESTRICTED");
-  const workflowCards = [
-    { key: "drafts", title: "Draft editor", detail: "Create or resume a product draft with a pinned taxonomy version and live validation.", href: `${brandPath}/products`, action: "Open draft editor" },
-    { key: "product-details", title: "Variants, media & claims", detail: "Open a persisted product to manage its SKU matrix, private media, pricing and evidence.", href: `${brandPath}/products`, action: "Open product catalogue" },
-    { key: "imports", title: "Import wizard", detail: "Use Shopify, Unicommerce/Uniware, Renivet or generic mappings with a frozen preview and retry path.", href: `${brandPath}/imports`, action: "Start an import" },
-    { key: "inventory", title: "Stock console", detail: "Read the authoritative inventory ledger and submit controlled adjustments when the backend permits them.", href: `${brandPath}/inventory`, action: "Open inventory" },
-    { key: "onboarding", title: "Onboarding & eligibility", detail: "Track the persisted application, verification and catalogue-eligibility status for this brand.", href: `${brandPath}/onboarding`, action: "View onboarding" },
-    { key: "team", title: "Team access", detail: "Review redacted members and backend-resolved roles without granting access from the UI.", href: `${brandPath}/team`, action: "Review team access" },
-  ] as const;
-  return <main className={styles.page} aria-labelledby="workspace-title" data-screen-id="SE-07"><div className={styles.shell}>
-    <nav className={styles.breadcrumb} aria-label="Breadcrumb"><Link href="/account">Account</Link><span aria-hidden="true">/</span><span>Brand workspace</span></nav>
-    <header className={styles.header}><div><p className={styles.kicker}>RENIVET BRAND WORKSPACE</p><h1 id="workspace-title">{access?.brandName ?? "Your brand workspace"}</h1><p className={styles.subtitle}>Create drafts, bring existing catalogue data across safely, and keep every operational change traceable.</p></div><span className={styles.state}>{loading ? "Loading access" : access?.membershipState ?? "Access status unavailable"}</span></header>
-    {error && <div className={styles.error} role="alert"><strong>Workspace data unavailable</strong><div>{error}</div><button className={styles.button} type="button" onClick={() => void load()}>Try again</button></div>}
-    <section className={styles.hero} aria-labelledby="status-title"><div><strong id="status-title">Your workspace at a glance</strong><p>{access ? `Brand state: ${access.brandState ?? "not reported"}. Membership: ${access.membershipState ?? "not reported"}.` : "Access and catalogue status are read from the backend; this screen never grants permissions."}</p></div><div className={styles.actions}><Link className={`${styles.button} ${styles.primary}`} href={`${brandPath}/products`}>Open products</Link><Link className={styles.button} href={`${brandPath}/imports`}>Import products</Link></div></section>
-    <section className={styles.summaryGrid} aria-label="Catalogue status from loaded results" aria-live="polite">
-      {[{ title: "Products", value: productCount, note: "total reported by service" }, { title: "Published", value: summary.live, note: "in loaded results" }, { title: "In review", value: summary.inReview, note: "in loaded results" }, { title: "Needs attention", value: summary.needsAttention, note: "in loaded results" }].map((item) => <article className={styles.summaryCard} key={item.title}><span>{item.title}</span><strong>{loading ? "—" : item.value ?? "Unavailable"}</strong><small>{item.note}</small></article>)}
-    </section>
-    {productsError && <div className={styles.error} role="status"><strong>Catalogue summary unavailable</strong><div>{productsError}</div></div>}
-    {!productsError && hasMoreProducts && <p className={styles.muted}>Status counts summarize the {summary.loaded} products loaded on this page. The service reports {productCount} total products; open the catalogue to browse more.</p>}
-    <section className={styles.attention} aria-labelledby="attention-title"><div className={styles.workflowHeading}><div><p className={styles.kicker}>CATALOGUE REVIEW</p><h2 id="attention-title">Needs attention</h2></div><Link className={styles.cardLink} href={`${brandPath}/products`}>View catalogue →</Link></div>{loading ? <p className={styles.muted}>Loading catalogue status…</p> : productsError ? <p className={styles.muted}>Product status cannot be shown until the catalogue responds.</p> : attentionProducts.length ? <ul className={styles.attentionList}>{attentionProducts.slice(0, 5).map((product) => <li key={product.id}><Link href={`${brandPath}/products/${encodeURIComponent(product.id)}`}><span><strong>{product.title}</strong><small>Style {product.styleCode}</small></span><span className={styles.tag}>{product.publicationState.replaceAll("_", " ")}</span></Link></li>)}</ul> : <p className={styles.muted}>{summary.loaded ? "No rejected or restricted products in the loaded results." : "No products were returned for this brand yet."}</p>}</section>
-    <h2 className={styles.sectionTitle}>Your W2 workflows</h2>
-    <section className={styles.grid} aria-label="Brand workspace areas">
-      <article className={styles.card}><h2>Catalogue</h2><p>{productCount === null ? "The backend will report persisted product drafts and listings." : `${productCount} persisted product${productCount === 1 ? "" : "s"} are available to this brand.`}</p><Link className={styles.cardLink} href={`${brandPath}/products`}>Manage products →</Link></article>
-      <article className={styles.card}><h2>Bulk imports</h2><p>Download the selected source template, upload privately, map columns, review a frozen preview, and retry only failed rows.</p><Link className={styles.cardLink} href={`${brandPath}/imports`}>Import products →</Link></article>
-      <article className={styles.card}><h2>Inventory</h2><p>Read authoritative stock balances and submit controlled, audited adjustments through the inventory ledger.</p><Link className={styles.cardLink} href={`${brandPath}/inventory`}>Open inventory →</Link></article>
-      <article className={styles.card}><h2>Access &amp; team</h2><p>Review the current membership, redacted team members, and permission grants resolved by the backend.</p><Link className={styles.cardLink} href={`${brandPath}/team`}>Review access →</Link></article>
-    </section>
-    <section className={styles.workflowSection} aria-labelledby="workflow-map-title">
-      <div className={styles.workflowHeading}><div><p className={styles.kicker}>WORKSPACE AREAS</p><h2 id="workflow-map-title">Brand workflows</h2><p>These links open the relevant workspace screens. Availability and permissions are checked by Renivet services when each screen loads.</p></div><span className={styles.workflowCount}>{loading ? "Checking access..." : `${workflowCards.length} workspace areas`}</span></div>
-      <div className={styles.workflowGrid}>
-        {workflowCards.map((card, index) => <article className={styles.workflowCard} key={card.key}><div className={styles.workflowCardHeader}><span className={styles.workflowStatus}>WORKSPACE</span><span className={styles.workflowIndex}>{String(index + 1).padStart(2, "0")}</span></div><h3>{card.title}</h3><p>{card.detail}</p><Link className={styles.cardLink} href={card.href}>{card.action} -&gt;</Link></article>)}
+  const stats = [
+    { label: "All products", value: productCount, note: "Total reported by catalogue" },
+    { label: "Live products", value: productsError ? null : summary.live, note: "In the loaded results" },
+    { label: "In review at Renivet", value: productsError ? null : summary.inReview, note: "In the loaded results" },
+    { label: "Needs your attention", value: productsError ? null : summary.needsAttention, note: "In the loaded results" },
+  ];
+
+  return <main className={styles.page} data-screen-id="SE-07" aria-labelledby="workspace-title">
+    <header className={styles.header}>
+      <div>
+        <h1 id="workspace-title">Welcome back</h1>
+        <p>{access?.brandName ?? "Your brand"} · {access?.membershipState ?? (loading ? "Checking access" : "Access state unavailable")}</p>
       </div>
+      <div className={styles.headerActions}>
+        <Link className={styles.secondaryButton} href={`${brandPath}/imports`}>Import products</Link>
+        <Link className={styles.primaryButton} href={`${brandPath}/products`}>Add a product</Link>
+      </div>
+    </header>
+    {error && <section className={styles.error} role="alert"><strong>Brand access could not be loaded</strong><p>{error}</p><button type="button" onClick={() => void load()} className={styles.secondaryButton}>Try again</button></section>}
+    <section className={styles.stats} aria-label="Live catalogue summary" aria-live="polite">
+      {stats.map((stat) => <article className={styles.stat} key={stat.label}>
+        <strong>{loading || stat.value === null ? "—" : stat.value}</strong>
+        <span>{stat.label}</span>
+        <small>{stat.note}</small>
+      </article>)}
     </section>
-    <h2 className={styles.sectionTitle}>A safer path from draft to review</h2>
-    <section className={styles.steps} aria-label="Product workflow steps">
-      {[['1', 'Choose a category', 'Use only an active leaf with a published schema.'], ['2', 'Save a draft', 'Resume work without publishing incomplete details.'], ['3', 'Complete evidence', 'Add variants, private media, prices, and claims.'], ['4', 'Submit for review', 'Freeze the exact revision for independent review.']].map(([number, title, detail]) => <div className={styles.step} key={number}><span className={styles.stepNumber}>{number}</span><strong>{title}</strong><span>{detail}</span></div>)}
-    </section>
-    <p className={styles.footerNote}>Backend authorization remains the source of truth. Empty, denied, stale, and unavailable states stay visible instead of being replaced with demo records.</p>
-  </div></main>;
+    {productsError && <section className={styles.error} role="status"><strong>Catalogue data unavailable</strong><p>{productsError}</p></section>}
+    {hasMoreProducts && !productsError && <p className={styles.partialNote}>Review and status counts describe the first {summary.loaded} products returned by the API, not every product in the catalogue.</p>}
+    <div className={styles.columns}>
+      <section className={styles.attentionCard} aria-labelledby="attention-title">
+        <div className={styles.attentionHeader}>
+          <h2 id="attention-title">Needs your attention</h2>
+          {!loading && !productsError && <span>{attentionProducts.length}{hasMoreProducts ? "+" : ""} items in loaded results</span>}
+        </div>
+        {loading ? <p className={styles.empty} role="status">Checking catalogue and review states…</p>
+          : productsError ? <p className={styles.empty}>Review items cannot be shown while the catalogue is unavailable.</p>
+          : attentionProducts.length ? <ul className={styles.attentionList}>
+            {attentionProducts.slice(0, 8).map((product) => <li key={product.id}>
+              <div>
+                <strong>{product.title}</strong>
+                <p>{product.publicationState === "RESTRICTED" ? "Restricted: review the product before resubmitting." : "Review needs changes before this product can be published."} · Style {product.styleCode}</p>
+              </div>
+              <Link className={styles.secondaryButton} href={`${brandPath}/products/${encodeURIComponent(product.id)}`}>Fix listing</Link>
+            </li>)}
+          </ul> : <div className={styles.empty}>
+            <p>{summary.loaded === 0 ? "No products have been returned for this brand yet." : "No rejected or restricted products in the loaded results."}</p>
+            <Link className={styles.textLink} href={`${brandPath}/products`}>Open products</Link>
+          </div>}
+        <div className={styles.attentionFooter}>
+          <Link href={`${brandPath}/products`}>View all products</Link>
+          <Link href={`${brandPath}/imports`}>Check import results</Link>
+        </div>
+      </section>
+      <aside className={styles.guidance} aria-label="How to work with Renivet">
+        <section className={styles.guidanceCard}>
+          <h2>How products go live</h2>
+          <ol>
+            <li>Add details, sizes and colours, photos and prices.</li>
+            <li>Add any sustainability claims with evidence.</li>
+            <li>Submit for review. Renivet checks photos, details, prices and claims.</li>
+            <li>After independent approval, Renivet publishes the product.</li>
+          </ol>
+        </section>
+        <section className={styles.tip}>
+          <h2>Tip</h2>
+          <p>Shoppers buy on fit, fabric and photos first. Fill size measurements and add a close-up of the fabric.</p>
+        </section>
+        <p className={styles.disclaimer}>Your workspace shows only backend-reported state. Stock adjustments, approvals and publication are controlled by Renivet services.</p>
+      </aside>
+    </div>
+  </main>;
 }

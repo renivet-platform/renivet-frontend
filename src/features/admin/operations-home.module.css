@@ -1,1 +1,27 @@
 .page{max-width:1280px;margin:0 auto;padding:4px 0 40px}.header{display:flex;align-items:end;justify-content:space-between;gap:18px;margin-bottom:22px}.kicker{margin:0 0 6px;color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}.header h1{margin:0;font-size:clamp(28px,3.5vw,36px);letter-spacing:-.035em}.header>div>p:last-child{max-width:680px;margin:8px 0 0;color:var(--muted)}.refresh{min-height:44px;padding:8px 13px;border:1px solid var(--control);border-radius:8px;background:var(--surface);color:var(--ink);font-weight:650;cursor:pointer}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.card{min-height:178px;display:flex;flex-direction:column;padding:18px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}.cardTop{display:flex;align-items:start;justify-content:space-between;gap:10px}.card h2{margin:0;font-size:18px;line-height:1.3}.count{min-width:38px;min-height:38px;display:grid;place-items:center;border-radius:9px;background:var(--primary-soft);color:var(--primary-strong);font-size:20px;font-variant-numeric:tabular-nums}.card>p{margin:8px 0 0;color:var(--muted);font-size:14px}.card .state,.loading{margin-top:auto;padding-top:15px;color:var(--muted);font-size:13px}.card a,.notice a{display:inline-flex;gap:6px;align-items:center;margin-top:14px;color:var(--primary-strong);font-weight:650;text-decoration:none}.card a:hover,.notice a:hover{text-decoration:underline}.error{margin:8px 0 0;padding:9px 11px;border-radius:7px;background:var(--danger-soft);color:var(--danger);font-size:13px}.notice{margin-top:22px;padding:18px 20px;border:1px solid var(--line);border-left:3px solid var(--info);border-radius:var(--radius);background:var(--surface)}.notice h2{margin:0 0 7px;font-size:18px}.notice p{max-width:850px;margin:0;color:var(--muted);line-height:1.55}.notice a{margin-top:12px}@media(max-width:950px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.header{align-items:stretch;flex-direction:column}.refresh{align-self:flex-start}.grid{grid-template-columns:1fr}.card{min-height:160px}}
+
+
+/* REN2-117 AD-02 approved 17-Nov operations home: 4x2 queue summary.
+   All counts reflect live API rows; bank/stock/audit never show fictional records. */
+.page { max-width:none; padding:4px 0 55px; color:#1b2420; }
+.header { align-items:center; margin-bottom:19px; }
+.header h1 { color:#1b2420; font-size:30px; letter-spacing:-.025em; }
+.header>div>p:last-child { color:#79817c; font-size:15px; margin:8px 0 0; }
+.refresh { background:#fff; border-color:#79817c; color:#44514a; }
+.grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:15px; }
+.card { min-height:178px; padding:17px 16px; border:1px solid #e1ddd3; border-radius:10px; box-shadow:none; }
+.metric { display:block; color:#1b2420; font-size:27px; line-height:1.2; font-weight:720; font-variant-numeric:tabular-nums; }
+.cardTop { display:none; }
+.card h2 { color:#5d6963; margin:10px 0 0; font-size:14px; font-weight:720; }
+.card > p { color:#79817c; margin-top:6px; line-height:1.45; font-size:12px; }
+.card .state,.card .unavailable { color:#79817c; margin:8px 0 0; padding:0; font-size:12px; }
+.card .unavailable { color:#7a4a00; }
+.card a { margin-top:auto; padding-top:12px; font-size:12px; color:#1f5a45; text-decoration:underline; text-underline-offset:3px; }
+.card a:focus-visible { outline:3px solid #1d4f86; outline-offset:3px; }
+.activity { margin-top:19px; padding:21px 20px; background:#fff; border:1px solid #e1ddd3; border-radius:10px; box-shadow:var(--shadow); }
+.activity h2 { font-size:19px; color:#44514a; margin:0 0 9px; }
+.activity p { color:#79817c; font-size:14px; line-height:1.55; margin:0 0 12px; }
+.activity a { color:#1f5a45; font-size:13px; text-decoration:underline; text-underline-offset:2px; }
+.notice { margin-top:16px; background:#faf9f6; border:1px solid #e1ddd3; border-left:3px solid #1d4f86; box-shadow:none; }
+@media(max-width:1100px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.header{align-items:flex-start;flex-wrap:wrap}.card{min-height:155px;padding:14px 12px}.card h2{font-size:13px}.metric{font-size:25px}.activity{padding:17px 15px}}

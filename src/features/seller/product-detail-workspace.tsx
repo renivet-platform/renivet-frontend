@@ -7,6 +7,7 @@ import type { components, operations } from "@/generated/renivet-api";
 import { canonicalVariantOptions, createIdempotencyKey, createSubmissionRequestDigest, hasVariantCombination, type CategoryAttribute, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import { ProductMediaWorkspace } from "@/features/seller/product-media-workspace";
 import styles from "./product-workspace.module.css";
+import prototypeStyles from "./product-editor-prototype.module.css";
 
 type ProductDetail = operations["getBrandProduct"]["responses"][200]["content"]["application/json"];
 type SchemaVersion = components["schemas"]["CategorySchemaVersionReadDto"];
@@ -301,21 +302,29 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
   return <main className={styles.page} aria-labelledby="detail-title" data-screen-id="SE-09">
     <nav className={styles.detailBreadcrumb} aria-label="Breadcrumb"><Link href={`/brands/${encodeURIComponent(brandId)}/products`}>Products</Link><span aria-hidden="true">/</span><span>{product.title}</span></nav>
     <header className={styles.header}>
-      <div><p className={styles.kicker}>STYLE {product.styleCode} <span aria-hidden="true">·</span> CONTENT VERSION {product.contentVersion}</p><h1 id="detail-title">{product.title}</h1><p className={styles.subtitle}>Your draft is saved privately to this brand. It is not submitted for review or visible to customers.</p></div>
+      <div><p className={styles.kicker}>STYLE {product.styleCode} <span aria-hidden="true">·</span> CONTENT VERSION {product.contentVersion}</p><h1 id="detail-title">{product.title}</h1><p className={styles.subtitle}>{editable ? "Changes to this draft are private until an independent review and publish decision." : "This product revision is read-only here. The backend controls its publication and review state."}</p></div>
       <span className={styles.state}>{product.publicationState.replaceAll("_", " ")}</span>
     </header>
 
-    {editable && <section className={styles.formPanel} aria-labelledby="readiness-heading">
-      <div className={styles.formHeading}><div><p className={styles.kicker}>SUBMISSION READINESS</p><h2 id="readiness-heading">Ready for independent review?</h2><p>These checks mirror the server-side submission gates. A green item is only a client-side indication; the backend remains authoritative.</p></div><span className={styles.draftBadge}>{readinessChecks.filter((check) => check.ready).length}/{readinessChecks.length} ready</span></div>
-      <ul className={styles.readinessList}>{readinessChecks.map((check) => <li key={check.label} className={check.ready ? styles.readinessReady : styles.readinessBlocked}><span aria-hidden="true">{check.ready ? "✓" : "!"}</span><span>{check.label}</span><strong>{check.ready ? "Ready" : "Needs attention"}</strong></li>)}</ul>
-    </section>}
-
-    {editable && <section className={styles.formPanel} aria-labelledby="submission-heading">
-      <div className={styles.formHeading}><div><p className={styles.kicker}>READY FOR A SEPARATE REVIEW?</p><h2 id="submission-heading">Submit this revision</h2><p>Submission checks the saved product, active SKUs, approved prices and eligible media on the server. Once accepted, this exact revision is frozen for an independent reviewer.</p></div></div>
-      {submissionError && <p className={styles.error} role="alert">{submissionError}</p>}
-      {submissionNotice && <p className={styles.notice} role="status">{submissionNotice}</p>}
-      <div className={styles.formActions}><p>Requires the brand’s current catalog submission permission.</p><button className={styles.primaryButton} type="button" onClick={() => void submitForReview()} disabled={submitting}>{submitting ? "Submitting revision…" : "Submit for independent review"}</button></div>
-    </section>}
+    <section className={prototypeStyles.revisionBanner} aria-label="Draft and published revision safety">
+      <span className={prototypeStyles.infoIcon} aria-hidden="true">i</span>
+      <div><strong>{editable ? `You're editing draft version ${product.contentVersion}` : `Product state: ${product.publicationState.replaceAll("_", " ").toLocaleLowerCase()}`}</strong>
+        <p>{editable ? "These edits remain in this brand's draft until Renivet independently approves and publishes the submitted revision. Changes cannot silently replace the current live listing." : "This screen cannot alter the publication state. Use the authorized workflow to create and submit a new draft revision."}</p>
+      </div>
+    </section>
+    <nav className={prototypeStyles.stepper} aria-label="Product editor steps">
+      {[
+        { href:"#details-heading", label:"Details", ready:readinessChecks.slice(0,3).every(check => check.ready) },
+        { href:"#variants-heading", label:"Sizes & colours", ready:readinessChecks[3]?.ready ?? false },
+        { href:"#media-heading", label:"Photos", ready:readinessChecks[5]?.ready ?? false },
+        { href:"#prices-heading", label:"Prices", ready:readinessChecks[4]?.ready ?? false },
+        { href:"#claims-heading", label:"Claims & evidence", ready:claims.some(claim => claim.claimState === "VERIFIED") },
+        { href:editable ? "#submission-heading" : "#claims-heading", label:"Review & submit", ready:false },
+      ].map((step, index) => <a href={step.href} key={step.label} className={prototypeStyles.step}>
+        <span className={step.ready ? prototypeStyles.done : prototypeStyles.number} aria-hidden="true">{step.ready ? "✓" : index+1}</span>
+        <span>{step.label}</span>
+      </a>)}
+    </nav>
 
     <section className={styles.formPanel} aria-labelledby="details-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>PRODUCT DETAILS</p><h2 id="details-heading">Continue where you left off</h2><p>Update the parent product details. Variants, images, prices and claims stay in their own workflow steps.</p></div><span className={styles.draftBadge}>SCHEMA V{product.categorySchemaVersion}</span></div>
@@ -375,6 +384,18 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
         <fieldset className={styles.fieldWide}><legend>Supporting images that passed scan and rights checks</legend>{product.mediaLinks.filter((link) => link.scanState === "CLEAN" && link.rightsState === "ATTESTED").map((link) => <label className={styles.checkboxLabel} key={link.mediaAssetId}><input type="checkbox" checked={claimEvidence.includes(link.mediaAssetId)} onChange={(event) => setClaimEvidence((current) => event.target.checked ? [...new Set([...current, link.mediaAssetId])] : current.filter((id) => id !== link.mediaAssetId))} /> Evidence asset {link.mediaAssetId}</label>)}{product.mediaLinks.every((link) => link.scanState !== "CLEAN" || link.rightsState !== "ATTESTED") && <p>No eligible linked evidence is available yet.</p>}</fieldset>
       </div>{claimNotice && <p className={styles.notice} role="status">{claimNotice}</p>}<div className={styles.formActions}><p>Verification is performed by a separate reviewer.</p><button className={styles.primaryButton} type="submit" disabled={claimSaving}>{claimSaving ? "Submitting…" : "Submit claim for review"}</button></div></form> : <p className={styles.readOnlyNotice} role="status">A claim can be proposed only against a published product revision.</p>}
     </section>
+    {editable && <section className={styles.formPanel} aria-labelledby="readiness-heading">
+      <div className={styles.formHeading}><div><p className={styles.kicker}>SUBMISSION READINESS</p><h2 id="readiness-heading">Ready for independent review?</h2><p>These checks mirror the server-side submission gates. A green item is only a client-side indication; the backend remains authoritative.</p></div><span className={styles.draftBadge}>{readinessChecks.filter((check) => check.ready).length}/{readinessChecks.length} ready</span></div>
+      <ul className={styles.readinessList}>{readinessChecks.map((check) => <li key={check.label} className={check.ready ? styles.readinessReady : styles.readinessBlocked}><span aria-hidden="true">{check.ready ? "✓" : "!"}</span><span>{check.label}</span><strong>{check.ready ? "Ready" : "Needs attention"}</strong></li>)}</ul>
+    </section>}
+
+    {editable && <section className={styles.formPanel} aria-labelledby="submission-heading">
+      <div className={styles.formHeading}><div><p className={styles.kicker}>READY FOR A SEPARATE REVIEW?</p><h2 id="submission-heading">Submit this revision</h2><p>Submission checks the saved product, active SKUs, approved prices and eligible media on the server. Once accepted, this exact revision is frozen for an independent reviewer.</p></div></div>
+      {submissionError && <p className={styles.error} role="alert">{submissionError}</p>}
+      {submissionNotice && <p className={styles.notice} role="status">{submissionNotice}</p>}
+      <div className={styles.formActions}><p>Requires the brand’s current catalog submission permission.</p><button className={styles.primaryButton} type="button" onClick={() => void submitForReview()} disabled={submitting}>{submitting ? "Submitting revision…" : "Submit for independent review"}</button></div>
+    </section>}
+
   </main>;
 }
 

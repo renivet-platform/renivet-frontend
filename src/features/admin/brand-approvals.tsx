@@ -94,11 +94,41 @@ export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
     finally { setBusy(false); }
   }
 
+  // AD-03 shows the oldest valid persisted applications first. Null dates are
+  // left at the end; never turn missing W2 evidence/reviewer fields into data.
+  const ordered = [...items].sort((left, right) => {
+    const a = left.submittedAt ? Date.parse(left.submittedAt) : Number.POSITIVE_INFINITY;
+    const b = right.submittedAt ? Date.parse(right.submittedAt) : Number.POSITIVE_INFINITY;
+    return (Number.isFinite(a) ? a : Number.POSITIVE_INFINITY) - (Number.isFinite(b) ? b : Number.POSITIVE_INFINITY);
+  });
+
   return <main className={styles.page} data-screen-id={detailBrandId ? "AD-04" : "AD-03"}>
-    <header className={styles.header}><div><p className={styles.kicker}>PLATFORM ADMIN · BRAND APPROVALS</p><h1>{detailBrandId ? "Review brand application" : "Applications awaiting review"}</h1><p>Only persisted pending applications are shown. Approval activates the existing W1 brand membership handoff.</p></div><Link href={detailBrandId ? "/brand-approvals" : "/operations"}>{detailBrandId ? "Back to applications" : "Back to operations"}</Link></header>
+    <header className={styles.header}><div><p className={styles.kicker}>PLATFORM ADMIN · BRAND APPROVALS</p><h1>{detailBrandId ? "Review brand application" : "Brand applications"}</h1><p>{detailBrandId ? "Only persisted pending applications can be reviewed; missing W2 evidence must not be assumed verified." : "Oldest submitted applications first. Check the persisted details before deciding."}</p></div><Link href={detailBrandId ? "/brand-approvals" : "/operations"}>{detailBrandId ? "Back to applications" : "Back to operations"}</Link></header>
     {error && <p className={styles.error} role="alert">{error}</p>}
     {notice && <p className={styles.notice} role="status">{notice}</p>}
-    <section className={styles.grid}>
+    {!detailBrandId && <section className={styles.applicationTable} aria-label="Persisted brand application review queue">
+      <div className={styles.tableHeading}><h2>Brand applications</h2><button type="button" className={styles.linkButton} onClick={() => void load()} disabled={loading}>Refresh</button></div>
+      {loading ? <p className={styles.empty} role="status">Loading pending brand applications…</p>
+        : ordered.length === 0 ? <p className={styles.empty}>No persisted pending applications are available to this permission.</p>
+        : <div className={styles.tableWrap}>
+          <table><caption className={styles.visuallyHidden}>Pending applications from authorized backend queue, oldest submitted first</caption>
+            <thead><tr><th scope="col">Brand</th><th scope="col">Submitted</th><th scope="col">Documents</th><th scope="col">Status</th><th scope="col">Reviewer</th><th scope="col">Action</th></tr></thead>
+            <tbody>{ordered.map(item => {
+              const href = brandApprovalDetailPath(item.brandId);
+              return <tr key={item.brandId}>
+                <th scope="row"><strong>{item.brandName ?? item.legalName ?? item.brandId}</strong><small>{item.applicantName ?? "Applicant name not provided"}</small></th>
+                <td data-label="Submitted">{item.submittedAt ? new Date(item.submittedAt).toLocaleDateString("en-IN", {day:"2-digit",month:"short",year:"numeric"}) : "Not recorded"}</td>
+                <td data-label="Documents"><span className={styles.pendingEvidence}>Not supplied by W1 API</span></td>
+                <td data-label="Status">{item.brandState?.replaceAll("_"," ").toLocaleLowerCase() ?? "State not supplied"}</td>
+                <td data-label="Reviewer">Not supplied by API</td>
+                <td data-label="Action">{href ? <Link href={href} className={styles.reviewLink}>Review</Link> : "Unavailable"}</td>
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>}
+      <p className={styles.queueNote}>Document verification, assigned reviewer and detailed corrections are not included in the current W1 queue API. The design does not invent them.</p>
+    </section>}
+    {detailBrandId && <section className={styles.grid}>
       <div className={styles.panel}><div className={styles.panelHeading}><h2>Pending applications</h2><button className={styles.linkButton} onClick={() => void load()}>Refresh</button></div>
         {loading ? <p className={styles.empty} role="status">Loading pending applications…</p> : items.length === 0 ? <p className={styles.empty}>No persisted pending applications are available to this permission.</p> : <div className={styles.list}>{items.map((item) => {
           const href = brandApprovalDetailPath(item.brandId);
@@ -115,6 +145,6 @@ export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
           <p className={styles.muted}>Maker-checker is enforced by the backend; the submitter and checker cannot be the same person. This W1 decision records approve or reject only; it does not attest that the unavailable W2 evidence was checked.</p>
         </div>}
       </div>
-    </section>
+    </section>}
   </main>;
 }

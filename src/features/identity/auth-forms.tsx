@@ -129,7 +129,7 @@ export function SignInForm({ nextPath, screenId = "CU-08" }: { nextPath?: string
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [method, setMethod] = useState<"email" | "phone">("phone");
+  const [method, setMethod] = useState<"email" | "phone">(screenId === "AD-01" ? "email" : "phone");
   const [phone, setPhone] = useState("");
   const [challengeId, setChallengeId] = useState("");
   const [code, setCode] = useState("");
@@ -179,18 +179,18 @@ export function SignInForm({ nextPath, screenId = "CU-08" }: { nextPath?: string
     } catch (cause) { setError(messageFor(cause)); }
     finally { setBusy(false); }
   }
-  return <AuthShell screenId={challengeId && screenId === "CU-08" ? "CU-09B" : screenId} eyebrow="Welcome back" title={challengeId ? "Enter your code" : screenId === "CU-08" ? "Welcome to Renivet" : "Sign in to Renivet"} description={challengeId ? "Enter the six-digit code sent to your verified phone. It expires in five minutes." : screenId === "CU-08" ? "Sign in or create an account. One mobile number does both." : "Continue with your email and password or a code sent to your verified phone number."}>
+  return <AuthShell screenId={challengeId && screenId === "CU-08" ? "CU-09B" : screenId} eyebrow="Welcome back" title={challengeId ? "Enter your code" : screenId === "CU-08" ? "Welcome to Renivet" : screenId === "AD-01" ? "Renivet staff sign in" : "Sign in to Renivet"} description={challengeId ? "Enter the six-digit code sent to your verified phone. It expires in five minutes." : screenId === "CU-08" ? "Sign in or create an account. One mobile number does both." : screenId === "AD-01" ? "Only invited Renivet staff can sign in here. Brands use the regular sign-in." : "Continue with your email and password or a code sent to your verified phone number."}>
     <div className={styles.form}>
-      {!challengeId && <div role="group" aria-label="Sign-in method" className={screenId === "CU-08" ? styles.prototypeSegments : styles.formLinks}>
+      {!challengeId && screenId !== "AD-01" && <div role="group" aria-label="Sign-in method" className={screenId === "CU-08" ? styles.prototypeSegments : styles.formLinks}>
         <button className={screenId === "CU-08" ? styles.prototypeSegmentButton : styles.secondaryButton} type="button" aria-pressed={method === "email"} onClick={() => { setMethod("email"); setChallengeId(""); setError(""); setStatus(""); }}>{screenId === "CU-08" ? "Email" : "Email and password"}</button>
         <button className={screenId === "CU-08" ? styles.prototypeSegmentButton : styles.secondaryButton} type="button" aria-pressed={method === "phone"} onClick={() => { setMethod("phone"); setChallengeId(""); setError(""); setStatus(""); }}>{screenId === "CU-08" ? "Mobile" : "Phone number"}</button>
       </div>}
       {method === "email" ? <form className={styles.form} onSubmit={submitEmail}>
         <FormMessage error={error} status={status} />
-        <div className={styles.field}><label className={styles.label} htmlFor="signin-email">Email address</label>
+        <div className={styles.field}><label className={styles.label} htmlFor="signin-email">{screenId === "AD-01" ? "Work email" : "Email address"}</label>
           <input className={styles.input} id="signin-email" name="email" type="email" autoComplete="username" inputMode="email" maxLength={254} required value={email} onChange={event => setEmail(event.currentTarget.value)} /></div>
         <PasswordField id="signin-password" label="Password" autoComplete="current-password" value={password} onChange={setPassword} />
-        <div className={styles.formLinks}><Link className={styles.link} href={appendReturnTarget("/recover", nextPath)}>Forgot password?</Link><Link className={styles.link} href={appendReturnTarget("/register", nextPath)}>Create account</Link></div>
+        {screenId === "AD-01" ? <p className={styles.hint}>Locked out? Ask a platform admin to resend your invitation.</p> : <div className={styles.formLinks}><Link className={styles.link} href={appendReturnTarget("/recover", nextPath)}>Forgot password?</Link><Link className={styles.link} href={appendReturnTarget("/register", nextPath)}>Create account</Link></div>}
         <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
       </form> : !challengeId ? <form className={styles.form} onSubmit={requestPhoneCode}>
         <FormMessage error={error} status={status} />
@@ -214,7 +214,7 @@ export function SignInForm({ nextPath, screenId = "CU-08" }: { nextPath?: string
 
 export function RegisterForm({ nextPath }: { nextPath?: string }) {
   const router = useRouter();
-  const [method, setMethod] = useState<"phone" | "email">("phone");
+  const [method, setMethod] = useState<"phone" | "email">("email");
   const [phone, setPhone] = useState(""); const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
   const [challengeId, setChallengeId] = useState(""); const [code, setCode] = useState(""); const [verified, setVerified] = useState(false);
   const [error, setError] = useState(""); const [status, setStatus] = useState(""); const [busy, setBusy] = useState(false);
@@ -353,7 +353,7 @@ export function RecoveryForm({ nextPath, screenId = "CU-09C" }: { nextPath?: str
     } catch (cause) { setError(messageFor(cause)); }
     finally { setBusy(false); }
   }
-  return <AuthShell screenId={challengeId ? "CU-09D" : screenId} eyebrow="Account recovery" title="Reset your password" description="Request a one-time code using the email on your account.">
+  return <AuthShell screenId={challengeId ? "CU-09D" : screenId} eyebrow="Account recovery" title={challengeId ? "Choose a new password" : "Reset your password"} description={challengeId ? "Enter the code sent to your email and choose a secure new password." : "Request a one-time code using the email on your account."}>
     {resetDone ? <div className={styles.form}><p className={styles.successBox} role="status">If the code was valid, your password has been reset.</p><Link ref={signInLink} className={styles.primaryButton} href={appendReturnTarget("/sign-in", nextPath)}>Sign in with your new password</Link></div>
       : !challengeId ? <form className={styles.form} onSubmit={request}>
       <FormMessage id="recovery-form-error" error={error} status={status} />
