@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import styles from "./auth.module.css";
 import { PrototypeCustomerAuthShell } from "./prototype-customer-auth-shell";
+import { PrototypeCompactAuthShell, PrototypeCustomerAccountShell } from "./prototype-secondary-auth-shell";
 
 interface AuthShellProps {
   screenId?: string;
@@ -12,6 +13,12 @@ interface AuthShellProps {
 }
 
 export function AuthShell({ screenId, eyebrow, title, description, children }: AuthShellProps) {
+  if (screenId === "CU-09E") {
+    return <PrototypeCustomerAccountShell screenId={screenId} eyebrow={eyebrow} title={title} description={description}>{children}</PrototypeCustomerAccountShell>;
+  }
+  if (screenId && (["CU-09A", "CU-09W", "CU-09C", "CU-09D", "AD-01"].includes(screenId) || (screenId === "CU-09B" && title !== "Enter your code"))) {
+    return <PrototypeCompactAuthShell screenId={screenId} eyebrow={eyebrow} title={title} description={description}>{children}</PrototypeCompactAuthShell>;
+  }
   if (screenId === "CU-08" || (screenId === "CU-09B" && title === "Enter your code")) {
     return <PrototypeCustomerAuthShell screenId={screenId} title={title} description={description}>{children}</PrototypeCustomerAuthShell>;
   }

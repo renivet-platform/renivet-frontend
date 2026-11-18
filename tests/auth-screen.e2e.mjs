@@ -179,7 +179,7 @@ try {
   const desktopShot = await command("Page.captureScreenshot", { format: "png", fromSurface: true });
   await writeFile(path.join("visual-artifacts", "auth-register-desktop.png"), Buffer.from(desktopShot.data, "base64"));
   await command("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
-  await command("Page.navigate", { url: new URL("register", base).href }); await waitFor("document.getElementById('register-phone') !== null");
+  await command("Page.navigate", { url: new URL("register", base).href }); await waitFor("document.getElementById('register-email') !== null");
   const mobileShot = await command("Page.captureScreenshot", { format: "png", fromSurface: true });
   await writeFile(path.join("visual-artifacts", "auth-register-mobile.png"), Buffer.from(mobileShot.data, "base64"));
   console.log("PASS /register: desktop width");
@@ -187,6 +187,8 @@ try {
   // Phone-only registration -> purpose-bound OTP -> signed-in session.
   await command("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await command("Page.navigate", { url: new URL("register", base).href });
+  await waitFor("[...document.querySelectorAll('[aria-label=\"Registration method\"] button')].some(button => button.textContent.includes('Phone number'))");
+  await evaluate("[...document.querySelectorAll('[aria-label=\"Registration method\"] button')].find(button => button.textContent.includes('Phone number'))?.click()");
   await waitInteractive("register-phone");
   assert.equal(await evaluate("document.getElementById('register-password') === null"), true, "phone-only signup does not ask the user for a password");
   await enter("register-phone", testPhone); await submit(); await waitInteractive("register-code");
