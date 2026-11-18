@@ -149,6 +149,7 @@ export function TaxonomyAdminWorkspace() {
     <header className={styles.top}><div><p className={styles.eyebrow}>RENIVET · TAXONOMY ADMINISTRATION</p><h1>Category and schema proposals</h1><p className={styles.muted}>Create a versioned proposal; publication and activation remain maker-checker gated.</p></div><a href="/operations">Back to operations</a></header>
     {status && <p className={styles.notice} role="status">{status}</p>}
     {error && <p className={styles.error} role="alert">{error}</p>}
+    <p className={styles.mobileNotice} role="note">Taxonomy rules are easier to review on a larger screen. You can still inspect available categories here; use a desktop to compare full schema details before submitting a publication proposal.</p>
     <div className={styles.layout}>
       <section className={styles.panel}><h2>Categories</h2><p className={styles.muted}>Only persisted categories from the backend are shown.</p>
         {loading ? <p>Loading…</p> : <div className={styles.list}>{categories.map((category) => <button className={styles.item} aria-current={category.id === draft.categoryId} key={category.id} onClick={() => choose(category.id)}><strong>{category.name} · {category.code}</strong><span>{category.isLeaf ? "Leaf" : "Parent"} · {category.active === false || category.isActive === false ? "inactive" : "active"} · schema {category.currentSchemaVersion ?? category.schemaVersion ?? "—"}</span></button>)}</div>}

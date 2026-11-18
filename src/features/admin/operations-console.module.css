@@ -135,3 +135,55 @@
 .reviewCard:hover{border-color:#b9c8be;background:#faf9f6}
 .approve{min-height:44px;background:#1f5a45}
 .linkButton{min-height:44px;color:#163f31}
+
+
+/* REN2-117 · AD-08A/B: compact approved 17-Nov operations review.
+   Purely visual; existing W1 permission, MFA resolver, maker-checker, revision and
+   action APIs remain server-authoritative and unchanged. */
+.shell { min-height:0; background:#f6f4ef; color:#1b2420; }
+.main { min-height:0; }
+.topbar { min-height:0; border:0; background:transparent; padding:10px 18px 2px; }
+.topbar p { color:#5d6963; }
+.content { width:100%; padding:12px 16px 50px; }
+.hero { padding:11px 0 18px; align-items:start; }
+.hero h1 { font:740 28px/1.25 system-ui,-apple-system,"Segoe UI",sans-serif; letter-spacing:-.025em; margin:0 0 8px; color:#1b2420; }
+.heroCopy { color:#5d6963; max-width:720px; font-size:14px; line-height:1.5; }
+.heroAside { display:none; }
+.reviewSection { background:transparent; padding:0; margin:0; border:0; box-shadow:none; }
+.sectionTitle { align-items:start; margin-bottom:13px; }
+.sectionTitle h2 { font:700 17px/1.4 system-ui,sans-serif; color:#44514a; margin:0 0 5px; }
+.sectionTitle p { color:#5d6963; font-size:13px; }
+.queueTabs { gap:7px; flex-wrap:wrap; margin-bottom:19px; }
+.queueTab,.queueTabActive { min-height:42px; padding:9px 14px; font:650 13px/1.4 system-ui,sans-serif; border-radius:999px; background:#fff; border:1px solid #79817c; color:#44514a; }
+.queueTabActive { background:#1f5a45; border-color:#1f5a45; color:#fff; }
+.queueTab:focus-visible,.queueTabActive:focus-visible { outline:3px solid #1d4f86; outline-offset:2px; }
+.reviewGrid { display:grid; grid-template-columns:1fr; gap:8px; margin:0; }
+.reviewCard { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:7px 12px; padding:15px 17px; min-height:87px; border:1px solid #e1ddd3; border-radius:10px; background:#fff; box-shadow:none; }
+.reviewCard .cardTop { grid-column:1; display:flex; flex-wrap:wrap; gap:9px; margin:0; }
+.reviewCard h3 { grid-column:1; margin:0; color:#1b2420; font:720 15px/1.4 system-ui,sans-serif; }
+.reviewCard .cardCopy { grid-column:1; color:#5d6963; margin:0; font-size:12px; line-height:1.35; }
+.reviewCard .disabledAction { grid-column:2; grid-row:1 / 5; justify-self:end; min-height:43px; padding:9px 16px; background:#1f5a45; color:#fff; border:1px solid #1f5a45; border-radius:8px; font:700 13px system-ui,sans-serif; }
+.reviewCard .disabledAction:disabled { background:#eceae4; border-color:#d2d6d1; color:#5d6963; }
+.reviewCard .disabledAction:not(:disabled):hover { background:#163f31; }
+.reviewCard .disabledAction:focus-visible { outline:3px solid #1d4f86; outline-offset:3px; }
+.withDetail { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(310px,.85fr); column-gap:16px; align-items:start; }
+.withDetail .hero { grid-column:1 / -1; }
+.withDetail .reviewSection { grid-column:1; min-width:0; }
+.withDetail .detailPanel { grid-column:2; min-width:0; margin:0; position:sticky; top:16px; padding:20px; }
+.withDetail .footer { grid-column:1 / -1; }
+.detailPanel { background:#fff; border:1px solid #e1ddd3; box-shadow:none; border-radius:9px; }
+.detailPanel h2 { margin:5px 0 11px; color:#1b2420; font:730 18px/1.35 system-ui,sans-serif; }
+.detailPanel .statusFacts { grid-template-columns:1fr; gap:9px; }
+.detailPanel .statusFacts>div { min-width:0; overflow-wrap:anywhere; }
+.detailPanel form { margin-top:17px; }
+.detailPanel label { font-size:13px; color:#44514a; }
+.detailPanel form button { min-height:43px; border-radius:8px; }
+.detailPanel form button[type=submit] { background:#1f5a45; color:#fff; }
+@media(max-width:980px) { .withDetail { display:block; }.withDetail .detailPanel { position:static; margin-top:16px; } }
+@media(max-width:620px) {
+ .topbar { padding:8px 10px; }.content { padding:10px 8px 45px; }
+ .hero h1 { font-size:24px; }.queueTabs { gap:6px; }
+ .queueTab,.queueTabActive { min-height:40px; padding:8px 11px; font-size:12px; }
+ .reviewCard { grid-template-columns:minmax(0,1fr); }.reviewCard .disabledAction{grid-column:1;grid-row:auto;justify-self:start;}
+}
+@media(prefers-reduced-motion:reduce) { .reviewCard,.detailPanel {transition:none!important;animation:none!important;} }

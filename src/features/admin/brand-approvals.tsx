@@ -106,6 +106,10 @@ export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
     <header className={styles.header}><div><p className={styles.kicker}>PLATFORM ADMIN · BRAND APPROVALS</p><h1>{detailBrandId ? "Review brand application" : "Brand applications"}</h1><p>{detailBrandId ? "Only persisted pending applications can be reviewed; missing W2 evidence must not be assumed verified." : "Oldest submitted applications first. Check the persisted details before deciding."}</p></div><Link href={detailBrandId ? "/brand-approvals" : "/operations"}>{detailBrandId ? "Back to applications" : "Back to operations"}</Link></header>
     {error && <p className={styles.error} role="alert">{error}</p>}
     {notice && <p className={styles.notice} role="status">{notice}</p>}
+    {detailBrandId && <div className={styles.reviewContext} role="note">
+      <strong>Independent application review</strong>
+      <p>Only persisted W1 eligibility and membership data can be approved here. Business documents, finance evidence, correction notes and the W2 application revision still require approved backend contracts; do not infer verification from this decision.</p>
+    </div>}
     {!detailBrandId && <section className={styles.applicationTable} aria-label="Persisted brand application review queue">
       <div className={styles.tableHeading}><h2>Brand applications</h2><button type="button" className={styles.linkButton} onClick={() => void load()} disabled={loading}>Refresh</button></div>
       {loading ? <p className={styles.empty} role="status">Loading pending brand applications…</p>

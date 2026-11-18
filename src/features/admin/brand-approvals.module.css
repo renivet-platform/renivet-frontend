@@ -51,3 +51,8 @@
   .tableWrap tbody td::before { content:attr(data-label); display:block; margin-bottom:2px; color:#79817c; font-size:11px; }
   .tableWrap tbody td:last-child { margin-top:5px; }
 }
+
+/* REN2-117 AD-04: truthful scope banner before irreversible reviewer decision. */
+.reviewContext { margin:0 0 15px; border:1px solid #bbd0e2; border-left:4px solid #1d4f86; background:#eef5fd; padding:12px 16px; border-radius:8px; }
+.reviewContext strong { color:#1d4f86; font-size:14px; }
+.reviewContext p { margin:5px 0 0; color:#42586c; font-size:13px; line-height:1.55; }

@@ -176,9 +176,8 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
     <div className={styles.shell}>
       <main className={styles.main} id="overview" aria-labelledby="operations-title" data-screen-id={initialItemId || selected ? "AD-08B" : "AD-08A"}>
         <header className={styles.topbar}><p><span>Workspace</span><span aria-hidden="true">/</span><strong>Operations</strong></p><div className={styles.topbarActions}>{initialItemId ? <a className={styles.navLink} href={reviewQueuePath(active)}>Back to queue</a> : null}{sessionReady ? <button className={styles.sessionButton} type="button" onClick={() => void signOut()} disabled={signOutBusy}>{signOutBusy ? "Signing out…" : "Sign out"}</button> : sessionError ? <a className={styles.sessionButton} href="/sign-in">Sign in</a> : null}<span className={styles.previewBadge}><span aria-hidden="true" /> Authenticated review</span></div></header>
-        <div className={styles.content}>
-          <section className={styles.hero} aria-labelledby="operations-title"><div><p className={styles.eyebrow}>RENIVET · PLATFORM OPERATIONS</p><h1 id="operations-title">Review work,<br /><em>with context.</em></h1><p className={styles.heroCopy}>Each decision is tied to the persisted revision, its evidence and an independent reviewer.</p></div>
-            <div className={styles.heroAside}><span className={styles.heroGlyph} aria-hidden="true">✳</span><p>Fresh authorization is required for every decision.</p><span>{area.permission}</span></div></section>
+        <div className={selected ? `${styles.content} ${styles.withDetail}` : styles.content}>
+          <section className={styles.hero} aria-labelledby="operations-title"><div><h1 id="operations-title">{area.title}</h1><p className={styles.heroCopy}>Check each submitted version, its current evidence and authorized review decisions. The backend is the source of truth.</p></div></section>
           {sessionError ? <section className={styles.statusPanel} role="alert"><h2>Sign in required</h2><p>{sessionError}</p><a href="/sign-in">Go to sign in</a></section> : null}
           {sessionReady ? <section className={styles.reviewSection} aria-labelledby="queue-title">
             <nav className={styles.queueTabs} aria-label="Review queues">
@@ -203,7 +202,7 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
             </div>
           </section> : null}
           {detailError ? <p className={styles.availability} role="alert">{detailError}</p> : null}
-          {selected ? <section className={styles.statusPanel} aria-labelledby="detail-title"><p className={styles.eyebrow}>EXACT PERSISTED ITEM</p><h2 id="detail-title">{title}</h2>
+          {selected ? <section className={`${styles.statusPanel} ${styles.detailPanel}`} aria-labelledby="detail-title"><p className={styles.eyebrow}>EXACT PERSISTED ITEM</p><h2 id="detail-title">{title}</h2>
                     <dl className={styles.statusFacts}>{Object.entries(selected).filter(([key]) => !["snapshot", "rules", "evidence", "media", "history", "ruleset"].includes(key)).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{display(value)}</dd></div>)}</dl>
                     <p className={styles.availability} role="status"><strong>Maker-checker:</strong> submitted by {display(selected.submittedBy)}; current reviewer {display(sessionUserId)}. {selfSubmitted ? "Decision disabled because the submitter cannot review their own work." : expiredClaim ? "Decision disabled because claim evidence is expired." : "Independent reviewer required."}</p>
             {selected.snapshot ? <details><summary>Frozen revision snapshot</summary><pre>{JSON.stringify(selected.snapshot, null, 2)}</pre></details> : null}
