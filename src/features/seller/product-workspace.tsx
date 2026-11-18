@@ -7,6 +7,7 @@ import { AuthApiError, getCurrentSession } from "@/features/identity/auth-api";
 import { categoryDraftVersion, categoryLabel, createIdempotencyKey, selectableCategories, type Category, type CategoryAttribute, type Paged, type ProductPage, type ProductSummary, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import styles from "./product-workspace.module.css";
 import { BrandAccessPanel } from "./brand-access-panel";
+import { filteredLoadedProducts, loadedTabCount, productStatusTabs, type ProductTab } from "./product-list-filters";
 
 type CreateDraftReceipt = { productId: string; publicationState: "DRAFT"; categorySchemaVersion: number };
 
@@ -17,7 +18,7 @@ function errorMessage(error: unknown): string {
 }
 
 function ProductState({ state }: { state: ProductSummary["publicationState"] }) {
-  return <span className={`${styles.state} ${state === "DRAFT" || state === "INCOMPLETE" ? styles.stateDraft : state === "PUBLISHED" ? styles.statePublished : styles.stateReview}`}>{state.replaceAll("_", " ")}</span>;
+  return <span className={`${styles.state} ${state === "DRAFT" || state === "INCOMPLETE" ? styles.stateDraft : state === "PUBLISHED" ? styles.statePublished : styles.stateReview}`}>{state === "REJECTED" ? "Changes requested" : state === "PUBLISHED" ? "Live" : state.replaceAll("_", " ").toLocaleLowerCase()}</span>;
 }
 
 export function ProductWorkspace({ brandId }: { brandId: string }) {
@@ -33,6 +34,8 @@ export function ProductWorkspace({ brandId }: { brandId: string }) {
   const [loadError, setLoadError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [showForm, setShowForm] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [activeStatus, setActiveStatus] = useState<ProductTab>("all");
   const [title, setTitle] = useState("");
   const [styleCode, setStyleCode] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -140,12 +143,14 @@ export function ProductWorkspace({ brandId }: { brandId: string }) {
     } finally { setSaving(false); }
   }
 
+  const filtered = useMemo(() => filteredLoadedProducts(products, searchText, activeStatus), [products, searchText, activeStatus]);
+
   return (
     <main className={styles.page} aria-labelledby="products-title" data-screen-id="SE-08">
       <header className={styles.header}>
-        <div><p className={styles.kicker}>BRAND WORKSPACE <span aria-hidden="true">/</span> CATALOGUE</p><h1 id="products-title">Products</h1><p className={styles.subtitle}>Start a draft with the details you have. Complete the rest when you’re ready.</p></div>
-        <div className={styles.headerActions}><Link className={styles.secondaryButton} href={`/brands/${encodeURIComponent(brandId)}/workspace`}>Workspace</Link><Link className={styles.secondaryButton} href={`/brands/${encodeURIComponent(brandId)}/team`}>Team</Link><Link className={styles.secondaryButton} href={`/brands/${encodeURIComponent(brandId)}/inventory`}>Inventory</Link><Link className={styles.secondaryButton} href={`/brands/${encodeURIComponent(brandId)}/imports`}>Import products</Link><button className={styles.primaryButton} type="button" onClick={() => { setShowForm((visible) => !visible); setFormError(""); setFormNotice(""); }}>
-          {showForm ? "Close draft form" : "Create product draft"}
+        <div><p className={styles.kicker}>BRAND WORKSPACE <span aria-hidden="true">/</span> CATALOGUE</p><h1 id="products-title">Products</h1><p className={styles.subtitle}>Everything in your catalogue, from drafts to live listings.</p></div>
+        <div className={styles.headerActions}><Link className={styles.secondaryButton} href={`/brands/${encodeURIComponent(brandId)}/imports`}>Import products</Link><button className={styles.primaryButton} type="button" onClick={() => { setShowForm((visible) => !visible); setFormError(""); setFormNotice(""); }}>
+          {showForm ? "Close draft form" : "Add a product"}
         </button></div>
       </header>
 
@@ -181,13 +186,33 @@ export function ProductWorkspace({ brandId }: { brandId: string }) {
         </form>
       </section>}
 
+      <section className={styles.catalogueControls} aria-label="Find and filter products">
+        <label className={styles.visuallyHidden} htmlFor="product-search">Search by product name or style code</label>
+        <input id="product-search" type="search" className={styles.productSearch} placeholder="Search by product name" value={searchText} onChange={(event) => setSearchText(event.currentTarget.value)} />
+        <div className={styles.statusTabs} role="group" aria-label="Filter by product status">
+          {productStatusTabs.map(tab => <button className={activeStatus === tab.id ? styles.activeStatusTab : styles.statusTab} type="button" aria-pressed={activeStatus === tab.id} key={tab.id} onClick={() => setActiveStatus(tab.id)}>
+            {tab.label} <span>{loadedTabCount(products, tab.id)}</span>
+          </button>)}
+        </div>
+        <p className={styles.filterDisclosure}>Search and status filters apply to the {products.length} loaded product{products.length === 1 ? "" : "s"}. Load more to see additional records.</p>
+      </section>
       <section className={styles.listSection} aria-labelledby="draft-list-title">
         <div className={styles.listHeading}><div><p className={styles.kicker}>YOUR CATALOGUE</p><h2 id="draft-list-title">Product drafts and listings</h2></div><span className={styles.count}>{loading ? "Loading…" : `${products.length} shown`}</span></div>
         {loading && <p className={styles.stateMessage} role="status">Loading your brand catalogue…</p>}
         {!loading && loadError && <div className={styles.errorPanel} role="alert"><strong>Catalogue unavailable</strong><p>{loadError}</p><button className={styles.secondaryButton} type="button" onClick={() => setReloadKey((key) => key + 1)}>Try again</button></div>}
         {!loading && !loadError && products.length === 0 && <div className={styles.emptyState}><span className={styles.emptyMark} aria-hidden="true">✳</span><h3>No products yet</h3><p>Your brand catalogue is empty. Start with a draft; you can add the details in stages.</p><button type="button" className={styles.secondaryButton} onClick={() => setShowForm(true)}>Create the first draft</button></div>}
         {!loading && !loadError && products.length > 0 && <>
-          <ul className={styles.productList}>{products.map((product) => <li key={product.id}><Link href={`/brands/${encodeURIComponent(brandId)}/products/${encodeURIComponent(product.id)}`} className={styles.productRow}><span className={styles.productMark} aria-hidden="true">{product.title.slice(0, 1).toLocaleUpperCase()}</span><span className={styles.productCopy}><strong>{product.title}</strong><small>Style {product.styleCode} · Version {product.contentVersion}</small></span><ProductState state={product.publicationState} /><span className={styles.rowArrow} aria-hidden="true">→</span></Link></li>)}</ul>
+          <div className={styles.tableWrap}><div className={styles.tableHead} aria-hidden="true"><span>Product</span><span>Status</span><span>Version</span><span>Action</span></div>
+            <ul className={styles.productList}>{filtered.map((product) => <li key={product.id}>
+              <Link href={`/brands/${encodeURIComponent(brandId)}/products/${encodeURIComponent(product.id)}`} className={styles.productRow}>
+                <span className={styles.productCopy}><strong>{product.title}</strong><small>Style {product.styleCode}</small></span>
+                <ProductState state={product.publicationState} />
+                <span className={styles.productVersion}>Draft v{product.contentVersion}</span>
+                <span className={styles.productOpen}>Open</span>
+              </Link>
+            </li>)}</ul>
+            {filtered.length === 0 && <p className={styles.filteredEmpty}>No products in the loaded results match this search and status. Adjust the filters or load more products.</p>}
+          </div>
           <div className={styles.pagination}><span>Showing {products.length} of {totalCount}</span>{productCursor && <button className={styles.textButton} type="button" onClick={loadMoreProducts} disabled={loadingMoreProducts}>{loadingMoreProducts ? "Loading products…" : "Load more products"}</button>}</div>
         </>}
       </section>
