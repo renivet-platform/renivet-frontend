@@ -548,3 +548,6 @@
 @media (prefers-reduced-motion: reduce) {
   .prototypePage *, .prototypePage *::before, .prototypePage *::after { animation: none !important; transition: none !important; }
 }
+
+.prototypeReassurance { display:flex; align-items:flex-start; gap:10px; margin:0; color:#5d6963; font-size:13px; line-height:1.5; }
+.prototypeReassurance span { flex:none; width:15px; }
