@@ -1,0 +1,35 @@
+/* REN2-117 · 17 Nov design source: SE-12/A/C and SE-13. */
+.importProgress { margin:17px 0; }
+.importProgress ol { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; margin:0; padding:0; list-style:none; }
+.importProgress li { min-height:44px; border:1px solid #e1ddd3; background:#fff; color:#5d6963; border-radius:7px; display:flex; align-items:center; gap:7px; padding:7px 11px; font-size:12px; font-weight:650; }
+.stepNumber { flex:none; display:grid; place-items:center; width:20px; height:20px; border-radius:50%; background:#eceae4; color:#44514a; font-size:11px; }
+.currentStep { background:#e4eee8!important; border-color:#1f5a45!important; color:#163f31!important; }
+.currentStep .stepNumber { background:#1f5a45; color:#fff; }
+.finishedStep .stepNumber { background:#e4eee8; color:#1f5a45; }
+.pendingStep { opacity:.75; }
+.sourceNotice,.stockRule { padding:14px 18px; border:1px solid #bbd0e2; border-left:4px solid #1d4f86; border-radius:8px; background:#eef5fd; margin-bottom:18px; }
+.sourceNotice strong,.stockRule strong { color:#1d4f86; font-size:14px; }
+.sourceNotice p,.stockRule p { margin:5px 0 0; color:#42586c; font-size:13px; line-height:1.55; }
+.sourceChoices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:0 0 20px; }
+.sourceChoice { display:flex; align-items:flex-start; gap:12px; padding:15px 13px; min-height:79px; border:1px solid #79817c; border-radius:9px; background:#fff; text-align:left; cursor:pointer; }
+.sourceChoice[aria-pressed=true] { border:2px solid #1f5a45; background:#e4eee8; padding:14px 12px; }
+.sourceChoice:focus-visible { outline:3px solid #1d4f86; outline-offset:3px; }
+.sourceChoice strong { display:block; font-size:13px; color:#1b2420; }
+.sourceChoice small { display:block; margin-top:5px; font-size:12px; line-height:1.4; color:#5d6963; }
+.sourceRadio { width:21px; height:21px; display:grid; place-items:center; flex:none; border:1px solid #79817c; border-radius:50%; color:#fff; font-size:12px; }
+.sourceChoice[aria-pressed=true] .sourceRadio { border-color:#1f5a45; background:#1f5a45; }
+.currentImports { margin:14px 0 18px; padding:16px 18px; border:1px solid #e1ddd3; border-radius:9px; background:#fff; display:flex; gap:16px; align-items:center; justify-content:space-between; }
+.currentImports h2 { margin:0 0 5px; font-size:18px; font-weight:720; }
+.currentImports p { margin:0; color:#5d6963; font-size:13px; line-height:1.4; max-width:680px; }
+.unavailable { color:#7a4a00; border-radius:999px; background:#fcefd6; padding:6px 10px; font-size:12px; font-weight:700; white-space:nowrap; }
+.stockRule { margin:17px 0 20px; }
+.stockStats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:13px; margin:0 0 13px; }
+.stockStats article { border:1px solid #e1ddd3; border-radius:10px; background:#fff; padding:16px; min-height:113px; display:flex; flex-direction:column; }
+.stockStats strong { color:#1b2420; font-size:28px; font-weight:740; font-variant-numeric:tabular-nums; }
+.stockStats span { color:#5d6963; margin-top:11px; font-size:12px; font-weight:650; }
+.summaryWarning { margin:0 0 17px; color:#5d6963; font-size:12px; line-height:1.55; }
+@media(max-width:900px) { .importProgress ol { grid-template-columns:repeat(5,minmax(0,1fr)); }.importProgress li { padding:7px 5px; gap:3px; font-size:11px; }.stockStats { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:650px) {
+ .importProgress ol { gap:3px; }.importProgress li { flex-direction:column; justify-content:center; text-align:center; padding:7px 3px; font-size:10px; min-height:57px; }.importProgress .stepNumber { width:20px; height:20px; }.sourceChoices { grid-template-columns:1fr; }.currentImports { flex-direction:column; align-items:flex-start; }.unavailable{white-space:normal;}.stockStats{gap:9px;}.stockStats article{padding:11px 12px; min-height:101px;}.stockStats strong{font-size:25px;}.stockStats span{font-size:11px;}.sourceNotice,.stockRule {padding:12px 14px;}
+}
+@media(prefers-reduced-motion:reduce) { .sourceChoice,.importProgress li {transition:none!important; animation:none!important;} }

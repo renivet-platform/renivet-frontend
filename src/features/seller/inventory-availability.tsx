@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getCurrentSession } from "@/features/identity/auth-api";
 import { createIdempotencyKey, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import styles from "./product-workspace.module.css";
+import visual from "./import-inventory-prototype.module.css";
 
 type Balance = { brandId: string; variantId: string; locationId: string; physical: number; allocatedNotDispatched: number; availableToSell: number; version: number };
 type Movement = { id: string; variantId: string; locationId: string; deltaPhysical: number; reason: string; recordedAt: string };
@@ -67,11 +68,31 @@ export function InventoryAvailability({ brandId }: { brandId: string }) {
     finally { setSavingAction(false); }
   }
 
+  // These totals summarize precisely the balances returned by the API.
+  // A partial/failed backend read must never be presented as zero inventory.
+  const balanceTotals = balances.reduce((totals, row) => ({
+    physical: totals.physical + row.physical,
+    allocated: totals.allocated + row.allocatedNotDispatched,
+    available: totals.available + row.availableToSell,
+  }), {physical:0,allocated:0,available:0});
+  const openCases = reconciliations.filter(row => ["OPEN","PENDING_REVIEW","INVESTIGATING"].includes(row.status.toUpperCase())).length;
+
   return <main className={styles.page} aria-labelledby="inventory-title" data-screen-id="SE-13">
     <nav className={styles.detailBreadcrumb} aria-label="Breadcrumb"><Link href={`/brands/${encodeURIComponent(brandId)}/products`}>Products</Link><span aria-hidden="true">/</span><span>Inventory</span></nav>
     <header className={styles.header}><div><p className={styles.kicker}>BRAND WORKSPACE <span aria-hidden="true">/</span> STOCK</p><h1 id="inventory-title">Inventory</h1><p className={styles.subtitle}>Authoritative balances and movements are read from the protected backend ledger.</p></div><span className={styles.draftBadge}>LIVE BACKEND DATA</span></header>
+    <section className={visual.stockRule} aria-label="Stock availability calculation">
+      <strong>What is available to sell?</strong>
+      <p>Physical − quarantined − unsellable − allocated (not dispatched) − buffer. The backend is authoritative; no stock is reserved before payment, and a shortage must pause selling.</p>
+    </section>
     {error && <div className={styles.errorPanel} role="alert"><strong>Inventory unavailable</strong><p>{error}</p><button type="button" className={styles.secondaryButton} onClick={() => void load()}>Retry</button></div>}
     {loading ? <p className={styles.stateMessage} role="status">Loading backend inventory…</p> : !error && <>
+      <section className={visual.stockStats} aria-label="Backend-reported stock summary" aria-live="polite">
+        <article><strong>{balances.length}</strong><span>Balance records loaded</span></article>
+        <article><strong>{balanceTotals.physical}</strong><span>Physical units in loaded records</span></article>
+        <article><strong>{balanceTotals.available}</strong><span>Available to sell in loaded records</span></article>
+        <article><strong>{openCases}</strong><span>Open reconciliation cases returned</span></article>
+      </section>
+      <p className={visual.summaryWarning}>These are sums of the returned backend records, not a guarantee of complete warehouse coverage. Quarantined, unsellable and buffer balances are already reflected in the server-calculated availability; no missing quantities are inferred by this UI.</p>
       <section className={styles.formPanel} aria-labelledby="balances-heading"><div className={styles.formHeading}><div><p className={styles.kicker}>AVAILABLE TO SELL</p><h2 id="balances-heading">Stock balances</h2><p>Quantities are calculated by the inventory service. No browser-side stock values are invented.</p></div><button type="button" className={styles.secondaryButton} onClick={() => void load()}>Refresh</button></div>{balances.length === 0 ? <p className={styles.emptyLine}>No persisted stock balances are available for this brand.</p> : <div className={styles.tableWrap}><table className={styles.variantTable}><caption className={styles.visuallyHidden}>Authoritative stock balances</caption><thead><tr><th>Variant</th><th>Location</th><th>Physical</th><th>Allocated</th><th>Available to sell</th><th>Version</th></tr></thead><tbody>{balances.map((balance) => <tr key={`${balance.variantId}-${balance.locationId}`}><th>{balance.variantId}</th><td>{balance.locationId}</td><td>{balance.physical}</td><td>{balance.allocatedNotDispatched}</td><td>{balance.availableToSell}</td><td>{balance.version}</td></tr>)}</tbody></table></div>}</section>
       <section className={styles.formPanel} aria-labelledby="location-heading"><div className={styles.formHeading}><div><p className={styles.kicker}>LOCATIONS</p><h2 id="location-heading">Add a stock location</h2><p>Creating a location is persisted by the backend and requires the brand’s inventory permission.</p></div></div><form onSubmit={createLocation} noValidate><div className={styles.formGrid}><div className={styles.field}><label htmlFor="location-code">Location code</label><input id="location-code" value={locationCode} onChange={(event) => setLocationCode(event.target.value)} required maxLength={64} /></div><div className={styles.field}><label htmlFor="location-name">Location name</label><input id="location-name" value={locationName} onChange={(event) => setLocationName(event.target.value)} required maxLength={256} /></div></div>{notice && <p className={styles.notice} role="status">{notice}</p>}<div className={styles.formActions}><p>Inventory changes are audited by the backend.</p><button type="submit" className={styles.primaryButton} disabled={savingLocation || !locationCode.trim() || !locationName.trim()}>{savingLocation ? "Saving…" : "Create location"}</button></div></form></section>
       <section className={styles.formPanel} aria-labelledby="movement-heading"><div className={styles.formHeading}><div><p className={styles.kicker}>MOVEMENT HISTORY</p><h2 id="movement-heading">Recent stock movements</h2><p>Every movement is immutable and tenant-scoped.</p></div></div>{movements.length === 0 ? <p className={styles.emptyLine}>No persisted movement records are available for this brand.</p> : <div className={styles.tableWrap}><table className={styles.variantTable}><caption className={styles.visuallyHidden}>Recent stock movements</caption><thead><tr><th>Variant</th><th>Location</th><th>Delta</th><th>Reason</th><th>Recorded</th></tr></thead><tbody>{movements.map((movement) => <tr key={movement.id}><th>{movement.variantId}</th><td>{movement.locationId}</td><td>{movement.deltaPhysical}</td><td>{movement.reason}</td><td>{new Date(movement.recordedAt).toLocaleString()}</td></tr>)}</tbody></table></div>}</section>

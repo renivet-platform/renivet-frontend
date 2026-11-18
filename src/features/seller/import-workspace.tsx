@@ -7,6 +7,7 @@ import { categoryLabel, createIdempotencyKey, selectableCategories, type Categor
 import { isStaleImportPreview, validateImportFieldMappings } from "@/features/seller/import-workspace-state";
 import { buildImportTemplateCsv, type SourceProfile } from "@/features/seller/import-templates";
 import styles from "./product-workspace.module.css";
+import visual from "./import-inventory-prototype.module.css";
 
 type UploadRequest = operations["beginCatalogImportUpload"]["requestBody"]["content"]["application/json"];
 type UploadIntent = operations["beginCatalogImportUpload"]["responses"][201]["content"]["application/json"];
@@ -168,13 +169,44 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
     finally { setBusy(false); }
   }
 
+  const importStep = results ? 5 : preview ? 4 : batchId ? 3 : file ? 2 : 1;
+  function chooseProfile(next: SourceProfile) {
+    if (batchId || busy) return;
+    setProfile(next);
+    setMappingRows(profileMappings[next].map(([source, target], id) => ({id,source,target})));
+  }
+
   function addField() { setMappingRows((rows) => [...rows, { id: nextRowId, source: "", target: "" }]); setNextRowId((id) => id + 1); }
   function addCategory() { setCategoryRows((rows) => [...rows, { id: nextRowId, source: "", target: "" }]); setNextRowId((id) => id + 1); }
 
-  return <main className={styles.page} aria-labelledby="imports-title" data-screen-id={results ? "SE-12C" : preview ? "SE-12A" : "SE-12"}>
+  return <main className={styles.page} aria-labelledby="imports-title" data-screen-id={results ? "SE-12C" : batchId ? "SE-12A" : "SE-12"}>
     <nav className={styles.detailBreadcrumb} aria-label="Breadcrumb"><a href={`/brands/${encodeURIComponent(brandId)}/products`}>Products</a><span aria-hidden="true">/</span><span>Imports</span></nav>
-    <header className={styles.header}><div><p className={styles.kicker}>BRAND WORKSPACE / DATA IMPORT</p><h1 id="imports-title">Import products safely</h1><p className={styles.subtitle}>Upload privately, map columns, review a frozen preview, then confirm explicitly.</p></div><span className={styles.draftBadge}>NO STOCK WRITES</span></header>
+    <header className={styles.header}><div><p className={styles.kicker}>BRAND WORKSPACE / DATA IMPORT</p><h1 id="imports-title">{results ? "Import results" : batchId ? "New import" : "Imports"}</h1><p className={styles.subtitle}>Upload privately, map columns, review a frozen preview, then confirm explicitly.</p></div><span className={styles.draftBadge}>NO STOCK WRITES</span></header>
+    <nav className={visual.importProgress} aria-label="Import progress">
+      <ol>{["Source","File","Match columns","Preview","Results"].map((label,index) => {
+        const number=index+1;
+        const active=number===importStep;
+        return <li key={label} aria-current={active ? "step" : undefined} className={active ? visual.currentStep : index+1<importStep ? visual.finishedStep : visual.pendingStep}>
+          <span className={visual.stepNumber} aria-hidden="true">{index+1<importStep?"✓":number}</span><span>{label}</span>
+        </li>;
+      })}</ol>
+    </nav>
+    <section className={visual.sourceNotice} aria-label="What the import does"><strong>Catalogue drafts only</strong><p>CSV/XLSX imports create or update draft product records after your explicit confirmation. Quantities from a source file are observations—not stock receipts or available-to-sell inventory.</p></section>
+    {!batchId && <section className={visual.currentImports} aria-labelledby="past-imports-title">
+      <div><h2 id="past-imports-title">Your imports</h2><p>There is no approved backend endpoint to list previous imports by brand. To check results, use an import opened in this session. No previous imports or statuses are invented.</p></div>
+      <span className={visual.unavailable}>History not connected</span>
+    </section>}
     {!batchId ? <section className={styles.formPanel} aria-labelledby="upload-heading"><div className={styles.formHeading}><div><p className={styles.kicker}>STEP 1 · SOURCE</p><h2 id="upload-heading">Choose an export</h2><p>CSV and XLSX files are uploaded to private storage using a short-lived signed URL. The import only stages catalogue data until you confirm.</p></div></div>
+      <div role="group" aria-label="Choose a source export" className={visual.sourceChoices}>
+        {([
+          ["RENIVET","Renivet template","CSV for Renivet's product fields"],
+          ["SHOPIFY","Shopify export","Shopify products CSV"],
+          ["UNICOMMERCE","Unicommerce","Uniware/Unicommerce export"],
+          ["GENERIC","Other CSV","Map your own columns"],
+        ] as const).map(([id,label,detail])=><button type="button" key={id} aria-pressed={profile===id} className={visual.sourceChoice} onClick={()=>chooseProfile(id)} disabled={busy}>
+          <span aria-hidden="true" className={visual.sourceRadio}>{profile===id?"✓":""}</span><span><strong>{label}</strong><small>{detail}</small></span>
+        </button>)}
+      </div>
       <form onSubmit={startImport} noValidate><div className={styles.formGrid}>
         <div className={styles.field}><label htmlFor="import-profile">Source profile</label><select id="import-profile" value={profile} onChange={(event) => { const selected = event.target.value as SourceProfile; setProfile(selected); setMappingRows(profileMappings[selected].map(([source, target], id) => ({ id, source, target }))); }}>{(["UNICOMMERCE", "SHOPIFY", "RENIVET", "GENERIC"] as SourceProfile[]).map((item) => <option key={item} value={item}>{item === "UNICOMMERCE" ? "Unicommerce / Uniware" : item === "SHOPIFY" ? "Shopify" : item}</option>)}</select><small>XLSX uploads use the backend’s RENIVET_XLSX source contract; edit mappings below to fit the selected export.</small><button type="button" className={styles.textButton} onClick={() => downloadTemplate(profile)}>Download Excel-compatible CSV template</button></div>
         <div className={styles.field}><label htmlFor="import-mode">Conflict handling</label><select id="import-mode" value={mode} onChange={(event) => setMode(event.target.value as CreateRequest["mode"])}><option value="REVIEW_CONFLICT">Review conflicts before changes</option><option value="CREATE_ONLY">Create new records only</option><option value="UPDATE_MATCHED">Update matched records</option><option value="SKIP_EXISTING">Skip records that already exist</option></select></div>
