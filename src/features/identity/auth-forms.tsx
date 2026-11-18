@@ -353,7 +353,7 @@ export function RecoveryForm({ nextPath, screenId = "CU-09C" }: { nextPath?: str
     } catch (cause) { setError(messageFor(cause)); }
     finally { setBusy(false); }
   }
-  return <AuthShell screenId={challengeId ? "CU-09D" : screenId} eyebrow="Account recovery" title="Reset your password" description="Request a one-time code using the email on your account.">
+  return <AuthShell screenId={challengeId ? "CU-09D" : screenId} eyebrow="Account recovery" title={challengeId ? "Choose a new password" : "Reset your password"} description={challengeId ? "Enter the code sent to your email and choose a secure new password." : "Request a one-time code using the email on your account."}>
     {resetDone ? <div className={styles.form}><p className={styles.successBox} role="status">If the code was valid, your password has been reset.</p><Link ref={signInLink} className={styles.primaryButton} href={appendReturnTarget("/sign-in", nextPath)}>Sign in with your new password</Link></div>
       : !challengeId ? <form className={styles.form} onSubmit={request}>
       <FormMessage id="recovery-form-error" error={error} status={status} />
