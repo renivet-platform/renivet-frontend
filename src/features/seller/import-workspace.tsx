@@ -185,7 +185,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
     <nav className={visual.importProgress} aria-label="Import progress">
       <ol>{["Source","File","Match columns","Preview","Results"].map((label,index) => {
         const number=index+1;
-        const active=number===importStep || (number===2 && importStep===1);
+        const active=number===importStep;
         return <li key={label} aria-current={active ? "step" : undefined} className={active ? visual.currentStep : index+1<importStep ? visual.finishedStep : visual.pendingStep}>
           <span className={visual.stepNumber} aria-hidden="true">{index+1<importStep?"✓":number}</span><span>{label}</span>
         </li>;
