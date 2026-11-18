@@ -144,7 +144,7 @@ try {
         // Login and registration have deliberately different tab labels.
         const label = route === "sign-in" ? "Email" : "Email and password";
         const methodGroup = route === "sign-in" ? "Sign-in method" : "Registration method";
-        const methodButton = `[...document.querySelectorAll('[aria-label=${methodGroup}"] button')].find(button => button.textContent.trim() === ${JSON.stringify(label)})`;
+        const methodButton = `[...document.querySelectorAll('[aria-label="${methodGroup}"] button')].find(button => button.textContent.trim() === ${JSON.stringify(label)})`;
         await waitFor(`${methodButton} !== undefined`);
         await waitFor(`${methodButton} && Object.keys(${methodButton}).some(key => key.startsWith('__reactProps'))`);
         await evaluate(`${methodButton}?.click()`);
