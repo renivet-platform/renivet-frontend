@@ -169,7 +169,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
     finally { setBusy(false); }
   }
 
-  const importStep = results ? 4 : preview ? 3 : batchId ? 2 : 1;
+  const importStep = results ? 5 : preview ? 4 : batchId ? 3 : file ? 2 : 1;
   function chooseProfile(next: SourceProfile) {
     if (batchId || busy) return;
     setProfile(next);
