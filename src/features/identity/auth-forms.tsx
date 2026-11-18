@@ -179,11 +179,11 @@ export function SignInForm({ nextPath, screenId = "CU-08" }: { nextPath?: string
     } catch (cause) { setError(messageFor(cause)); }
     finally { setBusy(false); }
   }
-  return <AuthShell screenId={challengeId ? "CU-09B" : screenId} eyebrow="Welcome back" title={challengeId ? "Enter your code" : screenId === "CU-08" ? "Welcome to Renivet" : "Sign in to Renivet"} description={challengeId ? "Enter the six-digit code sent to your verified phone. It expires in five minutes." : screenId === "CU-08" ? "Sign in or create an account. One mobile number does both." : "Continue with your email and password or a code sent to your verified phone number."}>
+  return <AuthShell screenId={challengeId && screenId === "CU-08" ? "CU-09B" : screenId} eyebrow="Welcome back" title={challengeId ? "Enter your code" : screenId === "CU-08" ? "Welcome to Renivet" : "Sign in to Renivet"} description={challengeId ? "Enter the six-digit code sent to your verified phone. It expires in five minutes." : screenId === "CU-08" ? "Sign in or create an account. One mobile number does both." : "Continue with your email and password or a code sent to your verified phone number."}>
     <div className={styles.form}>
-      {!challengeId && <div role="group" aria-label="Sign-in method" className={styles.prototypeSegments}>
-        <button className={styles.prototypeSegmentButton} type="button" aria-pressed={method === "email"} onClick={() => { setMethod("email"); setChallengeId(""); setError(""); setStatus(""); }}>Email</button>
-        <button className={styles.prototypeSegmentButton} type="button" aria-pressed={method === "phone"} onClick={() => { setMethod("phone"); setChallengeId(""); setError(""); setStatus(""); }}>Mobile</button>
+      {!challengeId && <div role="group" aria-label="Sign-in method" className={screenId === "CU-08" ? styles.prototypeSegments : styles.formLinks}>
+        <button className={screenId === "CU-08" ? styles.prototypeSegmentButton : styles.secondaryButton} type="button" aria-pressed={method === "email"} onClick={() => { setMethod("email"); setChallengeId(""); setError(""); setStatus(""); }}>{screenId === "CU-08" ? "Email" : "Email and password"}</button>
+        <button className={screenId === "CU-08" ? styles.prototypeSegmentButton : styles.secondaryButton} type="button" aria-pressed={method === "phone"} onClick={() => { setMethod("phone"); setChallengeId(""); setError(""); setStatus(""); }}>{screenId === "CU-08" ? "Mobile" : "Phone number"}</button>
       </div>}
       {method === "email" ? <form className={styles.form} onSubmit={submitEmail}>
         <FormMessage error={error} status={status} />
