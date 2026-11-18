@@ -1,0 +1,47 @@
+/* REN2-117 · SE-20A/SE-06/SE-20C/SE-18, approved 17-Nov W1/W2 prototype. */
+.page { width:100%; max-width:1180px; margin:0 auto; min-height:calc(100vh - 120px); padding:22px clamp(12px,2.3vw,32px) 64px; background:#f6f4ef; color:#1b2420; }
+.breadcrumb { display:flex; align-items:center; gap:10px; margin:0 0 20px; font-size:13px; color:#79817c; }
+.breadcrumb a { color:#1f5a45; }
+.heading { margin-bottom:22px; }
+.heading h1 { margin:0; font:720 30px/1.25 system-ui,sans-serif; letter-spacing:-.03em; }
+.heading p { margin:7px 0 0; color:#79817c; font-size:15px; }
+.payoutGrid { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(240px,1fr); gap:17px; align-items:start; }
+.card { min-width:0; padding:20px; border:1px solid #e1ddd3; background:#fff; border-radius:10px; box-shadow:0 1px 2px #1b24200f,0 4px 14px #1b24200d; }
+.card h2 { margin:0 0 15px; font-size:18px; font-weight:720; color:#1b2420; }
+.cardHeader { display:flex; justify-content:space-between; align-items:center; gap:15px; margin-bottom:16px; }
+.cardHeader h2 { margin:0; }
+.pendingBadge { display:inline-flex; align-items:center; max-width:max-content; background:#fcefd6; color:#7a4a00; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:740; white-space:nowrap; }
+.payoutDetails { display:grid; gap:11px; margin:0 0 18px; }
+.payoutDetails>div { display:grid; grid-template-columns:minmax(115px,1fr) 1.5fr; gap:13px; }
+.payoutDetails dt { font-size:13px; color:#79817c; }
+.payoutDetails dd { margin:0; font-size:13px; color:#44514a; font-weight:600; }
+.warning { padding:14px 14px 14px 18px; border:1px solid #c3d5e6; border-left:4px solid #1d4f86; border-radius:7px; background:#eef5fd; color:#42586c; font-size:13px; line-height:1.55; }
+.warning strong { display:block; color:#1d4f86; margin-bottom:4px; }
+.disabledAction { min-height:43px; padding:9px 15px; margin:11px 0 0; border:1px solid #9ba99e; border-radius:8px; background:#e9ede9; color:#6a726b; font-size:13px; font-weight:700; opacity:.72; cursor:not-allowed; }
+.guidanceList { margin:5px 0 20px; padding-left:18px; display:grid; gap:10px; color:#5d6963; font-size:13px; line-height:1.5; }
+.inlineLink { color:#1f5a45; font-size:13px; font-weight:650; text-underline-offset:3px; }
+.teamGrid { display:grid; grid-template-columns:minmax(0,1.72fr) minmax(225px,.85fr); gap:16px; align-items:start; }
+.teamGrid>section { min-width:0; }
+.teamGrid .card { padding:18px; }
+.teamHeader { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:start; gap:12px; margin:0 0 14px; }
+.teamHeader h2 { font-size:20px; margin:0; }
+.teamHeader>div { text-align:right; }
+.teamHeader>div p { margin:5px 0 0; color:#79817c; font-size:11px; max-width:200px; }
+.teamHeader .disabledAction { margin:0; }
+.roleList { list-style:none; padding:0; margin:0 0 14px; }
+.roleList li { display:grid; gap:3px; padding:12px 0; border-top:1px solid #e1ddd3; }
+.roleList strong { font-size:13px; font-weight:720; color:#44514a; text-transform:capitalize; }
+.roleList small { font-size:12px; color:#79817c; line-height:1.45; }
+.muted { color:#5d6963; line-height:1.55; font-size:13px; }
+.pendingInvitations { margin:20px 0 15px; padding:18px; display:flex; align-items:center; justify-content:space-between; gap:16px; border:1px solid #e1ddd3; background:#fff; border-radius:10px; }
+.pendingInvitations h2 { margin:0 0 6px; font-size:17px; }
+.pendingInvitations p { margin:0; font-size:13px; color:#5d6963; max-width:650px; line-height:1.5; }
+.selectionFooter { margin:16px 0; font-size:13px; }
+.selectionFooter a { color:#1f5a45; font-weight:650; text-decoration:underline; }
+.statusGrid { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(225px,1fr); gap:16px; margin:16px 0 30px; }
+.documentList { list-style:none; margin:0 0 10px; padding:0; }
+.documentList li { display:flex; align-items:start; justify-content:space-between; gap:9px; padding:9px 0; border-top:1px solid #e1ddd3; color:#44514a; font-size:12px; }
+.documentList strong { font-size:11px; color:#7a4a00; white-space:nowrap; }
+@media(max-width:880px) { .payoutGrid,.teamGrid,.statusGrid{grid-template-columns:1fr;} .teamGrid .card{padding:16px;} }
+@media(max-width:520px) { .page{padding:16px 12px 60px;} .card{padding:16px;}.heading h1{font-size:26px;}.payoutDetails>div{grid-template-columns:1fr;gap:3px;}.pendingInvitations{align-items:start;flex-direction:column;}.teamHeader>div{text-align:left;}.cardHeader{align-items:start;flex-direction:column;}.pendingBadge{white-space:normal;} }
+@media(prefers-reduced-motion:reduce) { .page *{transition:none!important;animation:none!important;} }
