@@ -3,7 +3,7 @@ import { resolveApiBaseUrl } from "@/lib/api-url";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const maxBodyBytes = 64 * 1024;
 const maxResponseBytes = 1024 * 1024;
-const queryKeys = new Set(["cursor", "limit", "categoryId", "reviewState", "visibility", "variantId", "locationId"]);
+const queryKeys = new Set(["cursor", "limit", "categoryId", "reviewState", "visibility", "variantId", "locationId", "action"]);
 
 export function w2PortalEnabled(value = process.env.RENIVET_W2_PORTAL_ENABLED): boolean {
   return value === "true";
@@ -19,6 +19,7 @@ export function resolveW2BackendPath(segments: string[], method: string): string
     if (method === "GET" && segments.length === 4 && uuid.test(segments[3]!)) return `/api/v1/admin/reviews/${segments[2]}/${segments[3]}`;
     return null;
   }
+  if (segments[0] === "admin" && segments[1] === "security-audit" && segments.length === 2 && method === "GET") return "/api/v1/admin/security-audit";
   if (segments[0] === "admin" && segments[1] === "brand-application-reviews" && segments.length === 2 && method === "GET") {
     return "/api/v1/admin/brand-application-reviews";
   }
