@@ -10,13 +10,14 @@ import styles from "./auth.module.css";
  */
 interface Props { screenId: string; eyebrow: string; title: string; description: string; children: ReactNode }
 
-function CustomerHeader({ account = false }: { account?: boolean }) {
+function CustomerHeader({ account = false, staff = false }: { account?: boolean; staff?: boolean }) {
   return <header className={styles.prototypeHeader}>
     <Link href="/" className={styles.prototypeWordmark} aria-label="Renivet home">RENIVET</Link>
     {account
       ? <nav className={styles.prototypeAccountHeaderLinks} aria-label="Account navigation">
           <Link href="/">New in</Link><Link href="/shop/brands">Brands</Link><Link href="/account" aria-current="page">Account</Link>
         </nav>
+      : staff ? <span className={styles.prototypeStaffHeader}>Renivet operations</span>
       : <Link href="/" className={styles.prototypeBack}><span aria-hidden="true">‹</span> Back to shopping</Link>}
   </header>;
 }
@@ -31,7 +32,7 @@ function CustomerFooter() {
 export function PrototypeCompactAuthShell({ screenId, eyebrow, title, description, children }: Props) {
   const isStaff = screenId === "AD-01";
   return <div className={styles.prototypePage} data-screen-id={screenId}>
-    <CustomerHeader />
+    <CustomerHeader staff={isStaff} />
     <main className={styles.prototypeCompactMain} aria-labelledby="auth-title">
       {isStaff && <p className={styles.prototypeCompactEyebrow}>RENIVET OPERATIONS</p>}
       <h1 id="auth-title" className={styles.prototypeCompactTitle}>{title}</h1>
