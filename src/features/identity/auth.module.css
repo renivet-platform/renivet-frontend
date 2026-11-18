@@ -645,3 +645,12 @@
   .prototypeAccountCard { padding: 16px; }
   .prototypeAccountSidebar a { word-break: normal; }
 }
+
+/* 320px layouts: long legacy registration-method labels remain selectable without overflow. */
+.prototypeCompactCard .methodSelector { width: 100%; max-width: 100%; display: flex; flex-wrap: nowrap; }
+.prototypeCompactCard .methodSelector .secondaryButton { flex: 1 1 0; min-width: 0; padding-inline: 6px; white-space: normal; line-height: 1.25; }
+.prototypeStaffHeader { font-size: 13px; color: #5d6963; }
+.prototypeCompactMain:has(.prototypeCompactEyebrow) .prototypeCompactTitle {
+  font-family: system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size: 25px; font-weight: 700; letter-spacing: -.02em;
+}
