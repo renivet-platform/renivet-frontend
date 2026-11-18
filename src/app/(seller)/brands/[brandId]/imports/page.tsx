@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ImportWorkspace } from "@/features/seller/import-workspace";
+import { ImportList } from "@/features/seller/import-list";
 import { resolveBrandWorkspaceRoute } from "@/features/seller/workspace-route";
 import { WorkspaceUnavailable } from "@/features/seller/workspace-unavailable";
 import { w2PortalEnabled } from "@/lib/server/w2-proxy";
@@ -16,5 +16,5 @@ export default async function BrandImportsPage({ params }: { params: Promise<{ b
   const routeState = resolveBrandWorkspaceRoute(brandId, w2PortalEnabled());
   if (routeState === "not-found") notFound();
   if (routeState === "unavailable") return <WorkspaceUnavailable section="product import" />;
-  return <ImportWorkspace brandId={brandId} />;
+  return <ImportList brandId={brandId} />;
 }
