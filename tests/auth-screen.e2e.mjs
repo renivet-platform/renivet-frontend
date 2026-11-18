@@ -122,17 +122,18 @@ try {
   const evaluate = async expression => (await command("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true })).result?.value;
   const waitFor = async expression => { for (let i = 0; i < 80; i++) { const value = await evaluate(expression); if (value) return value; await sleep(100); } throw new Error("Timed out waiting for browser condition: " + expression + "\nPage: " + await evaluate("document.body.innerText")); };
   const waitInteractive = id => waitFor(`(() => { const input=document.getElementById(${JSON.stringify(id)}); return !!input && Object.keys(input).some(key => key.startsWith('__reactProps')) })()`);
+  // CU-08 uses the approved compact "Email" tab; registration still says "Email and password".
   const selectEmailSignIn = async () => {
-    await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.includes('Email and password'))");
-    await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.includes('Email and password') && Object.keys(button).some(key => key.startsWith('__reactProps')))");
-    await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Email and password'))?.click()");
-    await waitFor("document.querySelector('[aria-label=\"Sign-in method\"] button[aria-pressed=\"true\"]')?.textContent.includes('Email and password')");
+    const emailButton = "[...document.querySelectorAll('[aria-label=\"Sign-in method\"] button')].find(button => button.textContent.trim() === 'Email')";
+    await waitFor(`${emailButton} && Object.keys(${emailButton}).some(key => key.startsWith('__reactProps'))`);
+    await evaluate(`${emailButton}?.click()`);
+    await waitFor("document.querySelector('[aria-label=\"Sign-in method\"] button[aria-pressed=\"true\"]')?.textContent.trim() === 'Email'");
     await waitInteractive("signin-email");
   };
   const enter = async (id, value) => evaluate(`(() => { const input=document.getElementById(${JSON.stringify(id)}); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set; setter.call(input,${JSON.stringify(value)}); input.dispatchEvent(new Event('input',{bubbles:true})); input.dispatchEvent(new Event('change',{bubbles:true})); return true })()`);
   const submit = () => evaluate("document.querySelector('form').requestSubmit(); true");
   for (const [route, title, fields] of [
-    ["sign-in", "Sign in to Renivet", ["Email address", "Password"]],
+    ["sign-in", "Welcome to Renivet", ["Email address", "Password"]],
     ["register", "Create your account", ["Email address", "Create password"]],
     ["recover", "Reset your password", ["Email address"]],
   ]) {
@@ -140,10 +141,13 @@ try {
       await command("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: true });
       await command("Page.navigate", { url: new URL(route, base).href });
       if (route === "register" || route === "sign-in") {
-        await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.includes('Email and password'))");
-        await sleep(250); // Ensure the App Router client has hydrated the server-rendered method selector.
-        await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Email and password'))?.click()");
-        if (route === "sign-in") await waitFor("document.querySelector('[aria-label=\"Sign-in method\"] button[aria-pressed=\"true\"]')?.textContent.includes('Email and password')");
+        // Login and registration have deliberately different tab labels.
+        const label = route === "sign-in" ? "Email" : "Email and password";
+        const methodButton = `[...document.querySelectorAll('[aria-label="Sign-in method"] button')].find(button => button.textContent.trim() === ${JSON.stringify(label)})`;
+        await waitFor(`${methodButton} !== undefined`);
+        await waitFor(`${methodButton} && Object.keys(${methodButton}).some(key => key.startsWith('__reactProps'))`);
+        await evaluate(`${methodButton}?.click()`);
+        if (route === "sign-in") await waitFor("document.querySelector('[aria-label=\"Sign-in method\"] button[aria-pressed=\"true\"]')?.textContent.trim() === 'Email'");
       }
       const page = await waitFor(`(() => {
         const main = document.querySelector('main');
@@ -269,8 +273,8 @@ try {
   console.log("PASS generic login denial and honest provider outage state");
 
   await command("Page.navigate", { url: new URL("sign-in", base).href });
-  await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.includes('Phone number'))");
-  await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Phone number'))?.click()");
+  await waitFor("[...document.querySelectorAll('[aria-label=\"Sign-in method\"] button')].some(button => button.textContent.trim() === 'Mobile')");
+  await evaluate("[...document.querySelectorAll('[aria-label=\"Sign-in method\"] button')].find(button => button.textContent.trim() === 'Mobile')?.click()");
   await waitInteractive("signin-phone");
   await enter("signin-phone", testPhone); await submit();
   await waitInteractive("signin-phone-code");
