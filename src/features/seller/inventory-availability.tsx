@@ -88,7 +88,7 @@ export function InventoryAvailability({ brandId }: { brandId: string }) {
 
   return <main className={styles.page} aria-labelledby="inventory-title" data-screen-id="SE-13">
     <nav className={styles.detailBreadcrumb} aria-label="Breadcrumb"><Link href={`/brands/${encodeURIComponent(brandId)}/products`}>Products</Link><span aria-hidden="true">/</span><span>Inventory</span></nav>
-    <header className={styles.header}><div><p className={styles.kicker}>BRAND WORKSPACE <span aria-hidden="true">/</span> STOCK</p><h1 id="inventory-title">Inventory</h1><p className={styles.subtitle}>Physical stock, allocations and available-to-sell balances come from Renivet’s backend stock ledger. Nothing here uses imported spreadsheet quantities as stock.</p></div><span className={styles.draftBadge}>LIVE BACKEND DATA</span></header>
+    <header className={styles.header}><div><p className={styles.kicker}>BRAND WORKSPACE <span aria-hidden="true">/</span> STOCK</p><h1 id="inventory-title">Inventory</h1><p className={styles.subtitle}>Authoritative balances, allocations and available-to-sell quantities come from Renivet’s backend stock ledger. Imported spreadsheet quantities never become stock automatically.</p></div><span className={styles.draftBadge}>LIVE BACKEND DATA</span></header>
     <section className={visual.stockRule} aria-label="Stock availability calculation">
       <strong>What is available to sell?</strong>
       <p>Physical − quarantined − unsellable − allocated (not dispatched) − buffer. The backend is authoritative; no stock is reserved before payment, and a shortage must pause selling.</p>
