@@ -318,7 +318,7 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
         { href:"#variants-heading", label:"Sizes & colours", ready:readinessChecks[3]?.ready ?? false },
         { href:"#media-heading", label:"Photos", ready:readinessChecks[5]?.ready ?? false },
         { href:"#prices-heading", label:"Prices", ready:readinessChecks[4]?.ready ?? false },
-        { href:"#claims-heading", label:"Claims & evidence", ready:claims.some(claim => claim.claimState === "APPROVED") },
+        { href:"#claims-heading", label:"Claims & evidence", ready:claims.some(claim => claim.claimState === "VERIFIED") },
         { href:editable ? "#submission-heading" : "#claims-heading", label:"Review & submit", ready:false },
       ].map((step, index) => <a href={step.href} key={step.label} className={prototypeStyles.step}>
         <span className={step.ready ? prototypeStyles.done : prototypeStyles.number} aria-hidden="true">{step.ready ? "✓" : index+1}</span>
