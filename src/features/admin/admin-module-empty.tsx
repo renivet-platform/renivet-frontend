@@ -72,6 +72,14 @@ const modules: Record<AdminModuleKind, {
   },
 };
 
+const previewFilters: Record<AdminModuleKind, readonly string[]> = {
+  bank: ["Awaiting review","Changes pending","Verification history"],
+  staff: ["Pending grants","Active access","Revocations"],
+  exceptions: ["Open","Investigating","Resolved"],
+  privacy: ["Data copies","Account deletion","Requests on hold"],
+  audit: ["Permission changes","Decisions","Session activity"],
+};
+
 export function AdminModuleEmptyScreen({ kind }: { kind: AdminModuleKind }) {
   const item = modules[kind];
   return <main className={styles.page} data-screen-id={item.id} aria-labelledby="admin-module-title">
@@ -86,7 +94,16 @@ export function AdminModuleEmptyScreen({ kind }: { kind: AdminModuleKind }) {
       <span className={styles.statusBadge}>Not connected</span>
     </section>
 
-    <section className={styles.moduleCard} aria-labelledby="records-title">
+    <section className={styles.filterPanel} aria-labelledby="filter-title">
+      <div><h2 id="filter-title">{kind === "audit" ? "Audit filters" : "Queue filters"}</h2>
+        <p>Filtering becomes available only when the authorized {kind === "audit" ? "immutable event" : kind === "bank" ? "bank-evidence" : kind === "staff" ? "staff-access" : kind === "exceptions" ? "inventory-exception" : "privacy-request"} service provides records.</p></div>
+      <fieldset disabled className={styles.disabledFilters} aria-label="Unavailable filters">
+        <label>Search records<input type="search" placeholder="Search server records" /></label>
+        <label>View<select defaultValue=""><option value="">Choose a filter</option>{previewFilters[kind].map(option=><option key={option}>{option}</option>)}</select></label>
+      </fieldset>
+    </section>
+
+        <section className={styles.moduleCard} aria-labelledby="records-title">
       <div className={styles.cardHeader}><div><p className={styles.eyebrow}>PLATFORM WORKSPACE</p><h2 id="records-title">{item.tableTitle}</h2></div><span className={styles.readonly}>Server data only</span></div>
       <div className={styles.tableWrap}>
         <table>
@@ -96,7 +113,27 @@ export function AdminModuleEmptyScreen({ kind }: { kind: AdminModuleKind }) {
       </div>
     </section>
 
-    {kind === "staff" && <section className={styles.policyCard}><p className={styles.eyebrow}>ACCESS POLICY</p><h2>Role details are not loaded</h2><p>Server-managed roles and permission descriptions will appear when the reviewed access catalog is connected. No role grants are offered here.</p></section>}
+    {kind === "bank" && <section className={styles.decisionPreview} aria-labelledby="bank-decision-title">
+      <h2 id="bank-decision-title">Your decision</h2>
+      <p>Open a real account review to inspect masked details, signed bank proof and the independent checker before choosing an outcome.</p>
+      <fieldset disabled><legend>Decision actions unavailable</legend>
+        <label><input type="radio" name="bank-decision" /> Verify account</label>
+        <label><input type="radio" name="bank-decision" /> Ask for different proof</label>
+        <label><input type="radio" name="bank-decision" /> Reject account</label>
+        <label>Reason <select defaultValue=""><option value="">Select reason</option></select></label>
+        <label>Reviewer note <textarea rows={2} placeholder="A note must be persisted with the decision." /></label>
+        <button type="button" disabled>Record decision unavailable</button>
+      </fieldset>
+    </section>}
+    {kind === "exceptions" && <section className={styles.policyCard} aria-labelledby="exception-rules">
+      <h2 id="exception-rules">Investigating a stock exception</h2>
+      <p>Open exceptions will require the affected variant, location, counted/expected stock and journal evidence. This page cannot edit allocations or override available-to-sell without the inventory service.</p>
+    </section>}
+    {kind === "privacy" && <section className={styles.policyCard} aria-labelledby="privacy-rules">
+      <h2 id="privacy-rules">Processing a customer data request</h2>
+      <p>Verify the customer's identity, approved retention/hold rules, and the request version before any data is exported or an account is deleted. Completion cannot be recorded until the audit-backed privacy service is available.</p>
+    </section>}
+        {kind === "staff" && <section className={styles.policyCard}><p className={styles.eyebrow}>ACCESS POLICY</p><h2>Role details are not loaded</h2><p>Server-managed roles and permission descriptions will appear when the reviewed access catalog is connected. No role grants are offered here.</p></section>}
     {kind === "bank" && <section className={styles.policyCard}><p className={styles.eyebrow}>FINANCE CONTROL</p><h2>Independent review required</h2><p>{item.footnote}</p></section>}
     {kind === "audit" && <section className={styles.policyCard}><p className={styles.eyebrow}>READ ONLY</p><h2>Integrity of the event record</h2><p>{item.footnote}</p></section>}
     {kind === "privacy" && <section className={styles.policyCard}><p className={styles.eyebrow}>PRIVACY CONTROL</p><h2>Deadlines and legal holds are not available</h2><p>{item.footnote}</p></section>}
