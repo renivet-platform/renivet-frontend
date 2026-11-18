@@ -12,7 +12,7 @@ interface AuthShellProps {
 }
 
 export function AuthShell({ screenId, eyebrow, title, description, children }: AuthShellProps) {
-  if (screenId === "CU-08" || screenId === "CU-09B") {
+  if (screenId === "CU-08" || (screenId === "CU-09B" && title === "Enter your code")) {
     return <PrototypeCustomerAuthShell screenId={screenId} title={title} description={description}>{children}</PrototypeCustomerAuthShell>;
   }
   return (
