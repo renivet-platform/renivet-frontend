@@ -119,7 +119,7 @@ export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
                 <th scope="row"><strong>{item.brandName ?? item.legalName ?? item.brandId}</strong><small>{item.applicantName ?? "Applicant name not provided"}</small></th>
                 <td data-label="Submitted">{item.submittedAt ? new Date(item.submittedAt).toLocaleDateString("en-IN", {day:"2-digit",month:"short",year:"numeric"}) : "Not recorded"}</td>
                 <td data-label="Documents"><span className={styles.pendingEvidence}>Not supplied by W1 API</span></td>
-                <td data-label="Status">{item.brandState.replaceAll("_"," ").toLocaleLowerCase()}</td>
+                <td data-label="Status">{item.brandState?.replaceAll("_"," ").toLocaleLowerCase() ?? "State not supplied"}</td>
                 <td data-label="Reviewer">Not supplied by API</td>
                 <td data-label="Action">{href ? <Link href={href} className={styles.reviewLink}>Review</Link> : "Unavailable"}</td>
               </tr>;
