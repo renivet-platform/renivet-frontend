@@ -122,7 +122,7 @@ try {
 
   async function inspectAdmin(size, width, height, mobile) {
     const adminScreens = [
-      ["/operations/sign-in", "AD-01", "Sign in to Renivet"],
+      ["/operations/sign-in", "AD-01", "Renivet staff sign in"],
       ["/operations", "AD-02", null],
       ["/brand-approvals", "AD-03", null],
       ["/brand-approvals/11111111-1111-4111-8111-111111111111", "AD-04", null],
