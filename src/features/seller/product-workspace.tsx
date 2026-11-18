@@ -141,7 +141,7 @@ export function ProductWorkspace({ brandId }: { brandId: string }) {
   }
 
   return (
-    <main className={styles.page} aria-labelledby="products-title">
+    <main className={styles.page} aria-labelledby="products-title" data-screen-id="SE-08">
       <header className={styles.header}>
         <div><p className={styles.kicker}>BRAND WORKSPACE <span aria-hidden="true">/</span> CATALOGUE</p><h1 id="products-title">Products</h1><p className={styles.subtitle}>Start a draft with the details you have. Complete the rest when you’re ready.</p></div>
         <div className={styles.headerActions}><Link className={styles.secondaryButton} href={`/brands/${encodeURIComponent(brandId)}/workspace`}>Workspace</Link><Link className={styles.secondaryButton} href={`/brands/${encodeURIComponent(brandId)}/team`}>Team</Link><Link className={styles.secondaryButton} href={`/brands/${encodeURIComponent(brandId)}/inventory`}>Inventory</Link><Link className={styles.secondaryButton} href={`/brands/${encodeURIComponent(brandId)}/imports`}>Import products</Link><button className={styles.primaryButton} type="button" onClick={() => { setShowForm((visible) => !visible); setFormError(""); setFormNotice(""); }}>

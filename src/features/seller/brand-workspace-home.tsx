@@ -56,7 +56,7 @@ export function BrandWorkspaceHome({ brandId }: { brandId: string }) {
     { key: "onboarding", title: "Onboarding & eligibility", detail: "Track the persisted application, verification and catalogue-eligibility status for this brand.", href: `${brandPath}/onboarding`, action: "View onboarding" },
     { key: "team", title: "Team access", detail: "Review redacted members and backend-resolved roles without granting access from the UI.", href: `${brandPath}/team`, action: "Review team access" },
   ] as const;
-  return <main className={styles.page} aria-labelledby="workspace-title"><div className={styles.shell}>
+  return <main className={styles.page} aria-labelledby="workspace-title" data-screen-id="SE-07"><div className={styles.shell}>
     <nav className={styles.breadcrumb} aria-label="Breadcrumb"><Link href="/account">Account</Link><span aria-hidden="true">/</span><span>Brand workspace</span></nav>
     <header className={styles.header}><div><p className={styles.kicker}>RENIVET BRAND WORKSPACE</p><h1 id="workspace-title">{access?.brandName ?? "Your brand workspace"}</h1><p className={styles.subtitle}>Create drafts, bring existing catalogue data across safely, and keep every operational change traceable.</p></div><span className={styles.state}>{loading ? "Loading access" : access?.membershipState ?? "Access status unavailable"}</span></header>
     {error && <div className={styles.error} role="alert"><strong>Workspace data unavailable</strong><div>{error}</div><button className={styles.button} type="button" onClick={() => void load()}>Try again</button></div>}

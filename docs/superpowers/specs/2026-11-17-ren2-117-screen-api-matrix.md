@@ -19,6 +19,32 @@
 
 This matrix records the current app routes and API state as found on frontend `origin/main` (`62dfa153`) and backend `origin/main` (`93c6c0e`). The prototype is a visual and interaction reference; its data and simulated outcomes are not production behavior. The Linear issue and current OpenAPI are authoritative where they differ from prototype notes.
 
+## Frontend screen implementation update — 18 Nov 2026
+
+- Added a typed 40-screen route catalog at `src/features/ren2-117/screen-catalog.ts`. OTP and import states share their real workflow routes; screen IDs are attached to the corresponding UI states.
+- Added dedicated W3-context presentation routes under `/shop/*` and approved-policy route handling under `/legal/[policy]`. The pages show explicit no-data states and do not invent public brands, products, stock, prices, saved items, or legal wording.
+- Replaced the seller entry gate with a designed `/brands/join` page and added `/brands/join/application`, an interactive five-step application preview. The preview is not persisted and its upload, payout, and submit actions remain disabled until their APIs are registered.
+- Updated the shared unavailable-workflow presentation so privacy, payout, finance, staff, audit, and inventory-exception routes have a consistent full-page responsive state instead of a bare message card.
+- Added route-catalog tests for all 40 unique prototype IDs, route uniqueness, W3 isolation from the seller `/brands` route, and existence of a corresponding App Router page.
+- Verification in this worktree: focused screen-catalog tests 4/4 PASS; full frontend tests 81/81 PASS; lint PASS; typecheck PASS; production build PASS. Existing Chrome visual regression passed at 1440px and 390px for the storefront.
+- Still not claimed: pixel-by-pixel review of all 40 screens / 168 states, independent accessibility review, visual browser inspection of every route, or API functionality for flows classified as missing above. Feature flags and backend contracts remain unchanged.
+
+### Verification checkpoint — 18 Nov 2026
+
+- Re-ran `npm run lint`: PASS; `npm run typecheck`: PASS; `npm test`: PASS (81/81); `npm run build`: PASS.
+- Local route smoke covered all 40 catalog entries with representative dynamic IDs and the `/legal/terms` policy route: 39 returned 200 and the staff sign-in route returned the expected 307 redirect to the shared sign-in flow.
+- Chrome layout regression: PASS at 1440px and 390px for the rebuilt CU-01 storefront; screenshots are generated locally under `visual-artifacts/` and are not approved design artifacts.
+- `git diff --check`: PASS. No backend or database changes were made.
+- Full screenshot comparison and interaction review across all 40 screens / 168 states, standalone accessibility audit, and live end-to-end journeys against a configured backend remain NOT EXECUTED. API-gated screens remain unavailable by design until their contracts are approved and implemented.
+
+### Admin page completion pass — 18 Nov 2026
+
+- Replaced generic gates on AD-05, AD-06, AD-09, AD-19, and AD-20 with purpose-specific admin pages: bank verification, staff access, inventory exceptions, privacy requests, and audit log.
+- Each page now uses the shared operations navigation, module-specific table headings and empty state, and a clear unavailable-service explanation. No example people, bank values, stock, privacy requests, or audit events are presented as real data; no unsupported decision controls are enabled.
+- Canonicalized the Brand applications navigation link to `/brand-approvals`, so the active destination is highlighted on both the list and detail routes.
+- Expanded the local Chrome visual regression to visit all 12 admin screen IDs at 1280px and 390px. PASS: every route rendered its expected screen ID/title and had no document-level horizontal overflow. Review queue navigation remains horizontally scrollable within its own region on mobile.
+- Verification after this pass: lint PASS; typecheck PASS; unit tests 82/82 PASS; production build PASS; Chrome admin screens 12/12 at desktop and 12/12 at 390px PASS with no document-level horizontal overflow. Review-queue chips wrap on mobile. Backend-dependent features remain NOT EXECUTED until approved APIs and configured services are available.
+
 ## Screen-to-route-to-API matrix
 
 | ID | Prototype screen / wave | Current route | Proposed production route | Current API/feature evidence | Classification and next action  | Auth role | Desktop / mobile | Progress at baseline (pre-change) | Feature gate | CI proof |
@@ -54,7 +80,7 @@ This matrix records the current app routes and API state as found on frontend `o
 | SE-18 | Payout account Â· W2 | No route | `/brands/[brandId]/payouts` | No payout-bank change/verification API identified | D â€” manual payout and bank verification policy/API required  | Brand member (brand-scoped permission) | Desktop and mobile (390px) | Current route/flow present or partially present; redesign not started | RENIVET_W2_PORTAL_ENABLED | Not executed for REN2-117 |
 | AD-02 | Operations home Â· W2 | `/operations` | Same | Existing admin review queue reads | A/B â€” render only persisted queue counts and safe activity data  | Platform staff (permission-specific) | Desktop and mobile (390px) | Current route/flow present or partially present; redesign not started | RENIVET_W2_PORTAL_ENABLED | Not executed for REN2-117 |
 | AD-03 | Brand applications Â· W2 | `/brand-approvals` | Same | Persisted pending brand application read API | A â€” retain server global permission enforcement  | Platform staff (permission-specific) | Desktop and mobile (390px) | Current route/flow present or partially present; redesign not started | RENIVET_W2_PORTAL_ENABLED | Not executed for REN2-117 |
-| AD-04 | Application review Â· W2 | `/brand-approvals/[applicationId]` (route design to confirm) | Same | Application read/decision APIs | B â€” verify exact evidence and decision contract before showing actions  | Platform staff (permission-specific) | Desktop and mobile (390px) | Current route/flow present or partially present; redesign not started | RENIVET_W2_PORTAL_ENABLED | Not executed for REN2-117 |
+| AD-04 | Application review ? W2 | `/brand-approvals/[brandId]` | Same | Pending application list read filtered by `brandId`; decision uses the registered `POST /admin/brands/{brandId}/application-review` | B ? detail deep link uses the backend brand key; document/bank evidence, correction requests and reasoned outcomes remain unavailable in the current API | Platform staff (permission-specific) | Desktop and mobile (390px) | Deep-linked review implemented from persisted pending list; full evidence review remains blocked | RENIVET_W2_PORTAL_ENABLED | Focused route tests + frontend CI pending |
 | AD-05 | Bank verification Â· W2 | No route | `/operations/banks/[brandId]` | No bank verification/change-review contract identified | D â€” no â€œverifiedâ€ state without persisted independent decision  | Platform staff (permission-specific) | Desktop and mobile (390px) | Current route/flow present or partially present; redesign not started | RENIVET_W2_PORTAL_ENABLED | Not executed for REN2-117 |
 | AD-08A | Review queue Â· W2 | `/operations/[queue]` | Same | Queue reads for implemented taxonomy/quality/pricing/claims/publishing operations | A/B â€” confirm each queue operation in executable OpenAPI  | Platform staff (permission-specific) | Desktop and mobile (390px) | Current route/flow present or partially present; redesign not started | RENIVET_W2_PORTAL_ENABLED | Not executed for REN2-117 |
 | AD-08B | Review item Â· W2 | `/operations/[queue]/[id]` | Same | Queue detail reads and some decision APIs | B â€” require exact persisted record/evidence; preserve maker-checker and stale-version handling  | Platform staff (permission-specific) | Desktop and mobile (390px) | Current route/flow present or partially present; redesign not started | RENIVET_W2_PORTAL_ENABLED | Not executed for REN2-117 |

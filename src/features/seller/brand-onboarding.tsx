@@ -25,7 +25,7 @@ export function BrandOnboarding({ brandId }: { brandId: string }) {
   }, [brandId]);
   const active = access?.membershipState?.toLowerCase() === "active";
   const brandPath = `/brands/${encodeURIComponent(brandId)}`;
-  return <main className={styles.page} aria-labelledby="onboarding-title"><div className={styles.shell}>
+  return <main className={styles.page} aria-labelledby="onboarding-title" data-screen-id="SE-06"><div className={styles.shell}>
     <nav className={styles.breadcrumb} aria-label="Breadcrumb"><Link href={`${brandPath}/workspace`}>Workspace</Link><span aria-hidden="true">/</span><span>Onboarding</span></nav>
     <header className={styles.header}><div><p className={styles.kicker}>BRAND ACCESS STATUS</p><h1 id="onboarding-title">{access?.brandName ?? "Brand onboarding"}</h1><p className={styles.subtitle}>A clear view of what the backend has approved and which workspace actions are available.</p></div><span className={styles.state}>{active ? "Active membership" : access?.membershipState ?? "Loading status"}</span></header>
     {error && <div className={styles.error} role="alert"><strong>Access status unavailable</strong><div>{error}</div></div>}

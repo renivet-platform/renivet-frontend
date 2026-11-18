@@ -145,7 +145,7 @@ export function TaxonomyAdminWorkspace() {
     finally { setBusy(false); }
   }
 
-  return <main className={styles.shell}>
+  return <main className={styles.shell} data-screen-id="AD-07">
     <header className={styles.top}><div><p className={styles.eyebrow}>RENIVET · TAXONOMY ADMINISTRATION</p><h1>Category and schema proposals</h1><p className={styles.muted}>Create a versioned proposal; publication and activation remain maker-checker gated.</p></div><a href="/operations">Back to operations</a></header>
     {status && <p className={styles.notice} role="status">{status}</p>}
     {error && <p className={styles.error} role="alert">{error}</p>}

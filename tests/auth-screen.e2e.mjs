@@ -187,7 +187,7 @@ try {
   await enter("register-phone", testPhone); await submit(); await waitInteractive("register-code");
   assert.equal(await evaluate("document.activeElement?.id === 'register-code'"), true, "phone registration focuses the OTP input after requesting a challenge");
   await enter("register-code", "123456"); await submit();
-  await waitFor("location.pathname === '/' && document.body.innerText.includes('A more thoughtful way to get dressed.')");
+  await waitFor("location.pathname === '/' && document.body.innerText.includes('Made by hand, with the proof to show for it.')");
   await command("Page.navigate", { url: new URL("account", base).href });
   await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
   assert.equal(phoneRegistrationChallengeRequested && phoneRegistrationVerified, true, "signup sends phone_registration and verifies that same purpose");
@@ -219,7 +219,7 @@ try {
   await command("Page.navigate", { url: new URL("sign-in", base).href });
   await selectEmailSignIn();
   await enter("signin-email", "buyer@example.test"); await enter("signin-password", "pass1234"); await submit();
-  await waitFor("location.pathname === '/' && document.body.innerText.includes('A more thoughtful way to get dressed.')");
+  await waitFor("location.pathname === '/' && document.body.innerText.includes('Made by hand, with the proof to show for it.')");
   await command("Page.navigate", { url: new URL("account", base).href });
   await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
   assert.equal(await evaluate("document.getElementById('account-phone') !== null"), true, "email/password account can add an optional verified contact phone");
@@ -276,7 +276,7 @@ try {
   await waitInteractive("signin-phone-code");
   assert.equal(await evaluate("document.activeElement?.id === 'signin-phone-code'"), true, "phone login focuses the OTP field after requesting a challenge");
   await enter("signin-phone-code", "123456"); await submit();
-  await waitFor("location.pathname === '/' && document.body.innerText.includes('A more thoughtful way to get dressed.')");
+  await waitFor("location.pathname === '/' && document.body.innerText.includes('Made by hand, with the proof to show for it.')");
   await command("Page.navigate", { url: new URL("account", base).href });
   await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
   assert.equal(phoneLoginChallengeRequested && phoneLoginVerified, true, "phone sign-in requests the phone_login purpose and verifies it through the same-origin BFF");

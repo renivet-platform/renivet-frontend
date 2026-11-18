@@ -295,10 +295,10 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     finally { setClaimSaving(false); }
   }
 
-  if (loading) return <main className={styles.page}><p className={styles.stateMessage} role="status">Loading product draft…</p></main>;
-  if (loadError || !product) return <main className={styles.page} aria-labelledby="detail-title"><div className={styles.errorPanel} role="alert"><strong id="detail-title">Product unavailable</strong><p>{loadError || "This product is not available."}</p><button className={styles.secondaryButton} type="button" onClick={() => setReloadKey((key) => key + 1)}>Try again</button></div></main>;
+  if (loading) return <main className={styles.page} data-screen-id="SE-09"><p className={styles.stateMessage} role="status">Loading product draft…</p></main>;
+  if (loadError || !product) return <main className={styles.page} aria-labelledby="detail-title" data-screen-id="SE-09"><div className={styles.errorPanel} role="alert"><strong id="detail-title">Product unavailable</strong><p>{loadError || "This product is not available."}</p><button className={styles.secondaryButton} type="button" onClick={() => setReloadKey((key) => key + 1)}>Try again</button></div></main>;
 
-  return <main className={styles.page} aria-labelledby="detail-title">
+  return <main className={styles.page} aria-labelledby="detail-title" data-screen-id="SE-09">
     <nav className={styles.detailBreadcrumb} aria-label="Breadcrumb"><Link href={`/brands/${encodeURIComponent(brandId)}/products`}>Products</Link><span aria-hidden="true">/</span><span>{product.title}</span></nav>
     <header className={styles.header}>
       <div><p className={styles.kicker}>STYLE {product.styleCode} <span aria-hidden="true">·</span> CONTENT VERSION {product.contentVersion}</p><h1 id="detail-title">{product.title}</h1><p className={styles.subtitle}>Your draft is saved privately to this brand. It is not submitted for review or visible to customers.</p></div>

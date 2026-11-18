@@ -12,7 +12,7 @@ const sellerLinks: Array<[string, string, WorkspaceGroup]> = [
 
 const adminLinks: Array<[string, string, WorkspaceGroup]> = [
   ["Home", "/operations", "home"],
-  ["Brand applications", "/operations/applications", "queues"],
+  ["Brand applications", "/brand-approvals", "queues"],
   ["Bank verification", "/operations/bank", "queues"],
   ["Product quality", "/operations/quality", "queues"],
   ["Claims & evidence", "/operations/claims", "queues"],

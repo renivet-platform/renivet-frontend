@@ -125,7 +125,7 @@ function PasswordField({ id, label, autoComplete, value, onChange }: {
   </div>;
 }
 
-export function SignInForm({ nextPath }: { nextPath?: string }) {
+export function SignInForm({ nextPath, screenId = "CU-08" }: { nextPath?: string; screenId?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -179,7 +179,7 @@ export function SignInForm({ nextPath }: { nextPath?: string }) {
     } catch (cause) { setError(messageFor(cause)); }
     finally { setBusy(false); }
   }
-  return <AuthShell eyebrow="Welcome back" title="Sign in to Renivet" description="Continue with your email and password or a code sent to your verified phone number.">
+  return <AuthShell screenId={challengeId ? "CU-09B" : screenId} eyebrow="Welcome back" title="Sign in to Renivet" description="Continue with your email and password or a code sent to your verified phone number.">
     <div className={styles.form}>
       <div role="group" aria-label="Sign-in method" className={styles.formLinks}>
         <button className={styles.secondaryButton} type="button" aria-pressed={method === "email"} onClick={() => { setMethod("email"); setChallengeId(""); setError(""); setStatus(""); }}>Email and password</button>
@@ -282,7 +282,7 @@ export function RegisterForm({ nextPath }: { nextPath?: string }) {
     finally { setBusy(false); }
   }
 
-  return <AuthShell eyebrow="Join Renivet" title="Create your account" description={method === "phone" ? "Use your phone number and a one-time SMS code. No password is needed." : "Start with an email address and a password. We’ll ask you to verify your email."}>
+  return <AuthShell screenId={verified ? "CU-09W" : challengeId ? "CU-09B" : "CU-09A"} eyebrow="Join Renivet" title="Create your account" description={method === "phone" ? "Use your phone number and a one-time SMS code. No password is needed." : "Start with an email address and a password. We’ll ask you to verify your email."}>
     {verified ? <div className={styles.form}><p className={styles.successBox} role="status" tabIndex={-1}>Your email is verified. You can now sign in.</p><Link ref={successLink} className={styles.primaryButton} href={appendReturnTarget("/sign-in", nextPath)}>Go to sign in</Link></div>
       : <>
       <div role="group" aria-label="Registration method" className={styles.methodSelector}>
@@ -316,7 +316,7 @@ export function RegisterForm({ nextPath }: { nextPath?: string }) {
       </form>}</>}
   </AuthShell>;
 }
-export function RecoveryForm({ nextPath }: { nextPath?: string }) {
+export function RecoveryForm({ nextPath, screenId = "CU-09C" }: { nextPath?: string; screenId?: string }) {
   const [email, setEmail] = useState(""); const [challengeId, setChallengeId] = useState(""); const [resetDone, setResetDone] = useState(false);
   const [code, setCode] = useState(""); const [newPassword, setNewPassword] = useState("");
   const [error, setError] = useState(""); const [status, setStatus] = useState(""); const [busy, setBusy] = useState(false);
@@ -353,7 +353,7 @@ export function RecoveryForm({ nextPath }: { nextPath?: string }) {
     } catch (cause) { setError(messageFor(cause)); }
     finally { setBusy(false); }
   }
-  return <AuthShell eyebrow="Account recovery" title="Reset your password" description="Request a one-time code using the email on your account.">
+  return <AuthShell screenId={challengeId ? "CU-09D" : screenId} eyebrow="Account recovery" title="Reset your password" description="Request a one-time code using the email on your account.">
     {resetDone ? <div className={styles.form}><p className={styles.successBox} role="status">If the code was valid, your password has been reset.</p><Link ref={signInLink} className={styles.primaryButton} href={appendReturnTarget("/sign-in", nextPath)}>Sign in with your new password</Link></div>
       : !challengeId ? <form className={styles.form} onSubmit={request}>
       <FormMessage id="recovery-form-error" error={error} status={status} />
@@ -491,7 +491,7 @@ export function AccountSession() {
     }
     setDestinationChoiceOpen(true);
   }
-  return <AuthShell eyebrow="Your account" title="Account & security" description="Manage sign-in and security for the account verified by your current Renivet session.">
+  return <AuthShell screenId="CU-09E" eyebrow="Your account" title="Account & security" description="Manage sign-in and security for the account verified by your current Renivet session.">
     {state === "loading" && <p className={styles.loading} role="status">Checking your session…</p>}
     {state === "ready" && account && <div className={styles.form}><p className={styles.successBox} role="status">You are signed in.</p>
       {error && <FormMessage error={error} status="" />}
