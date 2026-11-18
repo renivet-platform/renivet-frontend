@@ -185,7 +185,7 @@ try {
       assert.ok(state.width <= width, size + " " + route + ": horizontal overflow");
       assert.ok(state.text.includes("not connected"), size + " " + route + ": missing pending-contract disclosure");
       if (id === "CU-21A") {
-        const pending = await command("Runtime.evaluate", { expression:"[...document.querySelectorAll('input[type=checkbox]')].every(input => input.disabled && !input.checked)",returnByValue:true });
+        const pending = await command("Runtime.evaluate", { expression:"[...document.querySelectorAll('input[type=checkbox]')].every(input => input.matches(':disabled') && !input.checked)",returnByValue:true });
         assert.equal(pending.result?.value,true,"marketing preferences cannot be submitted without an approved API");
       }
       const screenshot = await command("Page.captureScreenshot", { format:"png", fromSurface:true });
