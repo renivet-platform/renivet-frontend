@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import styles from "./auth.module.css";
+import { PrototypeCustomerAuthShell } from "./prototype-customer-auth-shell";
 
 interface AuthShellProps {
   screenId?: string;
@@ -11,6 +12,9 @@ interface AuthShellProps {
 }
 
 export function AuthShell({ screenId, eyebrow, title, description, children }: AuthShellProps) {
+  if (screenId === "CU-08" || (screenId === "CU-09B" && title === "Enter your code")) {
+    return <PrototypeCustomerAuthShell screenId={screenId} title={title} description={description}>{children}</PrototypeCustomerAuthShell>;
+  }
   return (
     <div className={styles.page} data-screen-id={screenId}>
       <header className={styles.header}>

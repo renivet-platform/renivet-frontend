@@ -179,12 +179,12 @@ export function SignInForm({ nextPath, screenId = "CU-08" }: { nextPath?: string
     } catch (cause) { setError(messageFor(cause)); }
     finally { setBusy(false); }
   }
-  return <AuthShell screenId={challengeId ? "CU-09B" : screenId} eyebrow="Welcome back" title="Sign in to Renivet" description="Continue with your email and password or a code sent to your verified phone number.">
+  return <AuthShell screenId={challengeId && screenId === "CU-08" ? "CU-09B" : screenId} eyebrow="Welcome back" title={challengeId ? "Enter your code" : screenId === "CU-08" ? "Welcome to Renivet" : "Sign in to Renivet"} description={challengeId ? "Enter the six-digit code sent to your verified phone. It expires in five minutes." : screenId === "CU-08" ? "Sign in or create an account. One mobile number does both." : "Continue with your email and password or a code sent to your verified phone number."}>
     <div className={styles.form}>
-      <div role="group" aria-label="Sign-in method" className={styles.formLinks}>
-        <button className={styles.secondaryButton} type="button" aria-pressed={method === "email"} onClick={() => { setMethod("email"); setChallengeId(""); setError(""); setStatus(""); }}>Email and password</button>
-        <button className={styles.secondaryButton} type="button" aria-pressed={method === "phone"} onClick={() => { setMethod("phone"); setChallengeId(""); setError(""); setStatus(""); }}>Phone number</button>
-      </div>
+      {!challengeId && <div role="group" aria-label="Sign-in method" className={screenId === "CU-08" ? styles.prototypeSegments : styles.formLinks}>
+        <button className={screenId === "CU-08" ? styles.prototypeSegmentButton : styles.secondaryButton} type="button" aria-pressed={method === "email"} onClick={() => { setMethod("email"); setChallengeId(""); setError(""); setStatus(""); }}>{screenId === "CU-08" ? "Email" : "Email and password"}</button>
+        <button className={screenId === "CU-08" ? styles.prototypeSegmentButton : styles.secondaryButton} type="button" aria-pressed={method === "phone"} onClick={() => { setMethod("phone"); setChallengeId(""); setError(""); setStatus(""); }}>{screenId === "CU-08" ? "Mobile" : "Phone number"}</button>
+      </div>}
       {method === "email" ? <form className={styles.form} onSubmit={submitEmail}>
         <FormMessage error={error} status={status} />
         <div className={styles.field}><label className={styles.label} htmlFor="signin-email">Email address</label>
@@ -195,10 +195,10 @@ export function SignInForm({ nextPath, screenId = "CU-08" }: { nextPath?: string
       </form> : !challengeId ? <form className={styles.form} onSubmit={requestPhoneCode}>
         <FormMessage error={error} status={status} />
         <div className={styles.field}><label className={styles.label} htmlFor="signin-phone">Phone number</label>
-          <input className={styles.input} id="signin-phone" name="tel" type="tel" autoComplete="tel" inputMode="tel" maxLength={20} required value={phone} aria-describedby="signin-phone-hint" onChange={event => setPhone(event.currentTarget.value)} />
-          <p id="signin-phone-hint" className={styles.hint}>Use the verified Indian mobile number on your account.</p></div>
-        <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Sending code…" : "Send sign-in code"}</button>
-        <p className={styles.hint}>New to Renivet? <Link className={styles.link} href={appendReturnTarget("/register", nextPath)}>Create an account</Link></p>
+          <div className={styles.prototypePhoneInput}><span aria-hidden="true" className={styles.prototypeDialCode}>+91</span><input className={styles.input} id="signin-phone" name="tel" type="tel" autoComplete="tel" inputMode="tel" maxLength={20} required placeholder="98201 45873" value={phone} aria-describedby="signin-phone-hint" onChange={event => setPhone(event.currentTarget.value)} /></div>
+          <p id="signin-phone-hint" className={styles.hint}>We’ll send a six-digit sign-in code. You can also create an account if you are new.</p></div>
+        <button className={styles.primaryButton} type="submit" disabled={busy}>{busy ? "Sending code…" : "Continue"}</button>
+        <p className={styles.prototypeReassurance}><span aria-hidden="true">♙</span> We only use your number to sign you in and send order updates.</p>
       </form> : <form className={styles.form} onSubmit={verifyPhoneCode}>
         <FormMessage error={error} status={status} />
         <p className={styles.statusBox} role="status">Enter the six-digit code sent to your verified phone.</p>

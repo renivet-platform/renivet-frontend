@@ -460,3 +460,94 @@
 .otp{position:relative;display:block;width:min(100%,21rem)}.otpNative{position:absolute;z-index:2;inset:0;width:100%;height:54px;min-height:54px;padding:0;border:0;opacity:.015;cursor:text}.otpCells{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}.otpCell{height:54px;display:grid;place-items:center;border:1px solid var(--control);border-radius:8px;background:var(--surface);color:var(--ink);font-size:20px;font-variant-numeric:tabular-nums}.otp:focus-within .otpCells{outline:3px solid var(--focus);outline-offset:3px}.otpCellActive{border:2px solid var(--primary)}.otpInvalid .otpCell{border-color:var(--danger)}
 @media(max-width:860px){.brandPanel{min-height:0;padding:1.8rem;border-radius:10px;background-size:42px 42px}.brandEyebrow{font-size:11px}.brandHeading{font-size:2.25rem}.brandDescription{font-size:14px}.artwork,.brandFooter{display:none}.formPanel{width:100%;max-width:34rem;margin-inline:auto}.card{padding:1.15rem;border-radius:10px}}
 @media(max-width:420px){.page{padding:12px 14px}.wordmark{font-size:20px}.header{min-height:44px}.brandPanel{display:none}.layout{padding-block:18px}.formPanel{padding:0}.intro{margin-bottom:14px}.heading{font-size:30px}.card{padding:16px}.methodSelector{grid-template-columns:1fr 1fr}.otpCells{gap:6px}.otpCell{height:48px}.otpNative{height:48px;min-height:48px}}
+
+
+/* REN2-117: approved 17-Nov prototype CU-08 / CU-09B visual system.
+   Scoped independently from the legacy auth shell until cutover. */
+.prototypePage {
+  --auth-primary: #1f5a45; --auth-primary-text: #fff;
+  --auth-ink: #1b2420; --auth-muted: #5d6963;
+  --auth-border: #79817c; --auth-focus: #1d4f86;
+  min-height: 100vh; padding: 0; display: flex; flex-direction: column;
+  background: #f6f4ef; color: #1b2420;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif;
+}
+.prototypeHeader {
+  min-height: 67px; display: flex; justify-content: space-between; align-items: center;
+  padding: 0 20px; border-bottom: 1px solid #e1ddd3; background: #fff;
+}
+.prototypeWordmark { font: 700 23px/1 Georgia, "Times New Roman", serif; letter-spacing: .06em; color: #1b2420; text-decoration: none; }
+.prototypeBack { font-size: 15px; font-weight: 600; text-decoration: none; color: #1f5a45; }
+.prototypeBack span { font-size: 24px; line-height: 1; vertical-align: -2px; padding-right: 8px; }
+.prototypeLayout {
+  flex: 1; width: min(calc(100% - 48px), 984px); margin: auto; padding: 38px 0 68px;
+  display: grid; grid-template-columns: minmax(0,504px) minmax(0,432px); gap: 48px; align-items: center;
+}
+.prototypeArt {
+  position: relative; min-height: 512px; padding: 32px; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  border-radius: 22px; background: #23395b; color: #fff;
+}
+.prototypePattern, .prototypeScrim { position: absolute; inset: 0; width: 100%; height: 100%; }
+.prototypeScrim { background: linear-gradient(180deg, #23395b00 25%, #172740e6 80%); }
+.prototypeArtContent { position: relative; z-index: 1; }
+.prototypeArtContent h2 { margin: 0 0 18px; color: #fff; font: 400 31px/1.2 Georgia, "Times New Roman", serif; }
+.prototypeArtContent ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.prototypeArtContent li { display: flex; gap: 10px; font-size: 14px; line-height: 1.45; }
+.prototypeArtContent li span { width: 16px; flex: none; color: #fff; }
+.prototypeFormPanel { min-width: 0; }
+.prototypeTitle { margin: 0 0 12px; font: 400 32px/1.15 Georgia,"Times New Roman",serif; letter-spacing: -.01em; }
+.prototypeLead { margin: 0 0 23px; color: #5d6963; font-size: 16px; line-height: 1.48; }
+.prototypeCard {
+  padding: 20px; border: 1px solid #e1ddd3; border-radius: 10px;
+  background: #fff; box-shadow: 0 1px 2px #1b24200f, 0 4px 14px #1b24200d;
+}
+.prototypeCard .form { gap: 16px; }
+.prototypeSegments {
+  display: inline-flex; width: max-content; align-items: center; margin-bottom: 4px;
+  padding: 4px; gap: 2px; border-radius: 999px; background: #eceae4;
+}
+.prototypeSegmentButton {
+  min-height: 40px; min-width: 80px; border: 0; border-radius: 999px;
+  padding: 5px 17px; background: transparent; color: #44514a;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.prototypeSegmentButton[aria-pressed="true"] { background: #fff; color: #1b2420; box-shadow: 0 1px 3px #1b242029; }
+.prototypeSegmentButton:focus-visible { outline: 3px solid #1d4f86; outline-offset: 2px; }
+.prototypeCard .label { font-size: 14px; font-weight: 650; color: #1b2420; }
+.prototypeCard .hint { color: #5d6963; font-size: 13px; line-height: 1.5; }
+.prototypeCard .input, .prototypeCard .passwordInput { min-height: 50px; border-color: #79817c; border-radius: 9px; }
+.prototypeCard .primaryButton { min-height: 50px; background: #1f5a45; border-radius: 8px; font-size: 15px; }
+.prototypeCard .primaryButton:hover:not(:disabled) { background: #163f31; }
+.prototypePhoneInput { display: flex; overflow: hidden; border: 1px solid #79817c; border-radius: 9px; }
+.prototypePhoneInput:focus-within { outline: 3px solid #1d4f86; outline-offset: 2px; }
+.prototypeDialCode { flex: none; display: flex; align-items: center; padding: 0 14px; border-right: 1px solid #79817c; font-weight: 650; color: #44514a; background: #faf9f6; }
+.prototypePhoneInput .input { flex: 1; min-width: 0; border: 0; border-radius: 0; }
+.prototypePhoneInput .input:focus { border: 0; outline: none; box-shadow: none; }
+.prototypeLinks { margin: 20px 0 0; color: #5d6963; font-size: 13px; line-height: 1.6; }
+.prototypeLinks a, .prototypeFooter a { color: #1f5a45; text-underline-offset: 2px; }
+.prototypeVerifyLayout { flex: 1; width: min(calc(100% - 32px), 440px); margin: 34px auto auto; }
+.prototypeFooter {
+  padding: 15px 20px 18px; border-top: 1px solid #e1ddd3; background: #faf9f6;
+  color: #5d6963; text-align: center; font-size: 13px;
+}
+.prototypeFooter div { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+.prototypeFooter p { margin: 8px 0 0; }
+@media (max-width: 860px) {
+  .prototypeLayout { width: min(calc(100% - 32px), 520px); grid-template-columns: 1fr; padding: 24px 0 50px; }
+  .prototypeArt { display: none; }
+}
+@media (max-width: 480px) {
+  .prototypeHeader { padding: 0 16px; }
+  .prototypeLayout { width: 100%; padding: 21px 16px 48px; align-items: start; }
+  .prototypeTitle { font-size: 28px; }
+  .prototypeLead { font-size: 15px; margin-bottom: 24px; }
+  .prototypeVerifyLayout { width: 100%; margin: 0; padding: 16px 16px 48px; }
+  .prototypeFooter { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prototypePage *, .prototypePage *::before, .prototypePage *::after { animation: none !important; transition: none !important; }
+}
+
+.prototypeReassurance { display:flex; align-items:flex-start; gap:10px; margin:0; color:#5d6963; font-size:13px; line-height:1.5; }
+.prototypeReassurance span { flex:none; width:15px; }
