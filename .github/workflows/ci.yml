@@ -69,7 +69,7 @@ jobs:
             --env BACKEND_INTERNAL_URL=http://127.0.0.1:49999/api/v1 \
             renivet-frontend:ci
           for i in $(seq 1 40); do
-            if curl -fsS http://127.0.0.1:43000/ | grep -q 'New platform foundation'; then exit 0; fi
+            if curl -fsS http://127.0.0.1:43000/ | grep -q 'A more thoughtful way to get dressed.'; then exit 0; fi
             sleep 2
           done
           docker logs renivet-frontend-ci
@@ -101,7 +101,7 @@ jobs:
           BACKEND_INTERNAL_URL=http://127.0.0.1:4000/api/v1 npm run start > visual-artifacts/nextjs-server.log 2>&1 &
           echo "$!" > visual-artifacts/nextjs-server.pid
           for i in $(seq 1 50); do
-            if curl --fail --silent http://127.0.0.1:3000/ | grep -q 'New platform foundation'; then break; fi
+            if curl --fail --silent http://127.0.0.1:3000/ | grep -q 'A more thoughtful way to get dressed.'; then break; fi
             sleep 1
           done
           curl --fail --silent http://127.0.0.1:3000/ > /dev/null

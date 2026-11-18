@@ -1,15 +1,15 @@
 export const AUTH_THEME = {
-  page: "#f4f6f1",
+  page: "#f6f4ef",
   surface: "#ffffff",
-  ink: "#031400",
-  muted: "#45564e",
-  primary: "#17483b",
+  ink: "#1b2420",
+  muted: "#5d6963",
+  primary: "#1f5a45",
   primaryText: "#ffffff",
-  border: "#aab7ae",
-  focus: "#0b6b53",
-  error: "#9a211c",
-  success: "#17643c",
-  soft: "#e8eee7",
+  border: "#79817c",
+  focus: "#1d4f86",
+  error: "#a3261b",
+  success: "#1d653a",
+  soft: "#e4eee8",
 } as const;
 
 function channel(hex: string, offset: number): number {

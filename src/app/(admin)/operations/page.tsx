@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { AdminOperationsConsole } from "@/features/admin/operations-console";
+import { OperationsHome } from "@/features/admin/operations-home";
 
 export const metadata: Metadata = {
   title: "Operations review | Renivet",
-  description: "Authenticated Renivet review queues for taxonomy, QC, pricing, sustainability claims and catalog publication.",
+  description: "Operations queue overview based on persisted Renivet review data.",
   robots: { index: false, follow: false },
 };
 
 export default function OperationsPage() {
-  return <AdminOperationsConsole />;
+  return <OperationsHome />;
 }
