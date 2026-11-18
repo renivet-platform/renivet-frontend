@@ -197,12 +197,49 @@ try {
     }
   }
 
+  // REN2-117 CU-21A/B: real route screenshots and safety checks while the
+  // consent/privacy API is contract-pending. No fake saved requests permitted.
+  async function inspectPrivacy(size, width, height, mobile) {
+    await command("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile });
+    for (const [route, id, heading] of [
+      ["/privacy", "CU-21A", "Privacy & communication"],
+      ["/privacy/requests", "CU-21B", "Data requests"],
+    ]) {
+      await command("Page.navigate", { url: new URL(route, url).href });
+      const expression = "(() => { const root=document.querySelector('[data-screen-id]'); const h1=root?.querySelector('h1'); return document.readyState==='complete' && root && h1 ? { id:root.dataset.screenId, title:h1.textContent.trim(), width:document.documentElement.scrollWidth, text:root.innerText } : null })()";
+      let state;
+      for (let i=0; i<60; i++) {
+        const response = await command("Runtime.evaluate", { expression, returnByValue:true });
+        state = response.result?.value;
+        if (state) break;
+        await sleep(150);
+      }
+      assert.ok(state, size + " " + route + ": privacy page not ready");
+      assert.equal(state.id, id, size + " " + route + ": wrong prototype screen ID");
+      assert.equal(state.title, heading, size + " " + route + ": wrong prototype heading");
+      assert.ok(state.width <= width, size + " " + route + ": horizontal overflow");
+      assert.ok(state.text.includes("not connected"), size + " " + route + ": missing pending-contract disclosure");
+      if (id === "CU-21A") {
+        const pending = await command("Runtime.evaluate", { expression:"[...document.querySelectorAll('input[type=checkbox]')].every(input => input.matches(':disabled') && !input.checked)",returnByValue:true });
+        assert.equal(pending.result?.value,true,"marketing preferences cannot be submitted without an approved API");
+      }
+      const screenshot = await command("Page.captureScreenshot", { format:"png", fromSurface:true });
+      const bytes = Buffer.from(screenshot.data,"base64");
+      assert.equal(bytes.subarray(1,4).toString(),"PNG");
+      const pathname=path.join(output,"privacy-"+id+"-"+size+".png");
+      await writeFile(pathname,bytes);
+      console.log("PASS "+size+" "+id+" privacy state / responsive layout: "+pathname);
+    }
+  }
+
   await inspect("desktop", 1440, 900, false);
   await inspect("mobile", 390, 844, true);
   await inspectAdmin("desktop", 1280, 900, false);
   await inspectAdmin("mobile", 390, 844, true);
   await inspectW1Screens("desktop", 1280, 900, false);
   await inspectW1Screens("mobile", 390, 844, true);
+  await inspectPrivacy("desktop", 1280, 900, false);
+  await inspectPrivacy("mobile", 390, 844, true);
 } finally {
   for (const waiter of pending.values()) waiter.reject(new Error("Closing browser"));
   pending.clear();
