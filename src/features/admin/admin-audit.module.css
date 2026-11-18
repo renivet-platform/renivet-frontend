@@ -1,0 +1,29 @@
+/* REN2-117 · AD-20 real audit table, 17-Nov prototype styling. */
+.page { min-height:calc(100vh - 100px); padding:12px 0 70px;background:#f6f4ef;color:#1b2420; }
+.header { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:15px;margin-bottom:21px; }
+.header h1 { margin:0;font:730 29px/1.25 system-ui,sans-serif;letter-spacing:-.025em;color:#1b2420; }
+.header p { margin:7px 0 0;color:#5d6963;font-size:14px; }
+.secondary { min-height:42px;padding:9px 15px;border:1px solid #79817c;border-radius:8px;background:#fff;color:#44514a;font-size:13px;font-weight:700;cursor:pointer; }
+.filterCard,.panel { background:#fff;border:1px solid #e1ddd3;border-radius:10px;padding:19px;margin-bottom:17px; }
+.filterCard h2,.panel h2 { margin:0 0 11px;font:730 18px/1.3 system-ui,sans-serif;color:#44514a; }
+.filterCard form { display:flex;align-items:end;flex-wrap:wrap;gap:10px; }
+.filterCard label { font-size:13px;font-weight:700;color:#44514a;flex-basis:100%; }
+.filterCard input { min-width:260px;max-width:380px;width:100%;border:1px solid #79817c;border-radius:8px;min-height:44px;padding:9px 12px;font-size:14px; }
+.filterCard form button[type=submit] { min-height:44px;padding:10px 17px;background:#1f5a45;border:0;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer; }
+.filterCard p { margin:13px 0 0;font-size:12px;color:#5d6963;line-height:1.5; }
+.panel { padding:0;overflow:hidden; }
+.panelHeading { padding:17px 19px;display:flex;align-items:center;justify-content:space-between;gap:15px; }
+.panelHeading h2 { margin:0; }.panelHeading span { color:#5d6963;font-size:12px; }
+.tableScroll { width:100%;overflow-x:auto; }
+.tableScroll table { width:100%;border-collapse:collapse;min-width:690px; }
+.tableScroll th,.tableScroll td { padding:15px 16px;border-top:1px solid #e1ddd3;text-align:left;font-size:13px;line-height:1.45; }
+.tableScroll thead th { color:#5d6963;background:#faf9f6;font-size:12px;font-weight:700; }
+.tableScroll tbody th { color:#1f5a45;font-weight:700; }
+.tableScroll tbody td { color:#44514a;overflow-wrap:anywhere; }
+.footer { display:flex;justify-content:center;padding:16px 20px;border-top:1px solid #e1ddd3; }
+.empty { text-align:center;padding:30px 14px;font-size:14px;color:#5d6963; }
+.error { display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:15px;padding:13px;background:#fff8f7;border:1px solid #d6a6a0;border-radius:8px;color:#a3261b;font-size:13px; }
+.error button { border:1px solid #a3261b;border-radius:7px;background:#fff;color:#a3261b;padding:7px 11px;cursor:pointer; }
+.page button:focus-visible,.page input:focus-visible { outline:3px solid #1d4f86;outline-offset:2px; }
+@media(max-width:650px){.page{padding:14px 0 56px;}.filterCard{padding:16px 14px;}.filterCard input{min-width:0;max-width:100%;}.filterCard form{display:grid;grid-template-columns:1fr 1fr;}.filterCard label,.filterCard input{grid-column:1 / -1;}.panelHeading{padding:14px;}.tableScroll table{min-width:0;display:block;}.tableScroll thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}.tableScroll tbody{display:grid;gap:10px;padding:10px;}.tableScroll tbody tr{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px;border:1px solid #e1ddd3;border-radius:9px;}.tableScroll tbody th,.tableScroll tbody td{border:0;padding:0;}.tableScroll tbody td:before,.tableScroll tbody th:before{content:attr(data-label);display:block;font-size:11px;color:#79817c;margin-bottom:2px;}.tableScroll tbody th{grid-column:1 / -1;}}
+@media(prefers-reduced-motion:reduce){.page *{transition:none!important;animation:none!important;}}
