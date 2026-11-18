@@ -136,7 +136,7 @@ export function AdminModuleEmptyScreen({ kind }: { kind: AdminModuleKind }) {
         {kind === "staff" && <section className={styles.policyCard}><p className={styles.eyebrow}>ACCESS POLICY</p><h2>Role details are not loaded</h2><p>Server-managed roles and permission descriptions will appear when the reviewed access catalog is connected. No role grants are offered here.</p></section>}
     {kind === "bank" && <section className={styles.policyCard}><p className={styles.eyebrow}>FINANCE CONTROL</p><h2>Independent review required</h2><p>{item.footnote}</p></section>}
     {kind === "audit" && <section className={styles.policyCard}><p className={styles.eyebrow}>READ ONLY</p><h2>Integrity of the event record</h2><p>{item.footnote}</p></section>}
-    {kind === "privacy" && <section className={styles.policyCard}><p className={styles.eyebrow}>PRIVACY CONTROL</p><h2>Deadlines and legal holds are not available</h2><p>{item.footnote}</p></section>}
-    {kind === "exceptions" && <section className={styles.policyCard}><p className={styles.eyebrow}>SOURCE OF TRUTH</p><h2>Inventory remains service-controlled</h2><p>{item.footnote}</p></section>}
+    
+    
   </main>;
 }
