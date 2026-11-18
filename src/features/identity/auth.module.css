@@ -551,3 +551,97 @@
 
 .prototypeReassurance { display:flex; align-items:flex-start; gap:10px; margin:0; color:#5d6963; font-size:13px; line-height:1.5; }
 .prototypeReassurance span { flex:none; width:15px; }
+
+
+/* REN2-117 · W1 secondary screens from 17-Nov prototype.
+   Unlike the CU-08 artwork layout, registration, recovery, welcome and staff
+   sign-in use a centered compact panel. Account has two-column navigation. */
+.prototypeCompactMain {
+  width: min(calc(100% - 32px), 440px);
+  flex: 1;
+  margin: 0 auto;
+  padding: clamp(38px, 5vh, 70px) 0 75px;
+}
+.prototypeCompactEyebrow {
+  margin: 0 0 12px; color: #1f5a45;
+  text-transform: uppercase; font-size: 11px; letter-spacing: .13em; font-weight: 750;
+}
+.prototypeCompactTitle {
+  margin: 0 0 10px;
+  color: #1b2420; font: 400 clamp(27px, 3vw, 32px)/1.2 Georgia, "Times New Roman", serif;
+  letter-spacing: -.025em;
+}
+.prototypeCompactLead {
+  color: #5d6963; margin: 0 0 20px; font-size: 15px; line-height: 1.55;
+}
+.prototypeCompactCard {
+  padding: 21px 20px; background: #fff;
+  border: 1px solid #e1ddd3; border-radius: 10px;
+  box-shadow: 0 1px 2px #1b24200f, 0 4px 14px #1b24200d;
+}
+.prototypeCompactCard .form { gap: 16px; }
+.prototypeCompactCard .label { color: #1b2420; font-size: 14px; font-weight: 650; }
+.prototypeCompactCard .hint { color: #5d6963; font-size: 13px; line-height: 1.5; }
+.prototypeCompactCard .input,
+.prototypeCompactCard .passwordInput { border-color: #79817c; border-radius: 8px; min-height: 49px; }
+.prototypeCompactCard .primaryButton { background: #1f5a45; border-radius: 7px; min-height: 49px; }
+.prototypeCompactCard .primaryButton:hover:not(:disabled) { background: #163f31; }
+.prototypeCompactCard .secondaryButton { min-height: 45px; border-radius: 7px; }
+.prototypeCompactCard .methodSelector {
+  display: inline-flex; grid-template-columns: none;
+  margin-bottom: 2px; padding: 4px; border-radius: 999px; gap: 2px; background: #eceae4;
+}
+.prototypeCompactCard .methodSelector .secondaryButton {
+  border: 0; min-height: 39px; border-radius: 999px;
+  padding: 7px 16px; font-size: 13px; font-weight: 650;
+  background: transparent; color: #44514a;
+}
+.prototypeCompactCard .methodSelector .secondaryButton[aria-pressed="true"] {
+  background: #fff; color: #1b2420; box-shadow: 0 1px 3px #1b242029;
+}
+.prototypeCompactCard .otp { width: 100%; max-width: 100%; }
+.prototypeCompactHelp { margin: 18px 0 0; color: #5d6963; font-size: 13px; line-height: 1.6; }
+.prototypeCompactHelp a { color: #1f5a45; }
+.prototypeAccountHeaderLinks { display: flex; flex-wrap: wrap; align-items: center; gap: clamp(14px, 3vw, 30px); }
+.prototypeAccountHeaderLinks a { color: #44514a; text-decoration: none; font-size: 14px; }
+.prototypeAccountHeaderLinks a[aria-current="page"] { font-weight: 750; color: #1f5a45; }
+.prototypeAccountLayout {
+  width: min(calc(100% - 48px), 985px);
+  margin: 0 auto; padding: 33px 0 65px; flex: 1;
+  display: grid; grid-template-columns: 230px minmax(0,1fr);
+  align-items: start; gap: 18px;
+}
+.prototypeAccountSidebar { background: #fff; border: 1px solid #e1ddd3; border-radius: 10px; padding: 8px; }
+.prototypeAccountSidebar nav { display: grid; gap: 1px; }
+.prototypeAccountSidebar a {
+  display: block; padding: 11px 10px; border-radius: 6px;
+  font-size: 14px; font-weight: 650; color: #44514a; text-decoration: none;
+}
+.prototypeAccountSidebar a[aria-current="page"] { color: #1f5a45; background: #e4eee8; }
+.prototypeAccountContent { min-width: 0; }
+.prototypeAccountContent > h1 { font: 650 27px/1.25 system-ui,sans-serif; letter-spacing: -.02em; margin: 0 0 8px; color: #1b2420; }
+.prototypeAccountIntro { margin: 0 0 19px; color: #5d6963; font-size: 14px; }
+.prototypeAccountCard {
+  padding: 22px; background: #fff; border: 1px solid #e1ddd3;
+  border-radius: 10px; box-shadow: 0 1px 2px #1b24200f, 0 4px 14px #1b24200d;
+}
+.prototypeAccountCard .form { gap: 16px; }
+.prototypeAccountCard .subForm { border-top: 1px solid #e1ddd3; padding-top: 15px; }
+.prototypeAccountCard .subForm .separator { display: none; }
+.prototypeAccountCard .primaryButton { max-width: max-content; min-height: 44px; }
+.prototypeAccountCard .statusBox, .prototypeAccountCard .successBox { border-radius: 7px; }
+@media (max-width: 720px) {
+  .prototypeAccountLayout { width: min(calc(100% - 32px), 580px); grid-template-columns: 1fr; padding: 23px 0 50px; }
+  .prototypeAccountSidebar nav { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .prototypeAccountSidebar a { text-align: center; padding: 9px 5px; font-size: 12px; }
+  .prototypeAccountHeaderLinks { gap: 12px; }
+  .prototypeAccountHeaderLinks a:first-child { display: none; }
+}
+@media (max-width: 480px) {
+  .prototypeCompactMain { padding: 30px 0 55px; }
+  .prototypeCompactTitle { font-size: 28px; }
+  .prototypeCompactCard { padding: 18px 16px; }
+  .prototypeAccountLayout { width: calc(100% - 24px); }
+  .prototypeAccountCard { padding: 16px; }
+  .prototypeAccountSidebar a { word-break: normal; }
+}
