@@ -214,7 +214,7 @@ export function SignInForm({ nextPath, screenId = "CU-08" }: { nextPath?: string
 
 export function RegisterForm({ nextPath }: { nextPath?: string }) {
   const router = useRouter();
-  const [method, setMethod] = useState<"phone" | "email">("phone");
+  const [method, setMethod] = useState<"phone" | "email">("email");
   const [phone, setPhone] = useState(""); const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
   const [challengeId, setChallengeId] = useState(""); const [code, setCode] = useState(""); const [verified, setVerified] = useState(false);
   const [error, setError] = useState(""); const [status, setStatus] = useState(""); const [busy, setBusy] = useState(false);
