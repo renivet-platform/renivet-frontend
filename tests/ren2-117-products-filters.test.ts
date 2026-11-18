@@ -29,7 +29,7 @@ test("SE-08 tabs reflect exact backend enum states, without duplicate or fake ro
 });
 
 test("SE-08 search and tabs combine, ignore case and trim query",()=>{
-  assert.deepEqual(filteredLoadedProducts(products,"  AJkr  ","all").map(product=>product.styleCode),["AJK-1"]);
+  assert.deepEqual(filteredLoadedProducts(products,"  Ajra  ","all").map(product=>product.styleCode),["AJK-1"]);
   assert.deepEqual(filteredLoadedProducts(products,"Kurta","review").map(product=>product.styleCode),["IND-2","PND-2"]);
   assert.deepEqual(filteredLoadedProducts(products,"cotton","live").map(product=>product.styleCode),["AJK-1"]);
   assert.equal(filteredLoadedProducts(products,"missing","all").length,0);
