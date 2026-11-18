@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import styles from "./brand-workspace.module.css";
+import visual from "./seller-onboarding-prototype.module.css";
 
 type AccessSummary = { brandName?: string; brandState?: string; membershipState?: string };
 const setupAreas = [
@@ -27,9 +28,19 @@ export function BrandOnboarding({ brandId }: { brandId: string }) {
   const brandPath = `/brands/${encodeURIComponent(brandId)}`;
   return <main className={styles.page} aria-labelledby="onboarding-title" data-screen-id="SE-06"><div className={styles.shell}>
     <nav className={styles.breadcrumb} aria-label="Breadcrumb"><Link href={`${brandPath}/workspace`}>Workspace</Link><span aria-hidden="true">/</span><span>Onboarding</span></nav>
-    <header className={styles.header}><div><p className={styles.kicker}>BRAND ACCESS STATUS</p><h1 id="onboarding-title">{access?.brandName ?? "Brand onboarding"}</h1><p className={styles.subtitle}>A clear view of what the backend has approved and which workspace actions are available.</p></div><span className={styles.state}>{active ? "Active membership" : access?.membershipState ?? "Loading status"}</span></header>
+    <header className={styles.header}><div><p className={styles.kicker}>BRAND ACCESS STATUS</p><h1 id="onboarding-title">{access?.brandName ? `${access.brandName} application` : "Application status"}</h1><p className={styles.subtitle}>A clear view of what the backend has approved and which workspace actions are available.</p></div><span className={styles.state}>{active ? "Active membership" : access?.membershipState ?? "Loading status"}</span></header>
     {error && <div className={styles.error} role="alert"><strong>Access status unavailable</strong><div>{error}</div></div>}
     <section className={styles.hero}><strong>Approval is not inferred by the browser</strong><p>{access ? `The backend reports brand state “${access.brandState ?? "unknown"}” and membership “${access.membershipState ?? "unknown"}”.` : "Refresh this page after the W1 approval handoff has been persisted."}</p></section>
+    <div className={visual.statusGrid}>
+      <section className={visual.card} aria-labelledby="changes-title"><h2 id="changes-title">Requested changes</h2>
+        <p className={visual.muted}>Any document-specific correction requests will appear only when the approved W2 evidence review service is connected. The W1 access response does not include review comments.</p>
+        <span className={visual.pendingBadge}>Evidence review not connected</span>
+      </section>
+      <aside className={visual.card} aria-labelledby="documents-title"><h2 id="documents-title">Documents</h2>
+        <ul className={visual.documentList}>{["Business registration or GST exemption","Business PAN","Trademark or brand authorisation","Signatory identity"].map(name=><li key={name}><span>{name}</span><strong>Not available</strong></li>)}</ul>
+        <p className={visual.muted}>No document is marked accepted until an authorized reviewer verifies it through the dedicated API.</p>
+      </aside>
+    </div>
     <h2 className={styles.sectionTitle}>Brand setup checklist</h2>
     <section className={styles.setupGrid} aria-label="Brand onboarding areas">
       {setupAreas.map(([number, title, detail, status]) => <article className={styles.setupCard} key={number}><div className={styles.setupCardHeader}><span className={styles.stepNumber}>{number}</span><span className={styles.tag}>{status}</span></div><h3>{title}</h3><p>{detail}</p></article>)}
