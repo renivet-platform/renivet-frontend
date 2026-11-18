@@ -34,3 +34,33 @@
 .footer{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px clamp(18px,5vw,72px);border-top:1px solid var(--line);background:var(--surface-soft);color:var(--muted);font-size:13px}
 @media(max-width:700px){.header{height:62px;padding-inline:18px}.header nav{gap:13px}.header nav a{font-size:13px}.content{padding:38px 18px 48px}.notice{grid-template-columns:40px minmax(0,1fr);gap:13px;padding:19px}.noticeMark{width:40px;height:40px}.productGrid{grid-template-columns:1fr;gap:22px}.productImage{min-height:310px}.galleryThumbs span{height:110px}.productInfo .notice{padding:18px}.brandHero{align-items:flex-start;padding:18px}.brandMonogram{width:52px;height:52px;font-size:26px}.brandDirectoryEmpty{grid-template-columns:44px minmax(0,1fr);padding:18px;gap:13px}.patternSwatch{width:42px;height:42px;background-size:14px 14px}.brandDirectoryEmpty>a{grid-column:2}.brandFacts{grid-template-columns:1fr;gap:8px}.brandFacts article{padding:10px 0}.brandBanner{min-height:190px}.footer{align-items:flex-start;flex-direction:column;padding:18px}}
 @media(max-width:390px){.header{gap:8px}.header nav{gap:10px}.header nav a{font-size:12px}.filterBar{gap:6px}.filterBar span{padding:7px 11px;font-size:12px}}
+
+
+/* REN2-117 CU-03/05A/05B/06/22: shopper context only, no fabricated W3 API data. */
+.brandPreviewGrid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:13px; margin:17px 0 24px; }
+.brandPreviewCard { display:flex; align-items:center; gap:11px; min-height:114px; padding:13px; border:1px solid #e1ddd3; background:#fff; border-radius:10px; }
+.brandPreviewPattern { width:75px; height:75px; flex:none; border-radius:7px; background-color:#314967; background-image:radial-gradient(circle,#e1d7c0 0 3px,transparent 4px),linear-gradient(60deg,transparent 43%,#a44f37 44% 56%,transparent 57%); background-size:23px 23px; }
+.brandPreviewPattern[data-pattern="1"] { background-color:#638496; }
+.brandPreviewPattern[data-pattern="2"] { background-color:#d2c0a1; }
+.brandPreviewCard strong { display:block; font-size:13px; line-height:1.45; color:#44514a; }
+.brandPreviewCard small { display:block; margin-top:5px; color:#79817c; font-size:12px; line-height:1.4; }
+.brandProductPreview { margin:14px 0 27px; }
+.brandProductPreview h2 { font:700 21px/1.4 system-ui,sans-serif; margin:0 0 13px; color:#44514a; }
+.brandProductPreview>div { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:13px; }
+.brandProductTile { display:block; border-radius:9px; aspect-ratio:3/4; background-color:#d3c7b4; background-image:repeating-linear-gradient(0deg,transparent 0 17px,#9f8e75 18px 19px); border:1px solid #e1ddd3; }
+.brandProductPreview p { margin:12px 0 0; font-size:13px; line-height:1.5; color:#79817c; }
+.productOptions { display:grid; gap:10px; border:0; margin:15px 0 12px; padding:0; }
+.productOptions legend { font-size:13px; color:#44514a; font-weight:750; }
+.productOptions button { width:max-content; min-height:42px; background:#eceae4; border:1px solid #9caaa0; border-radius:8px; padding:8px 13px; font-size:13px; color:#79817c; cursor:not-allowed; }
+.productOptions p { font-size:12px; color:#79817c; margin:0; line-height:1.5; }
+.productActions { display:flex; flex-wrap:wrap; gap:10px; margin:11px 0 15px; }
+.productActions .action { opacity:.7; border:0; cursor:not-allowed; }
+.saveDisabled { min-height:44px; padding:9px 15px; background:#eceae4; border:1px solid #9caaa0; border-radius:8px; color:#79817c; cursor:not-allowed; }
+.savedWarning { margin:0 0 17px; padding:12px 15px; border-left:4px solid #1d4f86; border-radius:7px; background:#eef5fd; color:#42586c; font-size:13px; line-height:1.55; }
+.policyCard { max-width:480px; margin:24px auto 0; padding:25px; border-radius:10px; }
+.policyCard>p { font-size:14px; line-height:1.6; }
+.policyPending { padding:14px 15px; background:#fcefd6; border:1px solid #e4d0a7; border-radius:8px; margin-bottom:17px; }
+.policyPending strong { color:#7a4a00; font-size:14px; }
+.policyPending p { margin:5px 0 0; color:#735a31; font-size:13px; line-height:1.5; }
+@media(max-width:740px){.brandPreviewGrid {grid-template-columns:1fr;}.brandProductPreview>div{grid-template-columns:repeat(3,minmax(0,1fr));}.brandPreviewCard{min-height:90px}.brandPreviewPattern{width:62px;height:62px;}}
+@media(max-width:440px){.brandProductPreview>div{gap:7px}.policyCard{padding:19px 16px}.brandPreviewGrid{gap:9px}.brandPreviewCard{padding:11px;}.productActions .action {width:100%;}}

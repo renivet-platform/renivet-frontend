@@ -20,6 +20,14 @@ export function StorefrontHome() {
         <div className={styles.searchRow}><label className={styles.searchBox}><span aria-hidden="true">⌕</span><span className={styles.visuallyHidden}>Search products and brands</span><input type="search" placeholder="Search kurtas, sarees, brands…" disabled /></label></div>
         <div className={styles.craftList} aria-label="Craft categories not yet available"><span>All crafts</span>{craftNotes.map((craft, index) => <span className={styles.craft} data-pattern={index} key={craft}>{craft}</span>)}</div>
         <div className={styles.emptyCatalog}><span className={styles.emptyGlyph} aria-hidden="true">R</span><div><h3>Product browsing is not connected yet</h3><p>No product listings or sample prices are displayed. The public catalogue will appear here when its API and release scope are approved.</p></div><Link href="/shop/brands">View the brand directory</Link></div>
+        <div className={styles.productGridContext} aria-label="Product card layout preview (no public listings loaded)">
+          {Array.from({length:8},(_,index)=><article className={styles.productTile} key={index}>
+            <span className={styles.productTileImage} data-pattern={index%4} aria-hidden="true" />
+            <span className={styles.productTileState}>W3 catalogue pending</span>
+            <strong>Product details unavailable</strong>
+            <small>Price, approved claims and availability will come from the public catalogue.</small>
+          </article>)}
+        </div>
       </section>
       <section className={styles.trust} aria-label="How Renivet reviews products"><article><span aria-hidden="true">◈</span><div><h3>Brands reviewed first</h3><p>Business and payout details are reviewed before a brand can sell.</p></div></article><article><span aria-hidden="true">✓</span><div><h3>Claims show their evidence</h3><p>Each checked claim explains what supports it and who reviewed it.</p></div></article><article><span aria-hidden="true">₹</span><div><h3>Honest prices</h3><p>Prices are shown after Renivet review and approval.</p></div></article></section>
     </main>
