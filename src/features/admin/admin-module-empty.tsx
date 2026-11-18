@@ -103,14 +103,26 @@ export function AdminModuleEmptyScreen({ kind }: { kind: AdminModuleKind }) {
       </fieldset>
     </section>
 
-        <section className={styles.moduleCard} aria-labelledby="records-title">
+<div className={kind === "bank" ? styles.bankColumns : undefined}>
+    <section className={styles.moduleCard} aria-labelledby="records-title">
       <div className={styles.cardHeader}><div><p className={styles.eyebrow}>PLATFORM WORKSPACE</p><h2 id="records-title">{item.tableTitle}</h2></div><span className={styles.readonly}>Server data only</span></div>
-      <div className={styles.tableWrap}>
-        <table>
-          <thead><tr>{item.columns.map((column) => <th scope="col" key={column}>{column}</th>)}</tr></thead>
-          <tbody><tr><td colSpan={item.columns.length}><div className={styles.emptyState} role="status"><span className={styles.emptyIcon} aria-hidden="true">—</span><strong>Records are unavailable</strong><p>{item.empty}</p></div></td></tr></tbody>
-        </table>
-      </div>
+      {kind === "bank"
+        ? <div className={styles.bankUnloaded} role="status">
+            <dl>
+              <div><dt>Account holder</dt><dd>Not available</dd></div>
+              <div><dt>Legal business name</dt><dd>Not available</dd></div>
+              <div><dt>Masked account</dt><dd>Not available</dd></div>
+              <div><dt>Submitted</dt><dd>Not available</dd></div>
+            </dl>
+            <p>Private bank proof cannot be inspected until the finance evidence service is connected. No names or account digits are inferred from this design preview.</p>
+            <button type="button" disabled>Open bank proof — unavailable</button>
+          </div>
+        : <div className={styles.tableWrap}>
+            <table>
+              <thead><tr>{item.columns.map((column) => <th scope="col" key={column}>{column}</th>)}</tr></thead>
+              <tbody><tr><td colSpan={item.columns.length}><div className={styles.emptyState} role="status"><span className={styles.emptyIcon} aria-hidden="true">—</span><strong>Records are unavailable</strong><p>{item.empty}</p></div></td></tr></tbody>
+            </table>
+          </div>}
     </section>
 
     {kind === "bank" && <section className={styles.decisionPreview} aria-labelledby="bank-decision-title">
@@ -125,6 +137,7 @@ export function AdminModuleEmptyScreen({ kind }: { kind: AdminModuleKind }) {
         <button type="button" disabled>Record decision unavailable</button>
       </fieldset>
     </section>}
+    </div>
     {kind === "exceptions" && <section className={styles.policyCard} aria-labelledby="exception-rules">
       <h2 id="exception-rules">Investigating a stock exception</h2>
       <p>Open exceptions will require the affected variant, location, counted/expected stock and journal evidence. This page cannot edit allocations or override available-to-sell without the inventory service.</p>
