@@ -57,17 +57,51 @@ export function OperationsHome() {
 
   useEffect(() => { void load(); return () => { requestId.current += 1; }; }, [load]);
 
+  // Ordered to match the approved AD-02 4x2 visual layout. Unsupported feeds
+  // remain explicitly unavailable instead of inheriting fictional prototype data.
+  const orderedCards = [
+    cards.find(card => card.id === "applications")!,
+    { id:"bank", title:"Bank verification", description:"Sensitive bank review has no approved API yet.", href:"/operations/bank", state:"unavailable" as const },
+    cards.find(card => card.id === "quality")!,
+    cards.find(card => card.id === "claims")!,
+    cards.find(card => card.id === "pricing")!,
+    cards.find(card => card.id === "publishing")!,
+    { id:"exceptions", title:"Inventory exceptions", description:"Stock exception read and review API is pending approval.", href:"/operations/exceptions", state:"unavailable" as const },
+    cards.find(card => card.id === "taxonomy")!,
+  ];
+
   return <main className={styles.page} aria-labelledby="operations-home-title" data-screen-id="AD-02">
-    <header className={styles.header}><div><p className={styles.kicker}>RENIVET OPERATIONS</p><h1 id="operations-home-title">Operations home</h1><p>Your review queues are loaded from Renivet services. Counts reflect records returned by each live queue request.</p></div><button className={styles.refresh} type="button" onClick={() => void load()}>Refresh queues</button></header>
+    <header className={styles.header}>
+      <div><h1 id="operations-home-title">Operations home</h1><p>Review queues and the work requiring attention. Counts come from Renivet services, not demonstration data.</p></div>
+      <button className={styles.refresh} type="button" onClick={() => void load()}>Refresh queues</button>
+    </header>
     {sessionError && <p className={styles.error} role="alert">{sessionError}</p>}
-    <section className={styles.grid} aria-label="Review queues" aria-live="polite">
-      {cards.map((card) => <article className={styles.card} key={card.id}>
-        <div className={styles.cardTop}><h2>{card.title}</h2>{card.state === "ready" && <strong className={styles.count}>{card.returned}</strong>}{card.state === "loading" && <span className={styles.loading} aria-label="Loading">…</span>}</div>
-        <p>{card.description}</p>
-        {card.state === "ready" ? <p className={styles.state}>{card.returned === 0 ? "No records were returned." : `${card.returned} records returned by the API.`}</p> : card.state === "error" ? <p className={styles.error} role="status">{card.error}</p> : <p className={styles.state} role="status">Checking queue…</p>}
-        <Link href={card.href}>Open queue <span aria-hidden="true">→</span></Link>
-      </article>)}
+    <section className={styles.grid} aria-label="Operations queues" aria-live="polite">
+      {orderedCards.map(card => {
+        const count = card.state === "ready" && "returned" in card ? card.returned : null;
+        return <article className={styles.card} key={card.id}>
+          <strong className={styles.metric}>{count ?? "—"}</strong>
+          <h2>{card.title}</h2>
+          {card.state === "unavailable"
+            ? <p className={styles.unavailable}>Not connected · Contract pending</p>
+            : card.state === "loading"
+              ? <p className={styles.state} role="status">Checking backend queue…</p>
+              : card.state === "error"
+                ? <p className={styles.error} role="status">{"error" in card ? card.error : "The queue is unavailable."}</p>
+                : <p className={styles.state}>{count === 0 ? "No records returned by this API." : "Records returned by this API page."}</p>}
+          <Link href={card.href}>Open {card.title.toLowerCase()} <span aria-hidden="true">→</span></Link>
+        </article>;
+      })}
     </section>
-    <section className={styles.notice}><h2>Some operations are still gated</h2><p>Bank verification, stock exceptions, staff access, privacy requests, and audit history are not connected until their access contracts are approved. No counts or recent activity are invented for those areas.</p><Link href="/operations/bank">Review unavailable workflows</Link></section>
+    <section className={styles.activity} aria-labelledby="activity-title">
+      <h2 id="activity-title">Recent activity</h2>
+      <p>Event history is not loaded because the audited staff activity API has not yet been approved. We will not display sample reviewer names, timestamps or audit events from the prototype.</p>
+      <Link href="/operations/audit">Open audit log information</Link>
+    </section>
+    <section className={styles.notice}>
+      <h2>Some operations are still gated</h2>
+      <p>Bank verification, stock exceptions, staff access, privacy requests and audit history need independent authorization and a registered backend contract before they can show data or accept decisions.</p>
+      <Link href="/operations/bank">Review unavailable workflows</Link>
+    </section>
   </main>;
 }
