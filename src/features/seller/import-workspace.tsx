@@ -171,7 +171,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
   function addField() { setMappingRows((rows) => [...rows, { id: nextRowId, source: "", target: "" }]); setNextRowId((id) => id + 1); }
   function addCategory() { setCategoryRows((rows) => [...rows, { id: nextRowId, source: "", target: "" }]); setNextRowId((id) => id + 1); }
 
-  return <main className={styles.page} aria-labelledby="imports-title">
+  return <main className={styles.page} aria-labelledby="imports-title" data-screen-id={results ? "SE-12C" : preview ? "SE-12A" : "SE-12"}>
     <nav className={styles.detailBreadcrumb} aria-label="Breadcrumb"><a href={`/brands/${encodeURIComponent(brandId)}/products`}>Products</a><span aria-hidden="true">/</span><span>Imports</span></nav>
     <header className={styles.header}><div><p className={styles.kicker}>BRAND WORKSPACE / DATA IMPORT</p><h1 id="imports-title">Import products safely</h1><p className={styles.subtitle}>Upload privately, map columns, review a frozen preview, then confirm explicitly.</p></div><span className={styles.draftBadge}>NO STOCK WRITES</span></header>
     {!batchId ? <section className={styles.formPanel} aria-labelledby="upload-heading"><div className={styles.formHeading}><div><p className={styles.kicker}>STEP 1 · SOURCE</p><h2 id="upload-heading">Choose an export</h2><p>CSV and XLSX files are uploaded to private storage using a short-lived signed URL. The import only stages catalogue data until you confirm.</p></div></div>

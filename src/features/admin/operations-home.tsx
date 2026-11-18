@@ -57,7 +57,7 @@ export function OperationsHome() {
 
   useEffect(() => { void load(); return () => { requestId.current += 1; }; }, [load]);
 
-  return <main className={styles.page} aria-labelledby="operations-home-title">
+  return <main className={styles.page} aria-labelledby="operations-home-title" data-screen-id="AD-02">
     <header className={styles.header}><div><p className={styles.kicker}>RENIVET OPERATIONS</p><h1 id="operations-home-title">Operations home</h1><p>Your review queues are loaded from Renivet services. Counts reflect records returned by each live queue request.</p></div><button className={styles.refresh} type="button" onClick={() => void load()}>Refresh queues</button></header>
     {sessionError && <p className={styles.error} role="alert">{sessionError}</p>}
     <section className={styles.grid} aria-label="Review queues" aria-live="polite">

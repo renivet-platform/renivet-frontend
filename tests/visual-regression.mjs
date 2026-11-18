@@ -72,7 +72,7 @@ try {
   await command("Page.enable");
   await command("Runtime.enable");
   const expression = '(' + function () {
-    const main = document.querySelector("main");
+    const main = document.querySelector('[aria-labelledby="storefront-title"]');
     const h1 = document.querySelector("h1");
     if (document.readyState !== "complete" || !main || !h1) return null;
     const style = getComputedStyle(main), heading = getComputedStyle(h1);
@@ -81,7 +81,7 @@ try {
       width: Math.round(main.getBoundingClientRect().width),
       right: Math.round(main.getBoundingClientRect().right),
       height: Math.round(main.getBoundingClientRect().height),
-      display: style.display, direction: style.flexDirection,
+      display: style.display, columns: style.gridTemplateColumns,
       fontSize: heading.fontSize, fontWeight: heading.fontWeight,
       background: getComputedStyle(document.body).backgroundColor,
       color: getComputedStyle(document.body).color,
@@ -101,9 +101,9 @@ try {
       await sleep(250);
     }
     assert.ok(m, size + ": page not ready");
-    assert.equal(m.title, "A more thoughtful way to get dressed.");
-    assert.equal(m.display, mobile ? "flex" : "grid", size + ": approved responsive hero layout changed");
-    if (mobile) assert.equal(m.direction, "column", size + ": mobile hero must stack");
+    assert.equal(m.title, "Made by hand, with the proof to show for it.");
+    assert.equal(m.display, "grid", size + ": approved responsive hero layout changed");
+    if (mobile) assert.equal(m.columns.split(" ").length, 1, size + ": mobile hero must stack");
     assert.equal(m.fontSize, mobile ? "40px" : "58px", size + ": approved storefront heading scale changed");
     assert.equal(m.fontWeight, "500", size + ": approved heading weight changed");
     assert.equal(m.background, "rgb(246, 244, 239)", size + ": approved canvas token changed");
@@ -111,7 +111,7 @@ try {
     assert.ok(m.documentWidth <= width, size + ": horizontal overflow");
     assert.ok(m.right <= width + 1, size + ": content overflows");
     assert.ok(m.height > 0, size + ": hero content is not rendered");
-    if (!mobile) assert.ok(m.width >= 1000 && m.width <= 1100, "desktop storefront hero width changed");
+    if (!mobile) assert.equal(m.width, 1176, "desktop storefront hero width changed");
     const screenshot = await command("Page.captureScreenshot", { format: "png", fromSurface: true });
     const buffer = Buffer.from(screenshot.data, "base64");
     assert.equal(buffer.subarray(1, 4).toString(), "PNG");

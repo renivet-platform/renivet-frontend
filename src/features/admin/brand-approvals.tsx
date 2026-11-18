@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
 import { shouldRequestMfaStepUp, type MfaEnforcementMode } from "@/features/identity/mfa-policy";
 import { W2ApiError, w2Request } from "@/features/seller/w2-catalog";
+import { brandApprovalDetailPath, findPendingBrandApplication } from "./brand-approval-route";
 import styles from "./brand-approvals.module.css";
 
 type Application = {
@@ -24,7 +26,7 @@ function errorText(error: unknown) {
   return error instanceof Error ? error.message : "Brand applications could not be loaded.";
 }
 
-export function BrandApprovals() {
+export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
   const [items, setItems] = useState<Application[]>([]);
   const [selected, setSelected] = useState<Application | null>(null);
   const [mfa, setMfa] = useState("");
@@ -34,13 +36,22 @@ export function BrandApprovals() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  async function load() {
+  async function load({ resolveDetail = true }: { resolveDetail?: boolean } = {}) {
+    setLoading(true);
     setError("");
     try {
       const result = await w2Request<{ items: Application[] }>(["admin", "brand-application-reviews"]);
-      setItems(result.items ?? []);
-    } catch (cause) { setError(errorText(cause)); }
+      const pending = result.items ?? [];
+      setItems(pending);
+      if (detailBrandId && resolveDetail) {
+        const application = findPendingBrandApplication(pending, detailBrandId);
+        setSelected(application);
+        if (!application) setError("This pending application is unavailable or no longer awaiting review.");
+      }
+    } catch (cause) { setError(errorText(cause)); setSelected(null); }
+    finally { setLoading(false); }
   }
 
   useEffect(() => {
@@ -77,26 +88,31 @@ export function BrandApprovals() {
       });
       setNotice(`Application ${decision}. The persisted queue is refreshing.`);
       setSelected(null);
-      await load();
+      await load({ resolveDetail: false });
+      setNotice(`Application ${decision}. The persisted queue has been refreshed.`);
     } catch (cause) { setError(errorText(cause)); }
     finally { setBusy(false); }
   }
 
-  return <main className={styles.page}>
-    <header className={styles.header}><div><p className={styles.kicker}>PLATFORM ADMIN · BRAND APPROVALS</p><h1>Applications awaiting review</h1><p>Only persisted pending applications are shown. Approval activates the existing W1 brand membership handoff.</p></div><a href="/operations">Back to operations</a></header>
+  return <main className={styles.page} data-screen-id={detailBrandId ? "AD-04" : "AD-03"}>
+    <header className={styles.header}><div><p className={styles.kicker}>PLATFORM ADMIN · BRAND APPROVALS</p><h1>{detailBrandId ? "Review brand application" : "Applications awaiting review"}</h1><p>Only persisted pending applications are shown. Approval activates the existing W1 brand membership handoff.</p></div><Link href={detailBrandId ? "/brand-approvals" : "/operations"}>{detailBrandId ? "Back to applications" : "Back to operations"}</Link></header>
     {error && <p className={styles.error} role="alert">{error}</p>}
     {notice && <p className={styles.notice} role="status">{notice}</p>}
     <section className={styles.grid}>
       <div className={styles.panel}><div className={styles.panelHeading}><h2>Pending applications</h2><button className={styles.linkButton} onClick={() => void load()}>Refresh</button></div>
-        {items.length === 0 ? <p className={styles.empty}>No persisted pending applications are available to this permission.</p> : <div className={styles.list}>{items.map((item) => <button className={styles.card} key={item.brandId} onClick={() => { setSelected(item); setError(""); }}><strong>{item.brandName ?? item.legalName ?? item.brandId}</strong><span>{item.applicantName ?? "Applicant"} · {item.applicantEmail ?? "redacted"}</span><small>{item.brandState} · membership {item.membershipState}</small></button>)}</div>}
+        {loading ? <p className={styles.empty} role="status">Loading pending applications…</p> : items.length === 0 ? <p className={styles.empty}>No persisted pending applications are available to this permission.</p> : <div className={styles.list}>{items.map((item) => {
+          const href = brandApprovalDetailPath(item.brandId);
+          return href ? <Link className={styles.card} href={href} key={item.brandId} aria-current={selected?.brandId === item.brandId ? "page" : undefined}><strong>{item.brandName ?? item.legalName ?? item.brandId}</strong><span>{item.applicantName ?? "Applicant"} · {item.applicantEmail ?? "redacted"}</span><small>{item.brandState} · membership {item.membershipState}</small><span className={styles.cardAction}>Open application review</span></Link> : null;
+        })}</div>}
       </div>
       <div className={styles.panel}><h2>Review detail</h2>
-        {!selected ? <p className={styles.empty}>Select a persisted application to review.</p> : <div className={styles.form}>
+        {loading ? <p className={styles.empty} role="status">Loading application details…</p> : !selected ? <p className={styles.empty}>{notice ? "The recorded decision is complete. Return to the application list to continue reviewing." : detailBrandId ? "This application is unavailable or no longer awaiting review." : "Open a persisted application to review its current details."}</p> : <div className={styles.form}>
           <dl><div><dt>Brand</dt><dd>{selected.brandName ?? selected.legalName}</dd></div><div><dt>Applicant</dt><dd>{selected.applicantName ?? selected.applicantUserId}</dd></div><div><dt>Submitted</dt><dd>{selected.submittedAt ?? "—"}</dd></div></dl>
+          <section className={styles.evidencePanel} aria-labelledby="application-evidence-heading"><p className={styles.kicker}>APPLICATION EVIDENCE</p><h3 id="application-evidence-heading">Documents and verification</h3><p>The current review record includes basic eligibility and membership details only. The evidence API does not provide uploaded documents, bank verification, correction requests, or review reasons.</p><ul><li><span>Business registration</span><strong>Not available</strong></li><li><span>Brand authorisation</span><strong>Not available</strong></li><li><span>Signatory identity</span><strong>Not available</strong></li><li><span>Bank verification</span><strong>Not available</strong></li></ul></section>
           <label>Independent checker user ID<input value={checker} onChange={(event) => setChecker(event.target.value)} placeholder="UUID of a different reviewer" /></label>
           {mfaModeLoaded && shouldRequestMfaStepUp(mfaEnforcementMode) ? <label>Fresh MFA code<input value={mfa} onChange={(event) => setMfa(event.target.value)} inputMode="numeric" autoComplete="one-time-code" /></label> : null}
           <div className={styles.actions}><button className={styles.approve} disabled={busy} onClick={() => void decide("approved")}>Approve application</button><button className={styles.reject} disabled={busy} onClick={() => void decide("rejected")}>Reject application</button></div>
-          <p className={styles.muted}>Maker-checker is enforced by the backend; the submitter and checker cannot be the same person.</p>
+          <p className={styles.muted}>Maker-checker is enforced by the backend; the submitter and checker cannot be the same person. This W1 decision records approve or reject only; it does not attest that the unavailable W2 evidence was checked.</p>
         </div>}
       </div>
     </section>

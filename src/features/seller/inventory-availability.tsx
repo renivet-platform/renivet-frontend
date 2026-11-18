@@ -67,7 +67,7 @@ export function InventoryAvailability({ brandId }: { brandId: string }) {
     finally { setSavingAction(false); }
   }
 
-  return <main className={styles.page} aria-labelledby="inventory-title">
+  return <main className={styles.page} aria-labelledby="inventory-title" data-screen-id="SE-13">
     <nav className={styles.detailBreadcrumb} aria-label="Breadcrumb"><Link href={`/brands/${encodeURIComponent(brandId)}/products`}>Products</Link><span aria-hidden="true">/</span><span>Inventory</span></nav>
     <header className={styles.header}><div><p className={styles.kicker}>BRAND WORKSPACE <span aria-hidden="true">/</span> STOCK</p><h1 id="inventory-title">Inventory</h1><p className={styles.subtitle}>Authoritative balances and movements are read from the protected backend ledger.</p></div><span className={styles.draftBadge}>LIVE BACKEND DATA</span></header>
     {error && <div className={styles.errorPanel} role="alert"><strong>Inventory unavailable</strong><p>{error}</p><button type="button" className={styles.secondaryButton} onClick={() => void load()}>Retry</button></div>}

@@ -20,7 +20,7 @@ export function AuthorizedBrandSelection() {
     return () => { live = false; };
   }, []);
 
-  return <main className={styles.page} aria-labelledby="brand-selection-title">
+  return <main className={styles.page} aria-labelledby="brand-selection-title" data-screen-id="SE-20A">
     <p className={styles.kicker}>Brand workspace</p>
     <h1 id="brand-selection-title">Your brands</h1>
     <p className={styles.intro}>Only brands returned by your signed-in Renivet session are shown here.</p>

@@ -3,15 +3,16 @@ import type { ReactNode } from "react";
 import styles from "./auth.module.css";
 
 interface AuthShellProps {
+  screenId?: string;
   eyebrow: string;
   title: string;
   description: string;
   children: ReactNode;
 }
 
-export function AuthShell({ eyebrow, title, description, children }: AuthShellProps) {
+export function AuthShell({ screenId, eyebrow, title, description, children }: AuthShellProps) {
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-screen-id={screenId}>
       <header className={styles.header}>
         <Link href="/" className={styles.wordmark} aria-label="Renivet home">
           <span>RENIVET</span>

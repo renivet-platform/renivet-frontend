@@ -178,7 +178,7 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
         <div className={styles.sidebarNote}><span className={styles.noteMark} aria-hidden="true">i</span><p>Review access is checked by the backend against global W1 admin permissions.</p></div>
         <div className={styles.sidebarFoot}><span className={styles.avatar} aria-hidden="true">R</span><span><strong>Operations workspace</strong><small>W2 · admin review</small></span></div>
       </aside>
-      <main className={styles.main} id="overview" aria-labelledby="operations-title">
+      <main className={styles.main} id="overview" aria-labelledby="operations-title" data-screen-id={initialItemId || selected ? "AD-08B" : "AD-08A"}>
         <header className={styles.topbar}><p><span>Workspace</span><span aria-hidden="true">/</span><strong>Operations</strong></p><div className={styles.topbarActions}>{initialItemId ? <a className={styles.navLink} href={reviewQueuePath(active)}>Back to queue</a> : null}{sessionReady ? <button className={styles.sessionButton} type="button" onClick={() => void signOut()} disabled={signOutBusy}>{signOutBusy ? "Signing out…" : "Sign out"}</button> : sessionError ? <a className={styles.sessionButton} href="/sign-in">Sign in</a> : null}<span className={styles.previewBadge}><span aria-hidden="true" /> Authenticated review</span></div></header>
         <div className={styles.content}>
           <section className={styles.hero} aria-labelledby="operations-title"><div><p className={styles.eyebrow}>RENIVET · PLATFORM OPERATIONS</p><h1 id="operations-title">Review work,<br /><em>with context.</em></h1><p className={styles.heroCopy}>Each decision is tied to the persisted revision, its evidence and an independent reviewer.</p></div>
