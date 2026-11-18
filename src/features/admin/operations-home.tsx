@@ -9,7 +9,7 @@ import styles from "./operations-home.module.css";
 type QueueId = "quality" | "claims" | "pricing" | "publishing" | "taxonomy" | "applications";
 type QueueCard = { id: QueueId; title: string; description: string; href: string; state: "loading" | "ready" | "error"; returned?: number; error?: string };
 const baseCards: Array<Omit<QueueCard, "state" | "returned" | "error">> = [
-  { id: "applications", title: "Brand applications", description: "Persisted application reviews.", href: "/operations/applications" },
+  { id: "applications", title: "Brand applications", description: "Persisted application reviews.", href: "/brand-approvals" },
   { id: "quality", title: "Product quality", description: "Submitted revisions awaiting review.", href: "/operations/quality" },
   { id: "claims", title: "Claims & evidence", description: "Claims requiring independent evidence review.", href: "/operations/claims" },
   { id: "pricing", title: "Pricing", description: "Price proposals awaiting approval.", href: "/operations/pricing" },

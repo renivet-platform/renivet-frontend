@@ -37,6 +37,14 @@ This matrix records the current app routes and API state as found on frontend `o
 - `git diff --check`: PASS. No backend or database changes were made.
 - Full screenshot comparison and interaction review across all 40 screens / 168 states, standalone accessibility audit, and live end-to-end journeys against a configured backend remain NOT EXECUTED. API-gated screens remain unavailable by design until their contracts are approved and implemented.
 
+### Admin page completion pass — 18 Nov 2026
+
+- Replaced generic gates on AD-05, AD-06, AD-09, AD-19, and AD-20 with purpose-specific admin pages: bank verification, staff access, inventory exceptions, privacy requests, and audit log.
+- Each page now uses the shared operations navigation, module-specific table headings and empty state, and a clear unavailable-service explanation. No example people, bank values, stock, privacy requests, or audit events are presented as real data; no unsupported decision controls are enabled.
+- Canonicalized the Brand applications navigation link to `/brand-approvals`, so the active destination is highlighted on both the list and detail routes.
+- Expanded the local Chrome visual regression to visit all 12 admin screen IDs at 1280px and 390px. PASS: every route rendered its expected screen ID/title and had no document-level horizontal overflow. Review queue navigation remains horizontally scrollable within its own region on mobile.
+- Verification after this pass: lint PASS; typecheck PASS; unit tests 82/82 PASS; production build PASS; Chrome admin screens 12/12 at desktop and 12/12 at 390px PASS with no document-level horizontal overflow. Review-queue chips wrap on mobile. Backend-dependent features remain NOT EXECUTED until approved APIs and configured services are available.
+
 ## Screen-to-route-to-API matrix
 
 | ID | Prototype screen / wave | Current route | Proposed production route | Current API/feature evidence | Classification and next action  | Auth role | Desktop / mobile | Progress at baseline (pre-change) | Feature gate | CI proof |

@@ -119,8 +119,52 @@ try {
     await writeFile(filepath, buffer);
     console.log("PASS " + size + " CSS/layout and screenshot: " + filepath, m);
   }
+
+  async function inspectAdmin(size, width, height, mobile) {
+    const adminScreens = [
+      ["/operations/sign-in", "AD-01", "Sign in to Renivet"],
+      ["/operations", "AD-02", null],
+      ["/brand-approvals", "AD-03", null],
+      ["/brand-approvals/11111111-1111-4111-8111-111111111111", "AD-04", null],
+      ["/operations/bank", "AD-05", "Bank verification", true],
+      ["/operations/staff", "AD-06", "Staff and access", true],
+      ["/taxonomy", "AD-07", null],
+      ["/operations/quality", "AD-08A", null],
+      ["/operations/quality/22222222-2222-4222-8222-222222222222", "AD-08B", null],
+      ["/operations/exceptions", "AD-09", "Inventory exceptions", true],
+      ["/operations/privacy", "AD-19", "Privacy requests", true],
+      ["/operations/audit", "AD-20", "Audit log", true],
+    ];
+    await command("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile });
+    for (const [route, id, title, requiresUnavailable] of adminScreens) {
+      await command("Page.navigate", { url: new URL(route, url).href });
+      let state;
+      const expression = "(() => { const main = document.querySelector('[data-screen-id]'); const h1 = main?.querySelector('h1') ?? document.querySelector('h1'); return document.readyState === 'complete' && main && h1 ? { id: main.dataset.screenId, title: h1.textContent.trim(), status: main.innerText.includes('Not connected'), width: document.documentElement.scrollWidth, viewport: innerWidth, height: main.getBoundingClientRect().height } : null; })()";
+      for (let i = 0; i < 60; i++) {
+        const response = await command("Runtime.evaluate", { expression, returnByValue: true });
+        state = response.result?.value;
+        if (state) break;
+        await sleep(200);
+      }
+      assert.ok(state, size + " " + route + ": page not ready");
+      assert.equal(state.id, id, size + " " + route + ": wrong screen ID");
+      assert.ok(state.title.length > 0, size + " " + route + ": page title is missing");
+      if (title) assert.equal(state.title, title, size + " " + route + ": wrong page title");
+      if (requiresUnavailable) assert.equal(state.status, true, size + " " + route + ": unavailable service state is not clear");
+      assert.ok(state.width <= width, size + " " + route + ": horizontal overflow");
+      assert.ok(state.height > 0, size + " " + route + ": page content is not rendered");
+      const screenshot = await command("Page.captureScreenshot", { format: "png", fromSurface: true });
+      const buffer = Buffer.from(screenshot.data, "base64");
+      assert.equal(buffer.subarray(1, 4).toString(), "PNG");
+      const filepath = path.join(output, "admin-" + id + "-" + size + ".png");
+      await writeFile(filepath, buffer);
+      console.log("PASS " + size + " " + id + " admin screen: " + filepath, state);
+    }
+  }
   await inspect("desktop", 1440, 900, false);
   await inspect("mobile", 390, 844, true);
+  await inspectAdmin("desktop", 1280, 900, false);
+  await inspectAdmin("mobile", 390, 844, true);
 } finally {
   for (const waiter of pending.values()) waiter.reject(new Error("Closing browser"));
   pending.clear();

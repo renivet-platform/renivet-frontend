@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthApiError, getCurrentSession, logoutCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
 import { shouldRequestMfaStepUp, type MfaEnforcementMode } from "@/features/identity/mfa-policy";
@@ -78,6 +79,14 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
       .catch((error: unknown) => { if (live) setSessionError(errorMessage(error)); });
     return () => { live = false; };
   }, []);
+
+  useEffect(() => {
+    setActive(initialQueue);
+    setSelected(null);
+    setConfirmedRevision(false);
+    setDetailError("");
+    setNotice("");
+  }, [initialQueue]);
 
   useEffect(() => { if (sessionReady) void loadQueue(active); }, [active, loadQueue, sessionReady]);
 
@@ -165,19 +174,6 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
   const decisionBlocked = selfSubmitted || expiredClaim;
   return (
     <div className={styles.shell}>
-      <aside className={styles.sidebar}>
-        <a className={styles.brand} href="#overview" aria-label="Renivet operations home"><span className={styles.brandMark} aria-hidden="true">R</span><span className={styles.brandName}>renivet<span>OPERATIONS</span></span></a>
-        <p className={styles.navCaption}>REVIEW QUEUES</p>
-        <a className={styles.navLink} href="/brand-approvals">Brand approvals</a>
-        <a className={styles.navLink} href="/taxonomy">Taxonomy authoring</a>
-        <nav aria-label="Operations review queues" className={styles.navigation}>
-          {queues.map((queue, index) => <button key={queue.id} type="button" className={active === queue.id ? styles.navActive : styles.navLink} onClick={() => { setActive(queue.id); setNotice(""); router.replace(reviewQueuePath(queue.id)); }}>
-            <span className={styles.navIndex}>{String(index + 1).padStart(2, "0")}</span>{queue.title}
-          </button>)}
-        </nav>
-        <div className={styles.sidebarNote}><span className={styles.noteMark} aria-hidden="true">i</span><p>Review access is checked by the backend against global W1 admin permissions.</p></div>
-        <div className={styles.sidebarFoot}><span className={styles.avatar} aria-hidden="true">R</span><span><strong>Operations workspace</strong><small>W2 · admin review</small></span></div>
-      </aside>
       <main className={styles.main} id="overview" aria-labelledby="operations-title" data-screen-id={initialItemId || selected ? "AD-08B" : "AD-08A"}>
         <header className={styles.topbar}><p><span>Workspace</span><span aria-hidden="true">/</span><strong>Operations</strong></p><div className={styles.topbarActions}>{initialItemId ? <a className={styles.navLink} href={reviewQueuePath(active)}>Back to queue</a> : null}{sessionReady ? <button className={styles.sessionButton} type="button" onClick={() => void signOut()} disabled={signOutBusy}>{signOutBusy ? "Signing out…" : "Sign out"}</button> : sessionError ? <a className={styles.sessionButton} href="/sign-in">Sign in</a> : null}<span className={styles.previewBadge}><span aria-hidden="true" /> Authenticated review</span></div></header>
         <div className={styles.content}>
@@ -185,6 +181,9 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
             <div className={styles.heroAside}><span className={styles.heroGlyph} aria-hidden="true">✳</span><p>Fresh authorization is required for every decision.</p><span>{area.permission}</span></div></section>
           {sessionError ? <section className={styles.statusPanel} role="alert"><h2>Sign in required</h2><p>{sessionError}</p><a href="/sign-in">Go to sign in</a></section> : null}
           {sessionReady ? <section className={styles.reviewSection} aria-labelledby="queue-title">
+            <nav className={styles.queueTabs} aria-label="Review queues">
+              {queues.map((queue) => <Link key={queue.id} href={reviewQueuePath(queue.id)} className={active === queue.id ? styles.queueTabActive : styles.queueTab} aria-current={active === queue.id ? "page" : undefined}>{queue.title}</Link>)}
+            </nav>
             <div className={styles.sectionTitle}><div><p className={styles.eyebrow}>LIVE REVIEW QUEUE</p><h2 id="queue-title">{area.title}</h2><p>{area.description}</p></div><button className={styles.navLink} type="button" onClick={() => void loadQueue(active)} disabled={loading}>{loading ? "Loading…" : "Refresh"}</button></div>
             {notice ? <p className={styles.availability} role="status">{notice}</p> : null}
             {queueError ? <div className={styles.availability} role="alert"><p>{queueError}</p><button type="button" onClick={() => void loadQueue(active)}>Retry</button></div> : null}

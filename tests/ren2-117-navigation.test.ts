@@ -22,9 +22,14 @@ test("admin navigation maps directly to registered review routes", () => {
 
   assert.ok(items.some((item) => item.label === "Claims & evidence" && item.href === "/operations/claims" && item.active));
   assert.ok(items.some((item) => item.label === "Home" && item.href === "/operations" && !item.active));
-  assert.ok(items.some((item) => item.label === "Brand applications" && item.href === "/operations/applications"));
+  assert.ok(items.some((item) => item.label === "Brand applications" && item.href === "/brand-approvals" && !item.active));
   assert.ok(items.some((item) => item.label === "Staff & access" && item.href === "/operations/staff"));
   assert.ok(items.some((item) => item.label === "Taxonomy" && item.href === "/taxonomy" && !item.active));
   assert.ok(items.every((item) => !item.href.startsWith("/brands/")));
   assert.deepEqual(mobileWorkspaceLinks("admin", items).map((item) => item.label), ["Home", "Product quality", "Brand applications", "Inventory exceptions"]);
+});
+
+test("brand approval routes highlight the brand applications destination", () => {
+  const items = buildWorkspaceNavigation("admin", "/brand-approvals/7d785d72-ea2c-44bb-9d82-87b272112b32");
+  assert.ok(items.some((item) => item.label === "Brand applications" && item.href === "/brand-approvals" && item.active));
 });
