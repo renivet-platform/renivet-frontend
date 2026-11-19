@@ -11,7 +11,16 @@ type Balance = { brandId: string; variantId: string; locationId: string; physica
 type Movement = { id: string; variantId: string; locationId: string; deltaPhysical: number; reason: string; recordedAt: string };
 type Reconciliation = { id: string; variantId: string; locationId: string; version: number; status: string; reasonCode?: string };
 
-function errorMessage(error: unknown) { return error instanceof W2ApiError ? error.message : "Inventory could not be loaded. Try again shortly."; }
+function errorMessage(error: unknown) {
+  if (error instanceof W2ApiError) {
+    if (error.status === 404) return "The inventory ledger API is not active in this environment. In disposable local development, the backend requires RENIVET_INVENTORY_API_ENABLED=true after the reviewed stock migrations. It remains gated in shared environments until the security and inventory acceptance checks are approved.";
+    if (error.status === 403) return "This account does not have permission to view inventory for the selected brand.";
+    if (error.status === 401) return "Your session has expired. Sign in again and reopen the brand workspace.";
+    if (error.status >= 500) return "The inventory ledger is temporarily unavailable. No stock has been changed.";
+    return error.message;
+  }
+  return "Inventory could not be loaded. Try again shortly.";
+}
 
 export function InventoryAvailability({ brandId }: { brandId: string }) {
   const [balances, setBalances] = useState<Balance[]>([]);
@@ -79,7 +88,7 @@ export function InventoryAvailability({ brandId }: { brandId: string }) {
 
   return <main className={styles.page} aria-labelledby="inventory-title" data-screen-id="SE-13">
     <nav className={styles.detailBreadcrumb} aria-label="Breadcrumb"><Link href={`/brands/${encodeURIComponent(brandId)}/products`}>Products</Link><span aria-hidden="true">/</span><span>Inventory</span></nav>
-    <header className={styles.header}><div><p className={styles.kicker}>BRAND WORKSPACE <span aria-hidden="true">/</span> STOCK</p><h1 id="inventory-title">Inventory</h1><p className={styles.subtitle}>Authoritative balances and movements are read from the protected backend ledger.</p></div><span className={styles.draftBadge}>LIVE BACKEND DATA</span></header>
+    <header className={styles.header}><div><p className={styles.kicker}>BRAND WORKSPACE <span aria-hidden="true">/</span> STOCK</p><h1 id="inventory-title">Inventory</h1><p className={styles.subtitle}>Authoritative balances, allocations and available-to-sell quantities come from Renivet’s backend stock ledger. Imported spreadsheet quantities never become stock automatically.</p></div><span className={styles.draftBadge}>LIVE BACKEND DATA</span></header>
     <section className={visual.stockRule} aria-label="Stock availability calculation">
       <strong>What is available to sell?</strong>
       <p>Physical − quarantined − unsellable − allocated (not dispatched) − buffer. The backend is authoritative; no stock is reserved before payment, and a shortage must pause selling.</p>
