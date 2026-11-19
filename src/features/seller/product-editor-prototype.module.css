@@ -82,3 +82,10 @@
 .reviewChecklist small { display:block; color:#6b756d; font-size:12px; line-height:1.5; }
 .reviewChecklist button { flex:none; border:1px solid #b5c2ba; border-radius:8px; background:#fff; color:#174b37; font-weight:650; padding:8px 13px; cursor:pointer; }
 .reviewChecklist button:hover { background:#eef4f0; }
+
+.priceSplit { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(300px,0.85fr); gap:20px; align-items:start; }
+.priceHistory { min-width:0; }
+.priceForm { min-width:0; border:1px solid #e5dfd7; background:#fcfbf9; border-radius:12px; padding:18px; }
+.priceForm :global(input), .priceForm :global(select) { max-width:100%; }
+.priceForm :global(form) { margin-top:14px; }
+@media(max-width:1000px) { .priceSplit {grid-template-columns:1fr;} }
