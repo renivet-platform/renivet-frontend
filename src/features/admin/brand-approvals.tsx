@@ -33,6 +33,8 @@ export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
   const [mfaEnforcementMode, setMfaEnforcementMode] = useState<MfaEnforcementMode>("enforced");
   const [mfaModeLoaded, setMfaModeLoaded] = useState(false);
   const [checker, setChecker] = useState("");
+  const [reviewers, setReviewers] = useState<Array<{id:string;name:string}>>([]);
+  const [signedInReviewerId, setSignedInReviewerId] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -56,7 +58,10 @@ export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
 
   useEffect(() => {
     void load();
+    void w2Request<{items:Array<{id:string;name:string}>}>(["admin","brand-application-reviews","reviewers"])
+      .then(data=>setReviewers(data.items??[])).catch(()=>setReviewers([]));
     void getCurrentSession().then((session) => {
+      setSignedInReviewerId(session.user.id);
       setMfaEnforcementMode(session.mfaEnforcementMode);
       setMfaModeLoaded(true);
     }).catch(() => {
@@ -143,7 +148,11 @@ export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
         {loading ? <p className={styles.empty} role="status">Loading application details…</p> : !selected ? <p className={styles.empty}>{notice ? "The recorded decision is complete. Return to the application list to continue reviewing." : detailBrandId ? "This application is unavailable or no longer awaiting review." : "Open a persisted application to review its current details."}</p> : <div className={styles.form}>
           <dl><div><dt>Brand</dt><dd>{selected.brandName ?? selected.legalName}</dd></div><div><dt>Applicant</dt><dd>{selected.applicantName ?? selected.applicantUserId}</dd></div><div><dt>Submitted</dt><dd>{selected.submittedAt ?? "—"}</dd></div></dl>
           <section className={styles.evidencePanel} aria-labelledby="application-evidence-heading"><p className={styles.kicker}>APPLICATION EVIDENCE</p><h3 id="application-evidence-heading">Documents and verification</h3><p>The current review record includes basic eligibility and membership details only. The evidence API does not provide uploaded documents, bank verification, correction requests, or review reasons.</p><ul><li><span>Business registration</span><strong>Not available</strong></li><li><span>Brand authorisation</span><strong>Not available</strong></li><li><span>Signatory identity</span><strong>Not available</strong></li><li><span>Bank verification</span><strong>Not available</strong></li></ul></section>
-          <label>Independent checker user ID<input value={checker} onChange={(event) => setChecker(event.target.value)} placeholder="UUID of a different reviewer" /></label>
+          <label>Independent reviewer<select value={checker} onChange={event=>setChecker(event.currentTarget.value)}>
+            <option value="">Choose another authorized reviewer</option>
+            {reviewers.filter(r=>r.id!==signedInReviewerId&&r.id!==selected.applicantUserId).map(reviewer=><option key={reviewer.id} value={reviewer.id}>{reviewer.name}</option>)}
+          </select></label>
+          {reviewers.filter(r=>r.id!==signedInReviewerId&&r.id!==selected.applicantUserId).length===0 && <p className={styles.muted}>No independent verified reviewer is available. Ask another Renivet admin to be assigned before proceeding.</p>}
           {mfaModeLoaded && shouldRequestMfaStepUp(mfaEnforcementMode) ? <label>Fresh MFA code<input value={mfa} onChange={(event) => setMfa(event.target.value)} inputMode="numeric" autoComplete="one-time-code" /></label> : null}
           <div className={styles.actions}><button className={styles.approve} disabled={busy} onClick={() => void decide("approved")}>Approve application</button><button className={styles.reject} disabled={busy} onClick={() => void decide("rejected")}>Reject application</button></div>
           <p className={styles.muted}>Maker-checker is enforced by the backend; the submitter and checker cannot be the same person. This W1 decision records approve or reject only; it does not attest that the unavailable W2 evidence was checked.</p>

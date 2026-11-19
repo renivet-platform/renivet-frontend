@@ -27,6 +27,9 @@ export function resolveW2BackendPath(segments: string[], method: string): string
     if (method === "GET" && segments.length === 4 && uuid.test(segments[3]!)) return `/api/v1/admin/reviews/${segments[2]}/${segments[3]}`;
     return null;
   }
+  if (segments[0] === "admin" && segments[1] === "brand-application-reviews" && segments.length === 3 && segments[2] === "reviewers" && method === "GET") {
+    return "/api/v1/admin/brand-application-reviews/reviewers";
+  }
   if (segments[0] === "admin" && segments[1] === "brand-application-reviews" && segments.length === 2 && method === "GET") {
     return "/api/v1/admin/brand-application-reviews";
   }
