@@ -124,7 +124,6 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
     setBusy(true); setDetailError(""); setNotice("");
     try {
       const session = await getCurrentSession();
-      setMfaEnforcementMode(session.mfaEnforcementMode);
       const csrfToken = session.csrfToken;
       const idempotencyKey = crypto.randomUUID();
       let path: string[]; let body: Record<string, unknown>; let ifMatch: string | undefined;
