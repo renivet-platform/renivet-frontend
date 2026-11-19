@@ -12,7 +12,13 @@ import { filteredLoadedProducts, loadedTabCount, productStatusTabs, type Product
 type CreateDraftReceipt = { productId: string; publicationState: "DRAFT"; categorySchemaVersion: number };
 
 function errorMessage(error: unknown): string {
-  if (error instanceof W2ApiError) return error.message;
+  if (error instanceof W2ApiError) {
+    if (error.code === "PRODUCT_CONFLICT") return "This style code may already be used by a product in your brand. Choose another style code or check your existing products.";
+    if (error.code === "PRODUCT_CATEGORY_INVALID") return "This category is not currently available for product creation. Refresh the categories and choose a live category.";
+    if (error.code === "PRODUCT_ATTRIBUTE_INVALID") return "The selected category has product details that need attention. Try again or contact the catalogue administrator.";
+    if (error.code === "PRODUCT_DRAFT_INVALID") return "The product name or style code is invalid. Check your entries and try again.";
+    return error.message;
+  }
   if (error instanceof AuthApiError && error.status === 401) return "Your session has expired. Sign in again, then reopen this workspace.";
   return "The catalogue service is temporarily unavailable. Try again shortly.";
 }
@@ -42,6 +48,8 @@ export function ProductWorkspace({ brandId, mode = "list" }: { brandId: string; 
   const [categoryFilter, setCategoryFilter] = useState("");
   const [attributes, setAttributes] = useState<CategoryAttribute[]>([]);
   const [attributeError, setAttributeError] = useState("");
+  const [attributesLoading, setAttributesLoading] = useState(false);
+  const [attributesReloadKey, setAttributesReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [formNotice, setFormNotice] = useState("");
@@ -56,7 +64,7 @@ export function ProductWorkspace({ brandId, mode = "list" }: { brandId: string; 
     setProductCursor(null);
     setCategories([]);
     Promise.all([
-      w2Request<ProductPage>(["brands", brandId, "products"], { query: { limit: "50" }, signal: controller.signal }),
+      mode === "new" ? Promise.resolve<ProductPage>({ items: [], totalCount: 0, nextCursor: null }) : w2Request<ProductPage>(["brands", brandId, "products"], { query: { limit: "50" }, signal: controller.signal }),
       w2Request<Paged<Category>>(["brands", brandId, "categories"], { query: { limit: "100" }, signal: controller.signal }),
     ]).then(([productPage, categoryPage]) => {
       setProducts(productPage.items);
@@ -70,7 +78,7 @@ export function ProductWorkspace({ brandId, mode = "list" }: { brandId: string; 
       if (!controller.signal.aborted) setLoading(false);
     });
     return () => controller.abort();
-  }, [brandId, reloadKey]);
+  }, [brandId, mode, reloadKey]);
 
   const selectable = useMemo(() => selectableCategories(categories), [categories]);
   const selectedCategory = selectable.find((category) => category.id === categoryId);
@@ -80,17 +88,18 @@ export function ProductWorkspace({ brandId, mode = "list" }: { brandId: string; 
   }, [categories, categoryFilter, selectable]);
 
   useEffect(() => {
-    if (!categoryId) { setAttributes([]); setAttributeError(""); return; }
+    if (!categoryId) { setAttributes([]); setAttributeError(""); setAttributesLoading(false); return; }
     const controller = new AbortController();
     setAttributes([]);
     setAttributeError("");
+    setAttributesLoading(true);
     w2Request<Paged<CategoryAttribute>>(["brands", brandId, "categories", categoryId, "attributes"], {
       query: { limit: "100" }, signal: controller.signal,
-    }).then((page) => setAttributes(page.items)).catch((error: unknown) => {
+    }).then((page) => { if (!controller.signal.aborted) setAttributes(page.items); }).catch((error: unknown) => {
       if (!controller.signal.aborted) setAttributeError(errorMessage(error));
-    });
+    }).finally(() => { if (!controller.signal.aborted) setAttributesLoading(false); });
     return () => controller.abort();
-  }, [brandId, categoryId]);
+  }, [brandId, categoryId, attributesReloadKey]);
 
   async function loadMoreCategories() {
     if (!nextCursor || loadingMore) return;
@@ -126,6 +135,7 @@ export function ProductWorkspace({ brandId, mode = "list" }: { brandId: string; 
       categorySchemaVersion: categoryDraftVersion(selectedCategory),
     };
     if (!body.title || !body.styleCode) { setFormError("Enter a product name and style code."); return; }
+    if (body.title.length > 200 || body.styleCode.length > 128) { setFormError("Product name must be at most 200 characters and style code at most 128."); return; }
     const hash = JSON.stringify(body);
     if (!idempotency.current || idempotency.current.hash !== hash) idempotency.current = { hash, key: createIdempotencyKey() };
 
@@ -158,6 +168,7 @@ export function ProductWorkspace({ brandId, mode = "list" }: { brandId: string; 
 
 
 
+      {showForm && !loading && loadError && <div className={styles.errorPanel} role="alert"><strong>Categories could not be loaded</strong><p>{loadError}</p><button type="button" className={styles.secondaryButton} onClick={() => setReloadKey(value => value + 1)}>Retry loading categories</button></div>}
       {showForm && <section className={styles.formPanel} aria-labelledby="draft-title">
         <div className={styles.formHeading}><div><p className={styles.kicker}>STEP 1 · PRODUCT BASICS</p><h2 id="draft-title">Create a product draft</h2><p>Choose a category and save the basics. Variants, images, pricing and evidence can be added later.</p></div><span className={styles.draftBadge}>SAVES AS DRAFT</span></div>
         <form onSubmit={createDraft} noValidate>
@@ -179,12 +190,12 @@ export function ProductWorkspace({ brandId, mode = "list" }: { brandId: string; 
 
           {selectedCategory && <div className={styles.schemaPanel} aria-live="polite">
             <div><p className={styles.kicker}>CATEGORY GUIDANCE</p><h3>{categoryLabel(selectedCategory, categories)}</h3><p>Drafts will use published schema version {categoryDraftVersion(selectedCategory)}. You can return to category fields while editing.</p></div>
-            {attributeError ? <p className={styles.inlineError}>{attributeError}</p> : attributes.length > 0 ? <ul className={styles.attributeList}>{attributes.map((attribute) => <li key={`${attribute.scope}-${attribute.code}`}><span>{attribute.code}</span><small>{attribute.type}{attribute.required ? " · Required before review" : " · Optional"}</small></li>)}</ul> : <p className={styles.schemaLoading}>Loading category fields…</p>}
+            {attributeError ? <div className={styles.inlineError} role="status"><span>Category guidance couldn’t load. You can still save a product draft with the approved category.</span><button type="button" className={styles.textButton} onClick={() => setAttributesReloadKey(value => value + 1)}>Try again</button></div> : attributesLoading ? <p className={styles.schemaLoading}>Loading category details…</p> : attributes.length > 0 ? <ul className={styles.attributeList}>{attributes.map((attribute) => <li key={`${attribute.scope}-${attribute.code}`}><span>{attribute.code.replaceAll("_"," ")}</span><small>{attribute.type}{attribute.required ? " · Required before review" : " · Optional"}</small></li>)}</ul> : <p className={styles.schemaLoading}>No additional product details are required to create a draft. You can fill in more details in the editor.</p>}
           </div>}
 
           {formError && <p className={styles.error} role="alert">{formError}</p>}
           {formNotice && <p className={styles.notice} role="status">{formNotice}</p>}
-          <div className={styles.formActions}><p><span aria-hidden="true">*</span> Required to create a draft</p><button className={styles.primaryButton} type="submit" disabled={saving || loading}>{saving ? "Saving draft…" : "Save draft"}</button></div>
+          <div className={styles.formActions}><p><span aria-hidden="true">*</span> Required to create a draft</p><button className={styles.primaryButton} type="submit" disabled={saving || loading || Boolean(loadError) || !selectedCategory}>{saving ? "Saving draft…" : "Save draft"}</button></div>
         </form>
       </section>}
 

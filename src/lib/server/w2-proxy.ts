@@ -93,7 +93,7 @@ export function resolveW2BackendPath(segments: string[], method: string): string
     return `/api/v1/brands/${brandId}/media/${resourceId}`;
   }
   if (resource === "categories" && segments.length === 3 && method === "GET") return `/api/v1/brands/${brandId}/categories`;
-  if (resource === "categories" && resourceId && uuid.test(resourceId) && subresource === "attributes" && segments.length === 4 && method === "GET") {
+  if (resource === "categories" && resourceId && uuid.test(resourceId) && subresource === "attributes" && segments.length === 5 && method === "GET") {
     return `/api/v1/brands/${brandId}/categories/${resourceId}/attributes`;
   }
   if (resource === "categories" && resourceId && uuid.test(resourceId) && subresource === "schema-versions"
