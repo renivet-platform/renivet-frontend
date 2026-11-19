@@ -31,6 +31,10 @@ export function TaxonomyAdminWorkspace() {
   const [mfaRequired,setMfaRequired] = useState(false);
   const [mfaCode,setMfaCode] = useState("");
   const [search,setSearch] = useState("");
+  const [creating,setCreating] = useState(false);
+  const [newName,setNewName] = useState("");
+  const [newCode,setNewCode] = useState("");
+  const [newParentId,setNewParentId] = useState("");
   const selected = useMemo(() => categories.find(x => x.id === categoryId),[categoryId,categories]);
   const available = useMemo(() => categories.filter(x => x.isLeaf && (x.name + " " + x.code).toLowerCase().includes(search.toLowerCase())),[categories,search]);
   const version = (selected?.currentSchemaVersion ?? selected?.schemaVersion ?? 0) + 1;
@@ -65,6 +69,32 @@ export function TaxonomyAdminWorkspace() {
     if (fields.some(f => !attributes.some(a => a.code === f.code && a.id))) { setError("Some fields do not have a saved definition. Refresh the page."); return; }
     setError(""); setStep("review");
   }
+  async function createCategory() {
+    if(busy)return;
+    const name=newName.trim(),code=newCode.trim();
+    if(name.length<3||name.length>100||!/^[a-z][a-z0-9_]{2,63}$/.test(code)){
+      setError("Enter a category name and a simple code using lowercase letters, numbers or underscores.");return;
+    }
+    setBusy(true);setError("");setNotice("");
+    try {
+      const session=await getCurrentSession();
+      let csrfToken=session.csrfToken;
+      if(shouldRequestMfaStepUp(session.mfaEnforcementMode)){
+        if(!/^(?:\d{6}|[A-Z2-7]{26})$/.test(mfaCode.trim().toUpperCase()))throw new Error("Enter your authenticator code.");
+        csrfToken=(await stepUpWithMfa(mfaCode.trim().toUpperCase(),csrfToken)).csrfToken;
+      }
+      const result=await w2Request<{id:string;status:string}>(["admin","catalog","categories"],{
+        method:"POST",body:{name,code,...(newParentId?{parentId:newParentId}:{})},
+        csrfToken,idempotencyKey:crypto.randomUUID()
+      });
+      setCreating(false);setNewName("");setNewCode("");setNewParentId("");setMfaCode("");
+      await load();
+      setCategoryId(result.id);setFields([]);setStep("choose");
+      setNotice("Category created. Select the product details below and send the first version for approval.");
+    } catch(cause){setError(friendlyError(cause));}
+    finally{setBusy(false);}
+  }
+
   async function submit() {
     if (!selected || step !== "review" || busy) return;
     setBusy(true);setError("");setNotice("");
@@ -103,7 +133,7 @@ export function TaxonomyAdminWorkspace() {
   return <main className={styles.simplePage} data-screen-id="AD-07">
     <header className={styles.simpleHeader}>
       <div><p className={styles.simpleEyebrow}>CATALOGUE SETTINGS</p><h1>Taxonomy</h1><p>Manage the categories and product details brands use.</p></div>
-      <Link href="/operations/taxonomy" className={styles.reviewLink}>Review requests</Link>
+      <div className={styles.headerActions}><button type="button" className={styles.simplePrimary} onClick={()=>{setCreating(true);setError("");}}>+ Create category</button><Link href="/operations/taxonomy" className={styles.reviewLink}>Review requests</Link></div>
     </header>
     <div className={styles.simpleSteps} aria-label="Category update workflow">
       <span className={step==="choose"?styles.stepActive:styles.step}>1. Create update</span>
@@ -112,6 +142,22 @@ export function TaxonomyAdminWorkspace() {
     </div>
     {error && <div className={styles.simpleError} role="alert">{error} <button type="button" onClick={()=>void load()}>Refresh</button></div>}
     {notice && <div className={styles.simpleSuccess} role="status">{notice} <Link href="/operations/taxonomy">View approval queue</Link></div>}
+    {creating && <section className={styles.createPanel} aria-labelledby="new-category-title">
+      <h2 id="new-category-title">Create a category</h2>
+      <p>Give it a clear name. It will stay inactive until another admin approves its details.</p>
+      <div className={styles.createForm}>
+        <label>Category name<input value={newName} maxLength={100} onChange={e=>{
+          const v=e.currentTarget.value;setNewName(v);setNewCode(v.toLowerCase().trim().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,64));
+        }} placeholder="Example: Home textiles"/></label>
+        <label>Category code<input value={newCode} maxLength={64} onChange={e=>setNewCode(e.currentTarget.value.toLowerCase())} placeholder="home_textiles"/></label>
+        <label>Under (optional)<select value={newParentId} onChange={e=>setNewParentId(e.currentTarget.value)}>
+          <option value="">Top-level category</option>
+          {categories.filter(c=>!c.isLeaf && !c.active && !c.isActive && !c.schemaVersion).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+        </select></label>
+        {mfaRequired && <label>Authenticator code<input value={mfaCode} inputMode="numeric" autoComplete="one-time-code" onChange={e=>setMfaCode(e.currentTarget.value)} placeholder="Enter code"/></label>}
+      </div>
+      <div className={styles.simpleActions}><button type="button" className={styles.simpleSecondary} disabled={busy} onClick={()=>setCreating(false)}>Cancel</button><button type="button" className={styles.simplePrimary} disabled={busy||newName.trim().length<3} onClick={()=>void createCategory()}>{busy?"Creating…":"Create and continue"}</button></div>
+    </section>}
     {loading ? <p role="status">Loading categories and details…</p> : <div className={styles.simpleGrid}>
       <section className={styles.simpleCard} aria-labelledby="category-list-heading">
         <h2 id="category-list-heading">Choose a category</h2>
@@ -127,7 +173,7 @@ export function TaxonomyAdminWorkspace() {
       </section>
       <section className={styles.simpleCard} aria-labelledby="category-editor-heading">
         <h2 id="category-editor-heading">{selected ? selected.name : "Create a category update"}</h2>
-        {!selected ? <p>Choose a category on the left to get started. New category creation is not available through the current backend API.</p>
+        {!selected ? <p>Choose a category on the left or use Create category to add a new one.</p>
         : selected.hasDraft ? <div className={styles.simpleSuccess}>An update is already awaiting approval. <Link href="/operations/taxonomy">Review request</Link></div>
         : step==="choose" ? <>
             <p>Choose which details a brand must provide when listing products here.</p>
