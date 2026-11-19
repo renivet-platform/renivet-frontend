@@ -1,0 +1,42 @@
+.page { width:100%; margin:0; padding:20px clamp(14px,2vw,32px) 65px; background:#f6f4ef; color:#1b2420; min-height:calc(100vh - 85px); font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
+.heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; margin:0 0 19px; }
+.heading h1 { font-size:clamp(24px,2.8vw,29px); line-height:1.25; font-weight:750; letter-spacing:-.025em; margin:0 0 8px; }
+.heading p { margin:0; font-size:15px; color:#5d6963; }
+.invite { padding:12px 19px; min-height:44px; border:1px solid #1f5a45; border-radius:8px; font:700 14px system-ui,sans-serif; background:#1f5a45; color:#fff; box-shadow:0 3px 8px #1b242018; }
+.invite:disabled { opacity:.58; cursor:not-allowed; }
+.columns { display:grid; grid-template-columns:minmax(0,1.92fr) minmax(255px,.94fr); gap:15px; align-items:start; }
+.teamCard, .roles { background:#fff; border:1px solid #e1ddd3; border-radius:10px; overflow:hidden; }
+.tableWrap { overflow-x:auto; width:100%; }
+.teamCard table { border-collapse:collapse; width:100%; }
+.teamCard thead { background:#faf9f6; }
+.teamCard th, .teamCard td { padding:13px 14px; text-align:left; border-bottom:1px solid #ebe9e4; vertical-align:middle; font-size:13px; }
+.teamCard thead th { font-size:12px; font-weight:730; color:#44514a; }
+.teamCard tbody tr:last-child th,.teamCard tbody tr:last-child td { border-bottom:0; }
+.teamCard tbody th { font-weight:400; min-width:175px; }
+.teamCard tbody th strong { display:block; font-size:14px; color:#1b2420; font-weight:730; }
+.teamCard small { display:block; font-size:12px; color:#5d6963; margin-top:5px; line-height:1.45; overflow-wrap:anywhere; }
+.status { white-space:nowrap; border-radius:999px; padding:5px 9px; display:inline-flex; align-items:center; font-size:12px; font-weight:730; background:#eceae4; color:#44514a; }
+.status::before { content:""; width:7px; height:7px; background:currentColor; border-radius:50%; margin-right:6px; }
+.active { background:#e4f2e8; color:#267046; }
+.invited { background:#e8f0fb; color:#28568a; }
+.inactive { background:#eceae4; color:#44514a; }
+.remove { padding:10px 13px; border:1px solid #79817c; border-radius:8px; background:#fff; font:650 13px system-ui,sans-serif; color:#44514a; white-space:nowrap; }
+.remove:disabled { opacity:.6; cursor:not-allowed; }
+.note { font-size:12px; color:#5d6963; }
+.roles { padding:19px 18px; background:#faf9f6; }
+.roles h2 { font-size:19px; color:#1b2420; font-weight:730; margin:0 0 15px; }
+.roles dl { margin:0; }
+.roles dl div { margin:0 0 15px; }
+.roles dt { color:#1b2420; font-size:14px; font-weight:730; margin:0 0 5px; }
+.roles dd { color:#44514a; margin:0; font-size:13px; line-height:1.5; }
+.disclosure { border-top:1px solid #e1ddd3; padding-top:12px; color:#5d6963; font-size:12px; line-height:1.55; }
+.serviceNotice { margin:16px 0; font-size:12px; line-height:1.55; color:#5d6963; }
+.error { border:1px solid #dfbbb7; background:#fff8f7; border-radius:9px; padding:15px; margin-bottom:17px; }
+.error strong { color:#982b21; font-size:14px; }
+.error p { margin:7px 0; color:#75453e; font-size:13px; }
+.error button { border:1px solid #79817c; background:#fff; border-radius:7px; padding:8px 15px; }
+.empty { text-align:center!important; padding:25px!important; color:#5d6963; }
+.srOnly { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
+@media(max-width:960px) { .columns { grid-template-columns:1fr; }.roles { padding:17px 16px; } }
+@media(max-width:600px) { .page { padding:17px 12px 55px; }.heading {align-items:start;}.heading .invite{width:100%;}.tableWrap{overflow:visible;}.teamCard table,.teamCard tbody {display:block;}.teamCard thead {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}.teamCard tr {display:grid; gap:10px; padding:16px; border-bottom:1px solid #ebe9e4;}.teamCard th,.teamCard td {display:block; border:0; padding:0;}.teamCard td::before {content:attr(data-label);display:block;color:#5d6963;font-size:11px;margin-bottom:3px;}.teamCard th{min-width:0!important;}.teamCard td:last-child{margin-top:4px;}.roles{margin-top:0;} }
+@media(prefers-reduced-motion:reduce){.page *{transition:none!important;animation:none!important}}

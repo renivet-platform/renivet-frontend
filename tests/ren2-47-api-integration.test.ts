@@ -47,7 +47,8 @@ describe("REN2-47 live API coverage", () => {
     const surface = readFileSync("src/features/seller/inventory-availability.tsx", "utf8");
     assert.match(page, /w2PortalEnabled/);
     assert.match(page, /brandId/);
-    assert.match(surface, /Authoritative balances/);
+    assert.match(surface, /What you have, where it is, and what Renivet can sell/);
+    assert.match(surface, /inventory", "balances"/);
     assert.match(surface, /w2Request/);
     assert.match(surface, /Create location/);
   });

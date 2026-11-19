@@ -79,3 +79,16 @@
 .srOnly {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;}
 .importPage a:focus-visible,.wizardCard button:focus-visible,.wizardCard input:focus-visible{outline:3px solid #1d4f86;outline-offset:2px;}
 @media(max-width:640px){.wizardCard{padding:16px 14px;}.formColumns{grid-template-columns:1fr;}.simpleHeader h1{font-size:25px;}.importPage{padding:14px 0 60px;}.wizardFooter{justify-content:stretch;}.wizardFooter button{flex:1;}}
+
+/* REN2-117 SE-13 parity: quick stock actions and owner-friendly filters. */
+.inventoryTopActions { display:flex; align-items:center; flex-wrap:wrap; gap:9px; }
+.inventoryTopActions a { text-decoration:none; min-height:44px; }
+.stockRule summary { cursor:pointer; color:#1d4f86; font-size:14px; list-style:disclosure-closed; }
+.stockRule[open] summary { list-style:disclosure-open; }
+.stockRule summary:focus-visible { outline:3px solid #1d4f86; outline-offset:3px; }
+.inventoryFilters { display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; margin:14px 0; }
+.inventoryFilters label { display:grid; gap:7px; font-size:13px; color:#44514a; font-weight:650; }
+.inventoryFilters select { min-height:43px; padding:8px 12px; border:1px solid #79817c; border-radius:8px; background:#fff; color:#1b2420; min-width:190px; max-width:min(100%,400px); font-size:13px; }
+.inventoryFilters .outOfStockFilter { display:flex; flex-direction:row; gap:10px; align-items:center; min-height:43px; padding:0 14px; border-radius:999px; background:#fff; border:1px solid #a8b1ab; cursor:pointer; }
+.outOfStockFilter input { width:17px; height:17px; accent-color:#1f5a45; }
+@media(max-width:600px) {.inventoryTopActions{width:100%;}.inventoryTopActions a{flex:1;}.inventoryFilters{gap:8px;}.inventoryFilters label:first-child{width:100%;}.inventoryFilters select{width:100%;max-width:none;}.inventoryFilters .outOfStockFilter{min-height:42px;}}

@@ -144,6 +144,7 @@ export function ProductWorkspace({ brandId, mode = "list" }: { brandId: string; 
   }
 
   const filtered = useMemo(() => filteredLoadedProducts(products, searchText, activeStatus), [products, searchText, activeStatus]);
+  const categoryNames = useMemo(() => new Map(categories.map(category => [category.id, categoryLabel(category, categories)])), [categories]);
 
   return (
     <main className={styles.page} aria-labelledby="products-title" data-screen-id="SE-08">
@@ -203,12 +204,13 @@ export function ProductWorkspace({ brandId, mode = "list" }: { brandId: string; 
         {!loading && loadError && <div className={styles.errorPanel} role="alert"><strong>Catalogue unavailable</strong><p>{loadError}</p><button className={styles.secondaryButton} type="button" onClick={() => setReloadKey((key) => key + 1)}>Try again</button></div>}
         {!loading && !loadError && products.length === 0 && <div className={styles.emptyState}><span className={styles.emptyMark} aria-hidden="true">✳</span><h3>No products yet</h3><p>Your brand catalogue is empty. Start with a draft; you can add the details in stages.</p><Link className={styles.secondaryButton} href={"/brands/"+encodeURIComponent(brandId)+"/products/new"}>Add your first product</Link></div>}
         {!loading && !loadError && products.length > 0 && <>
-          <div className={styles.tableWrap}><div className={styles.tableHead} aria-hidden="true"><span>Product</span><span>Status</span><span>Version</span><span>Action</span></div>
+          <div className={styles.tableWrap}><div className={styles.tableHead} aria-hidden="true"><span>Product</span><span>Status</span><span>Version</span><span>Updated</span><span>Action</span></div>
             <ul className={styles.productList}>{filtered.map((product) => <li key={product.id}>
               <Link href={`/brands/${encodeURIComponent(brandId)}/products/${encodeURIComponent(product.id)}`} className={styles.productRow}>
-                <span className={styles.productCopy}><strong>{product.title}</strong><small>Style {product.styleCode}</small></span>
+                <span className={styles.productCopy}><strong>{product.title}</strong><small>{product.categoryId ? categoryNames.get(product.categoryId) ?? `Style ${product.styleCode}` : `Style ${product.styleCode}`}</small></span>
                 <ProductState state={product.publicationState} />
-                <span className={styles.productVersion}>Draft v{product.contentVersion}</span>
+                <span className={styles.productVersion}>v{product.contentVersion}</span>
+                <span className={styles.productUpdated}>{product.updatedAt && !Number.isNaN(Date.parse(product.updatedAt)) ? new Date(product.updatedAt).toLocaleDateString("en-IN", {day:"2-digit",month:"short",year:"numeric"}) : "Not available"}</span>
                 <span className={styles.productOpen}>Open</span>
               </Link>
             </li>)}</ul>

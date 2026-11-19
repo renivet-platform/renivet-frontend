@@ -2,7 +2,8 @@ import type { components } from "@/generated/renivet-api";
 
 export type Category = components["schemas"]["CategorySummaryDto"];
 export type CategoryAttribute = components["schemas"]["AttributeDefinitionDto"];
-export type ProductSummary = components["schemas"]["ProductSummaryModel"];
+/** The NestJS product list supplies these optional fields after REN2-117 backend contract rollout. */
+export type ProductSummary = components["schemas"]["ProductSummaryModel"] & { categoryId?: string | null; updatedAt?: string | null };
 
 export interface Paged<T> { items: T[]; nextCursor?: string | null }
 export interface ProductPage { items: ProductSummary[]; totalCount: number; nextCursor?: string | null }
