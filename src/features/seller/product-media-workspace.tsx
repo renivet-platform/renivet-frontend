@@ -301,6 +301,7 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
             {photo.error && <p className={styles.error} role="alert">{photo.error}</p>}
             <div className={ui.mediaTileActions}>
               {(photo.state === "READY" || photo.state === "FAILED" || photo.state === "PENDING") && <button type="button" disabled={busy} onClick={() => removePending(photo.id)}>Remove from queue</button>}
+              {photo.state === "PENDING" && <button type="button" disabled={busy} onClick={() => void uploadSelected()}>Check again</button>}
               {photo.state === "ATTACHED" && <span className={ui.savedTag}>Attached</span>}
             </div>
           </div>
@@ -308,7 +309,7 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
       </div>}
       <label className={styles.checkboxLabel}><input type="checkbox" checked={rightsAttested} onChange={(event) => setRightsAttested(event.target.checked)} disabled={busy} /> I confirm this brand owns these photos or has the rights required to use them.</label>
       <div className={styles.formActions}><p>Photos stay private until malware scanning, integrity and rights checks pass.</p>
-        <button type="button" className={styles.primaryButton} disabled={busy || outstanding === 0} onClick={() => void uploadSelected()}>{busy ? "Processing photos…" : "Upload " + outstanding + " photo" + (outstanding === 1 ? "" : "s")}</button>
+        <button type="button" className={styles.primaryButton} disabled={busy || outstanding === 0} onClick={() => void uploadSelected()}>{busy ? "Processing photos…" : photos.some((photo) => photo.state === "PENDING") ? "Finish checking photos" : "Upload " + outstanding + " photo" + (outstanding === 1 ? "" : "s")}</button>
       </div>
     </>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
