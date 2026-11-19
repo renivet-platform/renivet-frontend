@@ -3,7 +3,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { getCurrentSession } from "@/features/identity/auth-api";
 import type { operations } from "@/generated/renivet-api";
-import { canonicalVariantOptions, createIdempotencyKey, hasVariantCombination, type CategoryAttribute, W2ApiError, w2Request } from "./w2-catalog";
+import { createIdempotencyKey, hasVariantCombination, type CategoryAttribute, W2ApiError, w2Request } from "./w2-catalog";
 import styles from "./product-workspace.module.css";
 import ui from "./product-editor-prototype.module.css";
 
