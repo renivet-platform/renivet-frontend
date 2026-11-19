@@ -17,6 +17,12 @@ type AttributeValue = string | number | boolean | string[] | MeasurementValue | 
 type Claim = operations["listProductClaims"]["responses"][200]["content"]["application/json"]["items"][number];
 type PriceProposalReceipt = operations["proposeVariantPrice"]["responses"][202]["content"]["application/json"];
 
+function inrToMinor(value: string): number {
+  if (!/^\\d{1,9}(?:\\.\\d{1,2})?$/.test(value.trim())) return NaN;
+  const [rupees, paise = ""] = value.trim().split(".");
+  return Number(rupees) * 100 + Number(paise.padEnd(2, "0"));
+}
+
 function messageFor(error: unknown): string {
   if (error instanceof W2ApiError) return error.message;
   if (error instanceof AuthApiError && error.status === 401) return "Your session has expired. Sign in again, then reopen this workspace.";
@@ -265,11 +271,11 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     event.preventDefault();
     if (!product || !editable || !priceVariantId) return;
     setPriceError(""); setPriceNotice("");
-    const selling = Number(sellingPriceMinor);
-    const mrp = Number(mrpMinor);
+    const selling = inrToMinor(sellingPriceMinor);
+    const mrp = inrToMinor(mrpMinor);
     const rule = Number(ruleVersion);
-    if (!Number.isSafeInteger(selling) || selling < 1) { setPriceError("Enter a positive selling price in paise."); return; }
-    if (!Number.isSafeInteger(mrp) || mrp < selling) { setPriceError("MRP must be at least the selling price, in paise."); return; }
+    if (!Number.isSafeInteger(selling) || selling < 1) { setPriceError("Enter a positive selling price in rupees (up to two decimal places)."); return; }
+    if (!Number.isSafeInteger(mrp) || mrp < selling) { setPriceError("MRP must be at least the selling price, in rupees."); return; }
     if (!Number.isSafeInteger(rule) || rule < 1) { setPriceError("Enter the server-issued INR pricing rule version."); return; }
     if (!validFrom) { setPriceError("Choose when this price becomes valid."); return; }
     const from = new Date(validFrom);
@@ -394,23 +400,31 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     <div hidden={activeStep !== 3}>
     <section className={styles.formPanel} aria-labelledby="prices-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>PRICE HISTORY</p><h2 id="prices-heading">Price proposals</h2><p>Only backend price states are shown. A pending proposal is not an approved selling price.</p></div></div>
+      <div className={prototypeStyles.priceSplit}>
+      <div className={prototypeStyles.priceHistory}>
       {product.variants.some((variant) => (variant.priceVersions?.length ?? 0) > 0) ? product.variants.map((variant) => {
         if (!variant.priceVersions?.length) return null;
         return <div className={styles.tableWrap} key={variant.id}><table className={styles.variantTable}><caption>Price history · {variant.sku}</caption><thead><tr><th scope="col">Selling price</th><th scope="col">MRP</th><th scope="col">Valid from</th><th scope="col">Valid to</th><th scope="col">State</th></tr></thead><tbody>{variant.priceVersions.map((price) => <tr key={price.id}><td>₹{(price.amountMinor / 100).toFixed(2)}</td><td>₹{(price.mrpMinor / 100).toFixed(2)}</td><td>{new Date(price.validFrom).toLocaleDateString()}</td><td>{price.validTo ? new Date(price.validTo).toLocaleDateString() : "Open-ended"}</td><td>{price.priceState === "PENDING" ? "Pending review" : price.priceState.replaceAll("_", " ")}</td></tr>)}</tbody></table></div>;
       }) : <p className={styles.emptyLine}>No price proposals have been recorded for these SKUs.</p>}
+      </div>
+      <aside className={prototypeStyles.priceForm}>
       {editable && product.variants.some((variant) => variant.variantState !== "INACTIVE") && <div className={styles.schemaPanel} aria-labelledby="price-proposal-heading">
         <div><p className={styles.kicker}>PROPOSE AN INR PRICE</p><h3 id="price-proposal-heading">Create a pending price proposal</h3><p>Enter the pricing rule version supplied by the authorized pricing service. The UI never guesses this value.</p></div>
-        <div className={styles.mediaActions}>{product.variants.filter((variant) => variant.variantState !== "INACTIVE").map((variant) => <button key={variant.id} type="button" className={styles.textButton} onClick={() => { setPriceVariantId(variant.id); setPriceError(""); setPriceNotice(""); }}>{priceVariantId === variant.id ? `Editing ${variant.sku}` : `Price ${variant.sku}`}</button>)}</div>
-        {priceVariantId && <form onSubmit={proposePrice} noValidate><div className={styles.formGrid}>
-          <div className={styles.field}><label htmlFor="selling-price-minor">Selling price (paise)</label><input id="selling-price-minor" type="number" min="1" step="1" value={sellingPriceMinor} onChange={(event) => setSellingPriceMinor(event.target.value)} required /></div>
-          <div className={styles.field}><label htmlFor="mrp-minor">MRP (paise)</label><input id="mrp-minor" type="number" min="1" step="1" value={mrpMinor} onChange={(event) => setMrpMinor(event.target.value)} required /></div>
+        <div className={styles.field}><label htmlFor="price-variant-select">Applies to SKU</label><select id="price-variant-select" value={priceVariantId ?? ""} onChange={(event) => { setPriceVariantId(event.target.value || null); setPriceError(""); setPriceNotice(""); }}>
+          <option value="">Choose a SKU</option>{product.variants.filter((variant) => variant.variantState !== "INACTIVE").map((variant) => <option key={variant.id} value={variant.id}>{variant.sku}</option>)}
+        </select></div>
+        <form onSubmit={proposePrice} noValidate><div className={styles.formGrid}>
+          <div className={styles.field}><label htmlFor="selling-price-minor">Selling price (₹)</label><input id="selling-price-minor" type="number" min="0.01" step="0.01" value={sellingPriceMinor} onChange={(event) => setSellingPriceMinor(event.target.value)} required /></div>
+          <div className={styles.field}><label htmlFor="mrp-minor">MRP (₹, incl. all taxes)</label><input id="mrp-minor" type="number" min="0.01" step="0.01" value={mrpMinor} onChange={(event) => setMrpMinor(event.target.value)} required /></div>
           <div className={styles.field}><label htmlFor="price-valid-from">Valid from</label><input id="price-valid-from" type="datetime-local" value={validFrom} onChange={(event) => setValidFrom(event.target.value)} required /></div>
           <div className={styles.field}><label htmlFor="price-valid-to">Valid to <span>(optional)</span></label><input id="price-valid-to" type="datetime-local" value={validTo} onChange={(event) => setValidTo(event.target.value)} /></div>
           <div className={styles.field}><label htmlFor="price-rule-version">INR rule version</label><input id="price-rule-version" type="number" min="1" step="1" value={ruleVersion} onChange={(event) => setRuleVersion(event.target.value)} required /><small>Use the version returned by the approved pricing process.</small></div>
           <div className={styles.field}><label htmlFor="price-reason">Reason code <span>(optional)</span></label><input id="price-reason" maxLength={128} value={priceReason} onChange={(event) => setPriceReason(event.target.value)} /></div>
-        </div>{priceError && <p className={styles.error} role="alert">{priceError}</p>}{priceNotice && <p className={styles.notice} role="status">{priceNotice}</p>}<div className={styles.formActions}><p>Creates a pending INR proposal; it is not active until independently approved.</p><button type="submit" className={styles.primaryButton} disabled={priceSaving}>{priceSaving ? "Submitting price…" : "Submit price proposal"}</button><button type="button" className={styles.secondaryButton} disabled={priceSaving} onClick={() => setPriceVariantId(null)}>Cancel</button></div></form>}
+        </div>{priceError && <p className={styles.error} role="alert">{priceError}</p>}{priceNotice && <p className={styles.notice} role="status">{priceNotice}</p>}<div className={styles.formActions}><p>Creates a pending INR proposal; it is not active until independently approved.</p><button type="submit" className={styles.primaryButton} disabled={priceSaving || !priceVariantId}>{priceSaving ? "Submitting price…" : "Send for approval"}</button><button type="button" className={styles.secondaryButton} disabled={priceSaving} onClick={() => setPriceVariantId(null)}>Cancel</button></div></form>
       </div>}
       {!editable && <p className={styles.inlineError}>New price proposals are disabled after submission; review the persisted price history above.</p>}
+      </aside>
+      </div>
     </section>
     </div>
     <div hidden={activeStep !== 4}>
