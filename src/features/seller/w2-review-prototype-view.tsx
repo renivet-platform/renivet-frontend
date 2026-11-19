@@ -90,7 +90,7 @@ export function W2ReviewPrototype() {
                 ["03", "No evidence surprises", "Field and document requirements stay TBD until approved."],
               ] : [
                 ["01", "Server decides access", "Role and brand scope come from current membership."],
-                ["02", "Verify before review", "Use recent MFA for privileged steps when required."],
+                ["02", "Verify before review", "Use authenticated sessions and scoped permissions for privileged steps."],
                 ["03", "Leave an audit trail", "Record decisions only through an authorized service."],
               ]).map(([number, title, copy]) => <li key={number}><span>{number}</span><div><strong>{title}</strong><small>{copy}</small></div></li>)}
             </ul>
@@ -114,7 +114,7 @@ export function W2ReviewPrototype() {
         <div className={styles.safeguardCards}>
           <article><span className={styles.safeguardNumber}>01</span><h3>Evidence is never public</h3><p>No direct file links or document previews. Access must be checked by the service for the current reviewer and scope.</p></article>
           <article><span className={styles.safeguardNumber}>02</span><h3>Bank details stay masked</h3><p>Only the minimum approved detail should be visible. Real bank or identity data is not used in this design preview.</p></article>
-          <article><span className={styles.safeguardNumber}>03</span><h3>Decisions are accountable</h3><p>Privileged actions require authorized access, recent MFA when required, and a server-recorded audit event.</p></article>
+          <article><span className={styles.safeguardNumber}>03</span><h3>Decisions are accountable</h3><p>Privileged actions require authorized access, server-side authorization and a recorded audit event.</p></article>
         </div>
       </section>
 
@@ -138,7 +138,7 @@ function ApplicantIllustration({ stateId }: { stateId: string }) {
 
 function ReviewerIllustration({ stateId }: { stateId: string }) {
   if (stateId === "queue-empty") return <div className={styles.emptyQueue}><span aria-hidden="true">✓</span><strong>Queue clear</strong><p>A future service response confirms there are no items in this reviewer’s scope.</p></div>;
-  if (stateId === "mfa-required") return <div className={styles.mfaCard}><span className={styles.lockIcon} aria-hidden="true">⌑</span><strong>Verify your identity</strong><p>Your session needs another verification step before this restricted action.</p><div className={styles.mfaCode}><span>•</span><span>•</span><span>•</span><span>•</span><span>•</span><span>•</span></div></div>;
+  if (stateId === "mfa-required") return <div className={styles.mfaCard}><strong>Session check</strong><p>Confirm you are signed in with an authorized account to continue.</p></div>;
   if (stateId === "denied") return <div className={styles.deniedCard}><span className={styles.deniedIcon} aria-hidden="true">↗</span><div><strong>Review unavailable</strong><p>Access could not be confirmed. No application details are shown.</p></div></div>;
   return <div className={styles.reviewRecord}><div className={styles.recordHeader}><div><span className={styles.recordOverline}>APPLICATION REFERENCE</span><strong>•••• · demo only</strong></div><span className={styles.recordPill}>{stateId === "review-error" ? "Unavailable" : stateId === "reviewer-conflict" ? "Decision paused" : "Access checked by service"}</span></div><div className={styles.recordRow}><span>Brand identity</span><strong>Restricted until authorized</strong></div><div className={styles.recordRow}><span>Evidence</span><strong>{stateId === "evidence-restricted" ? "No document preview" : "Not loaded in this preview"}</strong></div><div className={styles.recordRow}><span>Decision</span><strong>Not submitted</strong></div></div>;
 }
