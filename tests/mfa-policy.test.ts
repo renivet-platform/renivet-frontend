@@ -19,10 +19,17 @@ test("account MFA enrollment remains voluntary and admin surfaces follow server 
   for (const path of [
     "src/features/admin/operations-console.tsx",
     "src/features/admin/brand-approvals.tsx",
-    "src/features/admin/taxonomy-admin.tsx",
-  ]) {
+      ]) {
     const source = readFileSync(path, "utf8");
     assert.match(source, /getCurrentSession/);
     assert.match(source, /shouldRequestMfaStepUp/);
+  }
+});
+
+test("category creation and imports do not ask for authenticator codes",()=>{
+  for(const path of ["src/features/admin/taxonomy-admin.tsx","src/features/seller/import-workspace.tsx"]){
+    const source=readFileSync(path,"utf8");
+    assert.match(source,/getCurrentSession/);
+    assert.doesNotMatch(source,/Authenticator code|stepUpWithMfa|shouldRequestMfaStepUp|mfaField/);
   }
 });

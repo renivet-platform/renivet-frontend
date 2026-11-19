@@ -11,7 +11,7 @@ test("Team follows approved table and real invitation lifecycle",()=>{
  assert.match(team,/data-screen-id="SE-20C"/);
  assert.doesNotMatch(team,/disabled className=\{styles\.invite\}/);
 });
-test("Imports retain separate source-first five-stage workflow with server MFA",()=>{
+test("Imports retain separate source-first five-stage workflow with session CSRF and no authenticator",()=>{
  assert.match(imports,/wizardStep/);
  assert.match(imports,/Choose source/);
  assert.match(imports,/Upload file/);
