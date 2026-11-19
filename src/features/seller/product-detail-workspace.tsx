@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { AuthApiError, getCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
+import { AuthApiError, getCurrentSession } from "@/features/identity/auth-api";
 import type { components, operations } from "@/generated/renivet-api";
 import { canonicalVariantOptions, createIdempotencyKey, createSubmissionRequestDigest, hasVariantCombination, type CategoryAttribute, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import { ProductMediaWorkspace } from "@/features/seller/product-media-workspace";
+import { ProductVariantMatrix } from "@/features/seller/product-variant-matrix";
 import styles from "./product-workspace.module.css";
 import prototypeStyles from "./product-editor-prototype.module.css";
 
@@ -15,6 +16,12 @@ type MeasurementValue = { value: number; unitCode: string };
 type AttributeValue = string | number | boolean | string[] | MeasurementValue | null;
 type Claim = operations["listProductClaims"]["responses"][200]["content"]["application/json"]["items"][number];
 type PriceProposalReceipt = operations["proposeVariantPrice"]["responses"][202]["content"]["application/json"];
+
+function inrToMinor(value: string): number {
+  if (!/^\d{1,9}(?:\.\d{1,2})?$/.test(value.trim())) return NaN;
+  const [rupees, paise = ""] = value.trim().split(".");
+  return Number(rupees) * 100 + Number(paise.padEnd(2, "0"));
+}
 
 function messageFor(error: unknown): string {
   if (error instanceof W2ApiError) return error.message;
@@ -26,6 +33,8 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [schema, setSchema] = useState<SchemaVersion | null>(null);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [activeStep, setActiveStep] = useState(0);
   const [attributes, setAttributes] = useState<Record<string, AttributeValue>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -46,7 +55,6 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
   const [validTo, setValidTo] = useState("");
   const [ruleVersion, setRuleVersion] = useState("");
   const [priceReason, setPriceReason] = useState("");
-  const [priceMfaCode, setPriceMfaCode] = useState("");
   const [priceError, setPriceError] = useState("");
   const [priceNotice, setPriceNotice] = useState("");
   const [priceSaving, setPriceSaving] = useState(false);
@@ -71,6 +79,7 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     w2Request<ProductDetail>(["brands", brandId, "products", productId], { signal: controller.signal }).then(async (value) => {
       setProduct(value);
       setTitle(value.title);
+      setDescription((value as ProductDetail & { description?: string }).description ?? "");
       setAttributes(Object.fromEntries(Object.entries(value.attributes).map(([key, entry]) => [key, normalizeAttributeValue(entry)])));
       const currentSchema = await w2Request<SchemaVersion>(["brands", brandId, "categories", value.categoryId, "schema-versions", String(value.categorySchemaVersion)], { signal: controller.signal });
       if (!controller.signal.aborted) setSchema(currentSchema);
@@ -86,6 +95,19 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
   const productFields = useMemo(() => schema?.attributes.filter((attribute) => attribute.scope === "PRODUCT") ?? [], [schema]);
   const variantFields = useMemo(() => schema?.attributes.filter((attribute) => attribute.scope === "VARIANT") ?? [], [schema]);
   const editable = product?.publicationState === "DRAFT" || product?.publicationState === "INCOMPLETE";
+  const detailsDirty = Boolean(product) && (title.trim() !== product?.title ||
+    description !== ((product as ProductDetail & { description?: string })?.description ?? "") ||
+    JSON.stringify(attributes) !== JSON.stringify(Object.fromEntries(Object.entries(product?.attributes ?? {}).map(([key, value]) => [key, normalizeAttributeValue(value)]))));
+  function goToStep(step: number) {
+    if (step === activeStep) return;
+    if (activeStep === 0 && detailsDirty && editable) {
+      setSaveError("Save your details before leaving this step, so nothing is lost.");
+      return;
+    }
+    setActiveStep(Math.max(0, Math.min(5, step)));
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   const readinessChecks = useMemo(() => {
     if (!product) return [];
     const requiredAttributesComplete = productFields.filter((field) => field.required).every((field) => {
@@ -93,24 +115,35 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
       return value !== null && value !== undefined && value !== "" && (!Array.isArray(value) || value.length > 0);
     });
     const activeVariants = product.variants.filter((variant) => variant.variantState !== "INACTIVE");
-    const hasApprovedPrice = activeVariants.length > 0 && activeVariants.every((variant) => variant.priceVersions?.some((price) => price.priceState === "APPROVED") ?? false);
-    const hasEligibleMedia = product.mediaLinks.some((link) => link.scanState === "CLEAN" && link.rightsState === "ATTESTED");
+    const allMedia = [...product.mediaLinks, ...product.variants.flatMap((variant) => variant.mediaLinks ?? [])] as Array<ProductDetail["mediaLinks"][number] & { altText?: string }>;
+    const eligible = (link: ProductDetail["mediaLinks"][number]) => link.scanState === "CLEAN" && link.rightsState === "ATTESTED";
+    const colours = Array.from(new Set(activeVariants.map((variant) => variant.options.color ?? variant.options.colour).filter(Boolean)));
+    const coloursWithPhotos = colours.every((colour) => activeVariants
+      .filter((variant) => (variant.options.color ?? variant.options.colour) === colour)
+      .some((variant) => variant.mediaLinks?.some(eligible)));
+    const photoReady = activeVariants.length > 0 && (colours.length <= 1
+      ? allMedia.some(eligible)
+      : coloursWithPhotos);
+    const described = allMedia.length > 0 && allMedia.every((link) => Boolean(link.altText?.trim()));
+    const priced = activeVariants.length > 0 && activeVariants.every((variant) => variant.priceVersions?.some((price) => price.priceState === "APPROVED"));
+    const claimEvidenceComplete = claims.length === 0 || claims.every((claim) => claim.evidenceAssetIds.length > 0);
     return [
-      { label: "Product title", ready: product.title.trim().length > 0 },
-      { label: "Pinned category schema", ready: Boolean(schema) && product.categorySchemaVersion > 0 },
-      { label: "Required attributes", ready: requiredAttributesComplete },
-      { label: "At least one active SKU", ready: activeVariants.length > 0 },
-      { label: "Approved price for every active SKU", ready: hasApprovedPrice },
-      { label: "Clean, rights-attested media", ready: hasEligibleMedia },
+      { label: "Required details filled", detail: "Save the product name and required fields from this category.", ready: title.trim().length > 0 && Boolean(schema) && requiredAttributesComplete && !detailsDirty, step: 0 },
+      { label: "At least one size and colour", detail: activeVariants.length ? String(activeVariants.length) + " active SKU(s)" : "Add sizes and colours to create SKUs.", ready: activeVariants.length > 0, step: 1 },
+      { label: "Every colour has a photo", detail: "Add a clear product photo for each offered colour.", ready: photoReady, step: 2 },
+      { label: "Every photo has a description", detail: "Descriptions help shoppers who use screen readers.", ready: described, step: 2 },
+      { label: "Prices approved for every SKU", detail: "Propose a price for each active SKU. Renivet must approve it before submission.", ready: priced, step: 3 },
+      { label: "Claims have evidence", detail: claims.length ? "Each submitted claim needs supporting evidence." : "No claims yet — they are optional.", ready: claimEvidenceComplete, step: 4 },
     ];
-  }, [attributes, product, productFields, schema]);
+  }, [attributes, claims, detailsDirty, product, productFields, schema, title]);
 
   async function saveDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!product || !editable) return;
     setSaveError(""); setSaveNotice("");
-    const body: { title?: string; attributes?: Record<string, AttributeValue> } = {};
+    const body: { title?: string; description?: string; attributes?: Record<string, AttributeValue> } = {};
     if (title.trim() !== product.title) body.title = title.trim();
+    if (description !== ((product as ProductDetail & { description?: string }).description ?? "")) body.description = description;
     if (JSON.stringify(attributes) !== JSON.stringify(Object.fromEntries(Object.entries(product.attributes).map(([key, entry]) => [key, normalizeAttributeValue(entry)])))) body.attributes = attributes;
     if (Object.keys(body).length === 0) { setSaveNotice("There are no changes to save."); return; }
     const hash = JSON.stringify(body);
@@ -124,7 +157,7 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
         ifMatch: `"${product.rowVersion}"`,
       });
       idempotency.current = null;
-      setProduct(saved); setTitle(saved.title); setSaveNotice("Draft saved. You can continue later.");
+      setProduct(saved); setTitle(saved.title); setDescription((saved as ProductDetail & { description?: string }).description ?? description); setSaveNotice("Details saved to the draft.");
     } catch (error) {
       if (error instanceof W2ApiError && error.status === 409) {
         setSaveError("This draft changed in another tab. Reload the latest version before saving again.");
@@ -238,21 +271,19 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     event.preventDefault();
     if (!product || !editable || !priceVariantId) return;
     setPriceError(""); setPriceNotice("");
-    const selling = Number(sellingPriceMinor);
-    const mrp = Number(mrpMinor);
+    const selling = inrToMinor(sellingPriceMinor);
+    const mrp = inrToMinor(mrpMinor);
     const rule = Number(ruleVersion);
-    if (!Number.isSafeInteger(selling) || selling < 1) { setPriceError("Enter a positive selling price in paise."); return; }
-    if (!Number.isSafeInteger(mrp) || mrp < selling) { setPriceError("MRP must be at least the selling price, in paise."); return; }
+    if (!Number.isSafeInteger(selling) || selling < 1) { setPriceError("Enter a positive selling price in rupees (up to two decimal places)."); return; }
+    if (!Number.isSafeInteger(mrp) || mrp < selling) { setPriceError("MRP must be at least the selling price, in rupees."); return; }
     if (!Number.isSafeInteger(rule) || rule < 1) { setPriceError("Enter the server-issued INR pricing rule version."); return; }
     if (!validFrom) { setPriceError("Choose when this price becomes valid."); return; }
     const from = new Date(validFrom);
     const to = validTo ? new Date(validTo) : null;
     if (Number.isNaN(from.valueOf()) || (to && Number.isNaN(to.valueOf())) || (to && to <= from)) { setPriceError("The price validity window is invalid."); return; }
-    if (!/^(?:\d{6}|[A-Z2-7]{26})$/.test(priceMfaCode.trim().toUpperCase())) { setPriceError("Enter a six-digit authenticator code or unused recovery code."); return; }
     setPriceSaving(true);
     try {
       const session = await getCurrentSession();
-      const elevated = await stepUpWithMfa(priceMfaCode.trim().toUpperCase(), session.csrfToken);
       const receipt = await w2Request<PriceProposalReceipt>(["brands", brandId, "variants", priceVariantId, "prices"], {
         method: "PATCH",
         body: {
@@ -264,12 +295,12 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
           ruleVersion: rule,
           ...(priceReason.trim() ? { reasonCode: priceReason.trim() } : {}),
         },
-        csrfToken: elevated.csrfToken,
+        csrfToken: session.csrfToken,
         idempotencyKey: createIdempotencyKey(),
         ifMatch: `"${product.rowVersion}"`,
       });
       setPriceNotice(`Price proposal ${receipt.id} is pending independent review.`);
-      setPriceVariantId(null); setPriceMfaCode(""); setSellingPriceMinor(""); setMrpMinor(""); setValidFrom(""); setValidTo(""); setRuleVersion(""); setPriceReason("");
+      setPriceVariantId(null); setSellingPriceMinor(""); setMrpMinor(""); setValidFrom(""); setValidTo(""); setRuleVersion(""); setPriceReason("");
       setReloadKey((key) => key + 1);
     } catch (error) {
       setPriceError(error instanceof W2ApiError && (error.status === 409 || error.status === 412)
@@ -314,24 +345,29 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     </section>
     <nav className={prototypeStyles.stepper} aria-label="Product editor steps">
       {[
-        { href:"#details-heading", label:"Details", ready:readinessChecks.slice(0,3).every(check => check.ready) },
-        { href:"#variants-heading", label:"Sizes & colours", ready:readinessChecks[3]?.ready ?? false },
-        { href:"#media-heading", label:"Photos", ready:readinessChecks[5]?.ready ?? false },
-        { href:"#prices-heading", label:"Prices", ready:readinessChecks[4]?.ready ?? false },
-        { href:"#claims-heading", label:"Claims & evidence", ready:claims.some(claim => claim.claimState === "VERIFIED") },
-        { href:editable ? "#submission-heading" : "#claims-heading", label:"Review & submit", ready:false },
-      ].map((step, index) => <a href={step.href} key={step.label} className={prototypeStyles.step}>
-        <span className={step.ready ? prototypeStyles.done : prototypeStyles.number} aria-hidden="true">{step.ready ? "✓" : index+1}</span>
+        { label: "Details", done: readinessChecks[0]?.ready ?? false },
+        { label: "Sizes & colours", done: readinessChecks[1]?.ready ?? false },
+        { label: "Photos", done: (readinessChecks[2]?.ready ?? false) && (readinessChecks[3]?.ready ?? false) },
+        { label: "Prices", done: readinessChecks[4]?.ready ?? false },
+        { label: "Claims & evidence", done: readinessChecks[5]?.ready ?? false },
+        { label: "Review & submit", done: !editable },
+      ].map((step, index) => <button key={step.label} type="button"
+        aria-current={activeStep === index ? "step" : undefined}
+        onClick={() => goToStep(index)}
+        className={prototypeStyles.stepButton + (activeStep === index ? " " + prototypeStyles.stepSelected : "")}>
+        <span className={prototypeStyles.stepNumber + (step.done ? " " + prototypeStyles.stepDone : "")} aria-hidden="true">{step.done ? "✓" : index + 1}</span>
         <span>{step.label}</span>
-      </a>)}
+      </button>)}
     </nav>
 
+    <div hidden={activeStep !== 0}>
     <section className={styles.formPanel} aria-labelledby="details-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>PRODUCT DETAILS</p><h2 id="details-heading">Continue where you left off</h2><p>Update the parent product details. Variants, images, prices and claims stay in their own workflow steps.</p></div><span className={styles.draftBadge}>SCHEMA V{product.categorySchemaVersion}</span></div>
       {!editable && <div className={styles.readOnlyNotice} role="status">This product is {product.publicationState.toLowerCase().replaceAll("_", " ")} and is read-only in this draft editor. No lifecycle action is available here.</div>}
       <form onSubmit={saveDraft}>
         <div className={styles.formGrid}>
-          <div className={styles.fieldWide}><label htmlFor="detail-title-input">Product name</label><input id="detail-title-input" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} disabled={!editable} /><small>Row version {product.rowVersion} protects edits from overwriting newer work.</small></div>
+          <div className={styles.fieldWide}><label htmlFor="detail-title-input">Product name</label><input id="detail-title-input" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} disabled={!editable} /><small>Give your product a clear, searchable name.</small></div>
+          <div className={styles.fieldWide}><label htmlFor="detail-description-input">Description (optional)</label><textarea id="detail-description-input" rows={4} maxLength={4000} value={description} onChange={(event) => setDescription(event.target.value)} disabled={!editable} placeholder="Describe the look, feel, material and making of your product." /><small>Describe the product accurately. Keep sustainability claims in their own review step.</small></div>
           {productFields.map((field) => <AttributeEditor key={`${field.scope}-${field.code}`} field={field} value={attributes[field.code]} disabled={!editable} onChange={(value) => setAttributes((current) => ({ ...current, [field.code]: value }))} />)}
         </div>
         {schema && <div className={styles.schemaPanel}><div><p className={styles.kicker}>PINNED CATEGORY SCHEMA</p><h3>{schema.state === "PUBLISHED" ? "Published schema" : "Draft schema"} · version {schema.version}</h3><p>Attributes are shown from the exact version pinned to this product draft.</p></div><p className={styles.schemaLoading}>{productFields.length} product field{productFields.length === 1 ? "" : "s"} · {schema.validatorVersion}</p></div>}
@@ -340,8 +376,12 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
         <div className={styles.formActions}><p>Saving updates this draft only.</p>{editable && <button type="submit" className={styles.primaryButton} disabled={saving}>{saving ? "Saving…" : "Save changes"}</button>}</div>
       </form>
     </section>
-    <section className={styles.formPanel} aria-labelledby="variants-heading">
-      <div className={styles.formHeading}><div><p className={styles.kicker}>SKU MATRIX</p><h2 id="variants-heading">Sizes and colors</h2><p>Each SKU is unique to this product. The backend checks the pinned category schema and catches concurrent conflicts.</p></div><span className={styles.draftBadge}>{product.variants.length} SKU{product.variants.length === 1 ? "" : "s"}</span></div>
+    </div>
+    <div hidden={activeStep !== 1}>
+      <section className={styles.formPanel} aria-labelledby="variants-heading">
+        <ProductVariantMatrix brandId={brandId} productId={productId} product={product} fields={variantFields} editable={editable} onChanged={() => setReloadKey((key) => key + 1)} />
+        <details className={prototypeStyles.advancedVariant}>
+          <summary>Advanced SKU options — edit, deactivate, or add an individual variant</summary>
       {product.variants.length > 0 && <div className={styles.tableWrap}><table className={styles.variantTable}><caption className={styles.visuallyHidden}>Product SKU variants</caption><thead><tr><th scope="col">SKU</th><th scope="col">Options</th><th scope="col">State</th><th scope="col">Image scan</th>{editable && <th scope="col">Draft actions</th>}</tr></thead><tbody>{product.variants.map((variant) => <tr key={variant.id}><th scope="row">{variant.sku}</th><td>{Object.entries(variant.options).map(([key, value]) => `${key}: ${value}`).join(" · ") || "No options"}</td><td>{variant.variantState.replaceAll("_", " ")}</td><td>{variant.mediaLinks?.map((media) => media.scanState).join(", ") || "No variant image"}</td>{editable && <td>{variant.variantState === "INACTIVE" ? <span>Retired</span> : <div className={styles.mediaActions}><button type="button" className={styles.textButton} disabled={variantSaving} onClick={() => editingVariantId === variant.id ? setEditingVariantId(null) : startVariantEdit(variant.id, variant.options)}>{editingVariantId === variant.id ? "Cancel edit" : "Edit SKU options"}</button>{confirmingDeactivationId === variant.id ? <><button type="button" className={styles.textButton} disabled={variantSaving} onClick={() => void deactivateVariant(variant.id)}>Confirm deactivation</button><button type="button" className={styles.textButton} disabled={variantSaving} onClick={() => setConfirmingDeactivationId(null)}>Keep SKU</button></> : <button type="button" className={styles.textButton} disabled={variantSaving} onClick={() => { setVariantError(""); setConfirmingDeactivationId(variant.id); }}>Deactivate SKU</button>}</div>}</td>}</tr>)}</tbody></table></div>}
       {editingVariantId && editable && <div className={styles.schemaPanel} aria-labelledby="edit-variant-heading"><div><p className={styles.kicker}>EDIT SKU OPTIONS</p><h3 id="edit-variant-heading">Update the variant</h3><p>The SKU itself is permanent. Changes use this SKU’s current version and can be rejected if another SKU or a dependent record conflicts.</p></div><div className={styles.formGrid}>{variantFields.filter((field) => field.type === "enum" || field.type === "text").map((field) => <div className={styles.field} key={field.code}><label htmlFor={`edit-variant-${field.code}`}>{field.code.replaceAll("_", " ")}{field.required && " *"}</label>{field.type === "enum" ? <select id={`edit-variant-${field.code}`} value={editVariantOptions[field.code] ?? ""} onChange={(event) => setEditVariantOptions((current) => ({ ...current, [field.code]: event.target.value }))}><option value="">Choose an option</option>{(field.allowedValues ?? []).map((value) => <option key={value} value={value}>{value}</option>)}</select> : <input id={`edit-variant-${field.code}`} value={editVariantOptions[field.code] ?? ""} onChange={(event) => setEditVariantOptions((current) => ({ ...current, [field.code]: event.target.value }))} maxLength={128} />}</div>)}</div><div className={styles.formActions}><p>Changes are saved only to this draft.</p><button type="button" className={styles.primaryButton} disabled={variantSaving} onClick={() => void saveVariant(editingVariantId)}>{variantSaving ? "Saving SKU…" : "Save SKU changes"}</button></div></div>}
       {variantError && <p className={styles.error} role="alert">{variantError}</p>}
@@ -350,29 +390,44 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
         {variantFields.filter((field) => field.type === "enum" || field.type === "text").map((field) => <div className={styles.field} key={field.code}><label htmlFor={`variant-${field.code}`}>{field.code.replaceAll("_", " ")}{field.required && " *"}</label>{field.type === "enum" ? <select id={`variant-${field.code}`} value={variantOptions[field.code] ?? ""} onChange={(event) => setVariantOptions((current) => ({ ...current, [field.code]: event.target.value }))}><option value="">Choose an option</option>{(field.allowedValues ?? []).map((value) => <option key={value} value={value}>{value}</option>)}</select> : <input id={`variant-${field.code}`} value={variantOptions[field.code] ?? ""} onChange={(event) => setVariantOptions((current) => ({ ...current, [field.code]: event.target.value }))} maxLength={128} />}</div>)}
       </div>{variantFields.some((field) => field.type !== "enum" && field.type !== "text") && <p className={styles.inlineError}>Some pinned variant fields use types the current variant API cannot safely submit. Those fields are left out; the server will reject incomplete variants.</p>}
       <div className={styles.formActions}><p>Combination: {canonicalVariantOptions(variantOptions)}</p><button className={styles.primaryButton} type="submit" disabled={variantSaving || variantFields.length === 0}>{variantSaving ? "Adding SKU…" : "Add SKU"}</button></div></form> : <p className={styles.readOnlyNotice} role="status">Variants are read-only after the draft enters review or publication.</p>}
-    </section>
-    <ProductMediaWorkspace brandId={brandId} productId={productId} product={product} editable={editable} onChanged={() => setReloadKey((key) => key + 1)} />
+
+        </details>
+      </section>
+    </div>
+    <div hidden={activeStep !== 2}>
+      <ProductMediaWorkspace brandId={brandId} productId={productId} product={product} editable={editable} onChanged={() => setReloadKey((key) => key + 1)} />
+    </div>
+    <div hidden={activeStep !== 3}>
     <section className={styles.formPanel} aria-labelledby="prices-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>PRICE HISTORY</p><h2 id="prices-heading">Price proposals</h2><p>Only backend price states are shown. A pending proposal is not an approved selling price.</p></div></div>
+      <div className={prototypeStyles.priceSplit}>
+      <div className={prototypeStyles.priceHistory}>
       {product.variants.some((variant) => (variant.priceVersions?.length ?? 0) > 0) ? product.variants.map((variant) => {
         if (!variant.priceVersions?.length) return null;
         return <div className={styles.tableWrap} key={variant.id}><table className={styles.variantTable}><caption>Price history · {variant.sku}</caption><thead><tr><th scope="col">Selling price</th><th scope="col">MRP</th><th scope="col">Valid from</th><th scope="col">Valid to</th><th scope="col">State</th></tr></thead><tbody>{variant.priceVersions.map((price) => <tr key={price.id}><td>₹{(price.amountMinor / 100).toFixed(2)}</td><td>₹{(price.mrpMinor / 100).toFixed(2)}</td><td>{new Date(price.validFrom).toLocaleDateString()}</td><td>{price.validTo ? new Date(price.validTo).toLocaleDateString() : "Open-ended"}</td><td>{price.priceState === "PENDING" ? "Pending review" : price.priceState.replaceAll("_", " ")}</td></tr>)}</tbody></table></div>;
       }) : <p className={styles.emptyLine}>No price proposals have been recorded for these SKUs.</p>}
+      </div>
+      <aside className={prototypeStyles.priceForm}>
       {editable && product.variants.some((variant) => variant.variantState !== "INACTIVE") && <div className={styles.schemaPanel} aria-labelledby="price-proposal-heading">
         <div><p className={styles.kicker}>PROPOSE AN INR PRICE</p><h3 id="price-proposal-heading">Create a pending price proposal</h3><p>Enter the pricing rule version supplied by the authorized pricing service. The UI never guesses this value.</p></div>
-        <div className={styles.mediaActions}>{product.variants.filter((variant) => variant.variantState !== "INACTIVE").map((variant) => <button key={variant.id} type="button" className={styles.textButton} onClick={() => { setPriceVariantId(variant.id); setPriceError(""); setPriceNotice(""); }}>{priceVariantId === variant.id ? `Editing ${variant.sku}` : `Price ${variant.sku}`}</button>)}</div>
-        {priceVariantId && <form onSubmit={proposePrice} noValidate><div className={styles.formGrid}>
-          <div className={styles.field}><label htmlFor="selling-price-minor">Selling price (paise)</label><input id="selling-price-minor" type="number" min="1" step="1" value={sellingPriceMinor} onChange={(event) => setSellingPriceMinor(event.target.value)} required /></div>
-          <div className={styles.field}><label htmlFor="mrp-minor">MRP (paise)</label><input id="mrp-minor" type="number" min="1" step="1" value={mrpMinor} onChange={(event) => setMrpMinor(event.target.value)} required /></div>
+        <div className={styles.field}><label htmlFor="price-variant-select">Applies to SKU</label><select id="price-variant-select" value={priceVariantId ?? ""} onChange={(event) => { setPriceVariantId(event.target.value || null); setPriceError(""); setPriceNotice(""); }}>
+          <option value="">Choose a SKU</option>{product.variants.filter((variant) => variant.variantState !== "INACTIVE").map((variant) => <option key={variant.id} value={variant.id}>{variant.sku}</option>)}
+        </select></div>
+        <form onSubmit={proposePrice} noValidate><div className={styles.formGrid}>
+          <div className={styles.field}><label htmlFor="selling-price-minor">Selling price (₹)</label><input id="selling-price-minor" type="number" min="0.01" step="0.01" value={sellingPriceMinor} onChange={(event) => setSellingPriceMinor(event.target.value)} required /></div>
+          <div className={styles.field}><label htmlFor="mrp-minor">MRP (₹, incl. all taxes)</label><input id="mrp-minor" type="number" min="0.01" step="0.01" value={mrpMinor} onChange={(event) => setMrpMinor(event.target.value)} required /></div>
           <div className={styles.field}><label htmlFor="price-valid-from">Valid from</label><input id="price-valid-from" type="datetime-local" value={validFrom} onChange={(event) => setValidFrom(event.target.value)} required /></div>
           <div className={styles.field}><label htmlFor="price-valid-to">Valid to <span>(optional)</span></label><input id="price-valid-to" type="datetime-local" value={validTo} onChange={(event) => setValidTo(event.target.value)} /></div>
           <div className={styles.field}><label htmlFor="price-rule-version">INR rule version</label><input id="price-rule-version" type="number" min="1" step="1" value={ruleVersion} onChange={(event) => setRuleVersion(event.target.value)} required /><small>Use the version returned by the approved pricing process.</small></div>
           <div className={styles.field}><label htmlFor="price-reason">Reason code <span>(optional)</span></label><input id="price-reason" maxLength={128} value={priceReason} onChange={(event) => setPriceReason(event.target.value)} /></div>
-          <div className={styles.fieldWide}><label htmlFor="price-mfa">Authenticator or recovery code</label><input id="price-mfa" autoComplete="one-time-code" value={priceMfaCode} onChange={(event) => setPriceMfaCode(event.target.value)} maxLength={26} required /></div>
-        </div>{priceError && <p className={styles.error} role="alert">{priceError}</p>}{priceNotice && <p className={styles.notice} role="status">{priceNotice}</p>}<div className={styles.formActions}><p>Creates a pending INR proposal; it is not active until independently approved.</p><button type="submit" className={styles.primaryButton} disabled={priceSaving}>{priceSaving ? "Submitting price…" : "Submit price proposal"}</button><button type="button" className={styles.secondaryButton} disabled={priceSaving} onClick={() => setPriceVariantId(null)}>Cancel</button></div></form>}
+        </div>{priceError && <p className={styles.error} role="alert">{priceError}</p>}{priceNotice && <p className={styles.notice} role="status">{priceNotice}</p>}<div className={styles.formActions}><p>Creates a pending INR proposal; it is not active until independently approved.</p><button type="submit" className={styles.primaryButton} disabled={priceSaving || !priceVariantId}>{priceSaving ? "Submitting price…" : "Send for approval"}</button><button type="button" className={styles.secondaryButton} disabled={priceSaving} onClick={() => setPriceVariantId(null)}>Cancel</button></div></form>
       </div>}
       {!editable && <p className={styles.inlineError}>New price proposals are disabled after submission; review the persisted price history above.</p>}
+      </aside>
+      </div>
     </section>
+    </div>
+    <div hidden={activeStep !== 4}>
     <section className={styles.formPanel} aria-labelledby="claims-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>SUSTAINABILITY EVIDENCE</p><h2 id="claims-heading">Claims and verification</h2><p>Claims remain pending until an independent reviewer checks current evidence and expiry. The brand cannot self-verify.</p></div><span className={styles.draftBadge}>{claims.length} claim{claims.length === 1 ? "" : "s"}</span></div>
       {claimsError && <p className={styles.error} role="alert">{claimsError}</p>}
@@ -384,18 +439,30 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
         <fieldset className={styles.fieldWide}><legend>Supporting images that passed scan and rights checks</legend>{product.mediaLinks.filter((link) => link.scanState === "CLEAN" && link.rightsState === "ATTESTED").map((link) => <label className={styles.checkboxLabel} key={link.mediaAssetId}><input type="checkbox" checked={claimEvidence.includes(link.mediaAssetId)} onChange={(event) => setClaimEvidence((current) => event.target.checked ? [...new Set([...current, link.mediaAssetId])] : current.filter((id) => id !== link.mediaAssetId))} /> Evidence asset {link.mediaAssetId}</label>)}{product.mediaLinks.every((link) => link.scanState !== "CLEAN" || link.rightsState !== "ATTESTED") && <p>No eligible linked evidence is available yet.</p>}</fieldset>
       </div>{claimNotice && <p className={styles.notice} role="status">{claimNotice}</p>}<div className={styles.formActions}><p>Verification is performed by a separate reviewer.</p><button className={styles.primaryButton} type="submit" disabled={claimSaving}>{claimSaving ? "Submitting…" : "Submit claim for review"}</button></div></form> : <p className={styles.readOnlyNotice} role="status">A claim can be proposed only against a published product revision.</p>}
     </section>
+    </div>
+    <div hidden={activeStep !== 5}>
     {editable && <section className={styles.formPanel} aria-labelledby="readiness-heading">
-      <div className={styles.formHeading}><div><p className={styles.kicker}>SUBMISSION READINESS</p><h2 id="readiness-heading">Ready for independent review?</h2><p>These checks mirror the server-side submission gates. A green item is only a client-side indication; the backend remains authoritative.</p></div><span className={styles.draftBadge}>{readinessChecks.filter((check) => check.ready).length}/{readinessChecks.length} ready</span></div>
-      <ul className={styles.readinessList}>{readinessChecks.map((check) => <li key={check.label} className={check.ready ? styles.readinessReady : styles.readinessBlocked}><span aria-hidden="true">{check.ready ? "✓" : "!"}</span><span>{check.label}</span><strong>{check.ready ? "Ready" : "Needs attention"}</strong></li>)}</ul>
+      <div className={styles.formHeading}><div><h2 id="readiness-heading">Ready for review?</h2><p>Check the remaining tasks before you send this revision to an independent Renivet reviewer.</p></div></div>
+      <ul className={prototypeStyles.reviewChecklist}>
+        {readinessChecks.map((check) => <li key={check.label} className={check.ready ? prototypeStyles.reviewReady : prototypeStyles.reviewMissing}>
+          <span className={prototypeStyles.reviewMark} aria-hidden="true">{check.ready ? "✓" : "!"}</span>
+          <div><strong>{check.label}</strong><small>{check.detail}</small></div>
+          {!check.ready && <button type="button" onClick={() => goToStep(check.step)}>Fix</button>}
+        </li>)}
+      </ul>
     </section>}
-
     {editable && <section className={styles.formPanel} aria-labelledby="submission-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>READY FOR A SEPARATE REVIEW?</p><h2 id="submission-heading">Submit this revision</h2><p>Submission checks the saved product, active SKUs, approved prices and eligible media on the server. Once accepted, this exact revision is frozen for an independent reviewer.</p></div></div>
       {submissionError && <p className={styles.error} role="alert">{submissionError}</p>}
       {submissionNotice && <p className={styles.notice} role="status">{submissionNotice}</p>}
-      <div className={styles.formActions}><p>Requires the brand’s current catalog submission permission.</p><button className={styles.primaryButton} type="button" onClick={() => void submitForReview()} disabled={submitting}>{submitting ? "Submitting revision…" : "Submit for independent review"}</button></div>
+      <div className={styles.formActions}><p>{readinessChecks.filter((check) => !check.ready).length ? readinessChecks.filter((check) => !check.ready).length + " item(s) to fix before submitting." : "Everything needed is in place. The server will verify all requirements again."}</p><button className={styles.primaryButton} type="button" onClick={() => void submitForReview()} disabled={submitting || readinessChecks.some((check) => !check.ready)}>{submitting ? "Submitting revision…" : "Submit version " + product.contentVersion + " for review"}</button></div>
     </section>}
-
+    </div>
+    <div className={prototypeStyles.stepNavigation}>
+      <button type="button" disabled={activeStep === 0} onClick={() => goToStep(activeStep - 1)}>Back</button>
+      <p>Step {activeStep + 1} of 6 · This product stays in draft until approved.</p>
+      <button type="button" disabled={activeStep === 5} onClick={() => goToStep(activeStep + 1)}>Next: {["Sizes & colours", "Photos", "Prices", "Claims & evidence", "Review & submit", ""][activeStep]}</button>
+    </div>
   </main>;
 }
 

@@ -13,7 +13,8 @@ describe("REN2-47 live API coverage", () => {
       `/api/v1/brands/${brandId}/products/${productId}/submit`);
 
     const component = readFileSync("src/features/seller/product-detail-workspace.tsx", "utf8");
-    assert.match(component, /Submit for independent review/);
+    assert.match(component, /Submit version /);
+    assert.match(component, /submitForReview/);
     assert.match(component, /draftContentVersion/);
     assert.match(component, /categorySchemaVersion/);
     assert.match(component, /ifMatch: `"\$\{product\.rowVersion\}"`/);
