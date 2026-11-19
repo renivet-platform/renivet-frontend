@@ -73,27 +73,22 @@
 @media(max-width:500px) { .page { padding:18px 12px 82px; }.headerActions { width:100%; }.headerActions a,.headerActions button { flex:1 1 120px; }.statusTabs { gap:6px; }.statusTab,.activeStatusTab { padding:8px 11px; }.listHeading { align-items:flex-start; flex-wrap:wrap; }.tableWrap { background:#fff; }.productRow { padding:16px 13px; } }
 
 
-/* REN2-117 SE-08: product table parity with approved Nov 17 prototype.
-   Updated date/category come from the backend contract, never invented. */
-.page .header .kicker { display:none; }
-.page .header h1 { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; font-weight:740; letter-spacing:-.025em; }
-.page .catalogueControls { margin-top:20px; }
-.page .listSection { margin-top:13px; }
-.page .tableHead, .page .productRow {
-  grid-template-columns:minmax(180px,2.5fr) minmax(135px,1.55fr) minmax(88px,.75fr) minmax(110px,.85fr) minmax(68px,.55fr);
-  gap:12px;
-}
-.page .productUpdated { color:#5d6963; font-size:13px; white-space:nowrap; }
-.page .productVersion { color:#44514a; font-size:13px; }
-.page .productOpen { justify-self:end; }
-.page .productCopy strong { font-size:14px; line-height:1.4; }
-.page .productCopy small { font-size:12px; }
-@media(max-width:850px){
-  .page .tableHead { display:none; }
-  .page .productRow { grid-template-columns:minmax(0,1fr) auto; gap:9px 12px; }
-  .page .productCopy { grid-column:1 / -1; }
-  .page .productRow .state { grid-column:1; grid-row:2; }
-  .page .productVersion { grid-column:1; grid-row:3; }
-  .page .productUpdated { grid-column:1; grid-row:4; font-size:12px; }
-  .page .productOpen { grid-column:2; grid-row:2 / 5; align-self:center; }
-}
+/* REN2-117 exact SE-08 approved 17-Nov list: no legacy access banner or inline
+   product creation. New products use /products/new to preserve clean catalogue. */
+.page { background:#f6f4ef; color:#1b2420; }
+.header { margin:0 0 20px; }
+.header h1 { font:740 30px/1.23 system-ui,sans-serif;letter-spacing:-.025em;color:#1b2420; }
+.header .subtitle { color:#5d6963;font-size:15px;line-height:1.5; }
+.headerActions a.primaryButton { background:#1f5a45;min-height:44px;display:inline-flex;align-items:center;justify-content:center; }
+.headerActions a.secondaryButton { background:#fff;min-height:44px;display:inline-flex;align-items:center;justify-content:center; }
+.catalogueControls { margin-top:0; }
+.productSearch { min-height:49px; width:min(100%,405px); }
+.statusTabs { margin-top:14px; }
+.listSection { margin-top:14px; }
+.tableHead, .productRow { grid-template-columns:minmax(185px,2fr) minmax(130px,1.4fr) minmax(86px,.65fr) minmax(70px,.55fr); }
+@media(max-width:820px) {.tableHead{display:none;}.productRow{grid-template-columns:minmax(0,1fr) auto;}}
+
+/* REN2-117: authoritative date/category columns; preserve separate Add product route. */
+.page .tableHead,.page .productRow { grid-template-columns:minmax(180px,2.1fr) minmax(120px,1.25fr) minmax(75px,.65fr) minmax(105px,.8fr) minmax(65px,.55fr); gap:12px; }
+.page .productUpdated { color:#5d6963;font-size:13px;white-space:nowrap; }
+@media(max-width:820px){.page .tableHead{display:none;}.page .productRow{grid-template-columns:minmax(0,1fr) auto;gap:9px 12px;}.page .productCopy{grid-column:1/-1;}.page .productRow .state{grid-column:1;grid-row:2;}.page .productVersion{grid-column:1;grid-row:3;}.page .productUpdated{grid-column:1;grid-row:4;font-size:12px;}.page .productOpen{grid-column:2;grid-row:2/5;align-self:center;}}

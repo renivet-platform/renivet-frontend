@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { AuthApiError, getCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
-import { shouldRequestMfaStepUp, type MfaEnforcementMode } from "@/features/identity/mfa-policy";
+import { shouldRequestMfaStepUp } from "@/features/identity/mfa-policy";
+import Link from "next/link";
 import type { operations } from "@/generated/renivet-api";
 import { categoryLabel, createIdempotencyKey, selectableCategories, type Category, type Paged, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import { isStaleImportPreview, validateImportFieldMappings } from "@/features/seller/import-workspace-state";
@@ -67,14 +68,13 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
   const [categoryRows, setCategoryRows] = useState<CategoryMappingRow[]>([]);
   const [nextRowId, setNextRowId] = useState(10);
   const [mfaCode, setMfaCode] = useState("");
-  const [mfaMode, setMfaMode] = useState<MfaEnforcementMode>("enforced");
-  const [newImport, setNewImport] = useState(false);
   const [allowPartial, setAllowPartial] = useState(false);
+  const [wizardStep, setWizardStep] = useState<"source" | "file">("source");
+  const [mfaMode, setMfaMode] = useState<"deferred" | "enforced">("enforced");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  useEffect(() => { let mounted = true; getCurrentSession().then(session => { if (mounted) setMfaMode(session.mfaEnforcementMode); }).catch(() => {}); return () => { mounted = false; }; }, []);
   useEffect(() => {
     const controller = new AbortController();
     w2Request<Paged<Category>>(["brands", brandId, "categories"], { query: { limit: "100" }, signal: controller.signal })
@@ -83,6 +83,8 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
     return () => controller.abort();
   }, [brandId]);
 
+  useEffect(() => { getCurrentSession().then(session => setMfaMode(session.mfaEnforcementMode)).catch(() => setMfaMode("enforced")); }, []);
+
   const sourceKind: UploadRequest["sourceKind"] = file?.name.toLowerCase().endsWith(".xlsx")
     ? "RENIVET_XLSX"
     : profile === "SHOPIFY" ? "SHOPIFY_CSV" : profile === "UNICOMMERCE" ? "UNIWARE_CSV" : profile === "RENIVET" ? "RENIVET_CSV" : "GENERIC_CSV";
@@ -90,7 +92,6 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
 
   async function elevate(): Promise<string> {
     const session = await getCurrentSession();
-    setMfaMode(session.mfaEnforcementMode);
     if (!shouldRequestMfaStepUp(session.mfaEnforcementMode)) return session.csrfToken;
     if (!/^(?:\d{6}|[A-Z2-7]{26})$/.test(mfaCode.trim().toUpperCase())) throw new Error("Enter a six-digit authenticator code or unused recovery code.");
     const response = await stepUpWithMfa(mfaCode.trim().toUpperCase(), session.csrfToken);
@@ -175,7 +176,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
     finally { setBusy(false); }
   }
 
-  const importStep = results ? 5 : preview ? 4 : batchId ? 3 : file ? 2 : 1;
+  const importStep = results ? 5 : preview ? 4 : batchId ? 3 : wizardStep === "file" ? 2 : 1;
   function chooseProfile(next: SourceProfile) {
     if (batchId || busy) return;
     setProfile(next);
@@ -185,68 +186,108 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
   function addField() { setMappingRows((rows) => [...rows, { id: nextRowId, source: "", target: "" }]); setNextRowId((id) => id + 1); }
   function addCategory() { setCategoryRows((rows) => [...rows, { id: nextRowId, source: "", target: "" }]); setNextRowId((id) => id + 1); }
 
-  return <main className={styles.page} aria-labelledby="imports-title" data-screen-id={results ? "SE-12C" : batchId ? "SE-12A" : "SE-12"}>
-    <nav className={styles.detailBreadcrumb} aria-label="Breadcrumb"><a href={`/brands/${encodeURIComponent(brandId)}/products`}>Products</a><span aria-hidden="true">/</span><span>Imports</span></nav>
-    <header className={styles.header}><div><p className={styles.kicker}>BRAND WORKSPACE / DATA IMPORT</p><h1 id="imports-title">{results ? "Import results" : batchId || newImport ? "New import" : "Imports"}</h1><p className={styles.subtitle}>Bring many products in at once. Imported products arrive as drafts for you to check and submit.</p></div><div className={visual.importActions}>{!batchId && !newImport && <button type="button" className={styles.primaryButton} onClick={() => setNewImport(true)}>New import</button>}{newImport && !batchId && <button type="button" className={styles.secondaryButton} onClick={() => setNewImport(false)} disabled={busy}>Back to imports</button>}</div></header>
-    {(newImport || batchId) && <nav className={visual.importProgress} aria-label="Import progress">
-      <ol>{["Source","File","Match columns","Preview","Results"].map((label,index) => {
-        const number=index+1;
-        const active=number===importStep;
-        return <li key={label} aria-current={active ? "step" : undefined} className={active ? visual.currentStep : index+1<importStep ? visual.finishedStep : visual.pendingStep}>
-          <span className={visual.stepNumber} aria-hidden="true">{index+1<importStep?"✓":number}</span><span>{label}</span>
-        </li>;
-      })}</ol>
-    </nav>}
-    <section className={visual.sourceNotice} aria-label="What the import does"><strong>Catalogue drafts only</strong><p>CSV/XLSX imports create or update draft product records after your explicit confirmation. Quantities from a source file are observations—not stock receipts or available-to-sell inventory.</p></section>
-    {!batchId && !newImport && <section className={visual.currentImports} aria-labelledby="past-imports-title">
-      <div><h2 id="past-imports-title">Your imports</h2><p>There is no approved backend endpoint to list previous imports by brand. To check results, use an import opened in this session. No previous imports or statuses are invented.</p></div>
-      <span className={visual.unavailable}>History not connected</span>
-    </section>}
-    {!batchId && !newImport ? null : !batchId ? <section className={styles.formPanel} aria-labelledby="upload-heading"><div className={styles.formHeading}><div><p className={styles.kicker}>STEP 1 · SOURCE</p><h2 id="upload-heading">Choose an export</h2><p>CSV and XLSX files are uploaded to private storage using a short-lived signed URL. The import only stages catalogue data until you confirm.</p></div></div>
-      <div role="group" aria-label="Choose a source export" className={visual.sourceChoices}>
+
+  const mfaField = mfaMode === "enforced" ? <div className={styles.field}>
+    <label htmlFor="import-mfa">Authenticator code</label>
+    <input id="import-mfa" inputMode="numeric" autoComplete="one-time-code" maxLength={26} value={mfaCode} onChange={event => setMfaCode(event.currentTarget.value)} />
+    <small>This environment requires a verified step-up for import changes.</small>
+  </div> : null;
+  const wizardLabels = ["Choose source", "Upload file", "Match columns", "Preview", "Results"];
+  return <main className={styles.page} data-screen-id={results ? "SE-12C" : "SE-12A"} aria-labelledby="imports-title">
+    <nav className={styles.detailBreadcrumb} aria-label="Breadcrumb">
+      <Link href={"/brands/"+encodeURIComponent(brandId)+"/imports"}>Imports</Link><span aria-hidden="true">/</span><span>New import</span>
+    </nav>
+    <header className={visual.simpleHeader}>
+      <div><h1 id="imports-title">{results ? "Import results" : "New import"}</h1>
+      <p>Bring in products from your existing catalogue. Review every change before confirming.</p></div>
+      <span className={visual.draftOnly}>Drafts only · No stock changes</span>
+    </header>
+    <nav className={visual.importProgress} aria-label="Import progress"><ol>
+      {wizardLabels.map((label,i) => <li key={label} aria-current={i+1 === importStep ? "step" : undefined} className={i+1 === importStep ? visual.currentStep : i+1 < importStep ? visual.finishedStep : visual.pendingStep}>
+        <span className={visual.stepNumber} aria-hidden="true">{i+1 < importStep ? "✓" : i+1}</span>{label}
+      </li>)}
+    </ol></nav>
+    {!batchId && wizardStep === "source" && <section className={visual.wizardCard} aria-labelledby="choose-source-title">
+      <h2 id="choose-source-title">Where are your products coming from?</h2>
+      <p>Choose the system that exported your products. You'll upload a file next.</p>
+      <div role="group" aria-label="Import source" className={visual.sourceChoices}>
         {([
-          ["RENIVET","Renivet template","CSV for Renivet's product fields"],
-          ["SHOPIFY","Shopify export","Shopify products CSV"],
-          ["UNICOMMERCE","Unicommerce","Uniware/Unicommerce export"],
+          ["RENIVET","Renivet template","A spreadsheet prepared for Renivet"],
+          ["SHOPIFY","Shopify","Products exported from Shopify"],
+          ["UNICOMMERCE","Unicommerce","Catalogue exported from Unicommerce"],
           ["GENERIC","Other CSV","Map your own columns"],
-        ] as const).map(([id,label,detail])=><button type="button" key={id} aria-pressed={profile===id} className={visual.sourceChoice} onClick={()=>chooseProfile(id)} disabled={busy}>
-          <span aria-hidden="true" className={visual.sourceRadio}>{profile===id?"✓":""}</span><span><strong>{label}</strong><small>{detail}</small></span>
+        ] as const).map(([id,label,desc])=><button type="button" className={visual.sourceChoice} key={id} aria-pressed={profile===id} onClick={()=>chooseProfile(id)}>
+          <span className={visual.sourceRadio} aria-hidden="true">{profile===id?"✓":""}</span><span><strong>{label}</strong><small>{desc}</small></span>
         </button>)}
       </div>
-      <form onSubmit={startImport} noValidate><div className={styles.formGrid}>
-        <div className={visual.templateHelp}><p>{profile === "RENIVET" ? "Starting fresh? Download a Renivet template." : "Selected source: " + (profile === "UNICOMMERCE" ? "Unicommerce" : profile === "SHOPIFY" ? "Shopify" : "Other CSV")}</p><button type="button" className={styles.secondaryButton} onClick={() => downloadTemplate(profile)}>Download CSV template</button></div>
-        <div className={styles.field}><label htmlFor="import-mode">Conflict handling</label><select id="import-mode" value={mode} onChange={(event) => setMode(event.target.value as CreateRequest["mode"])}><option value="REVIEW_CONFLICT">Review conflicts before changes</option><option value="CREATE_ONLY">Create new records only</option><option value="UPDATE_MATCHED">Update matched records</option><option value="SKIP_EXISTING">Skip records that already exist</option></select></div>
-        <div className={styles.fieldWide}><label htmlFor="import-file">Source file</label><input id="import-file" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><small>CSV or XLSX, up to 100 MiB. File contents are never placed in the URL or application logs.</small></div>
-        <div className={styles.field}><label htmlFor="source-as-of">Export created at</label><input id="source-as-of" type="datetime-local" value={sourceAsOf} onChange={(event) => setSourceAsOf(event.target.value)} /></div>
-        {shouldRequestMfaStepUp(mfaMode) && <div className={styles.field}><label htmlFor="import-mfa">Authenticator or recovery code</label><input id="import-mfa" autoComplete="one-time-code" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} maxLength={26} /><small>Required when server MFA enforcement is enabled.</small></div>}
-      </div>
-      {error && <p className={styles.error} role="alert">{error}</p>}{notice && <p className={styles.notice} role="status">{notice}</p>}
-      <div className={styles.formActions}><p>{categoryError ? categoryError : selectable.length ? `Available active categories: ${selectable.length}` : "No active leaf categories are published yet. An admin must publish taxonomy before category mapping is available."}</p><button type="submit" className={styles.primaryButton} disabled={busy}>{busy ? "Uploading and staging…" : "Upload and start mapping"}</button></div>
+      <div className={visual.wizardFooter}><button type="button" className={styles.secondaryButton} onClick={()=>downloadTemplate(profile)}>Download sample file</button>
+        <button type="button" className={styles.primaryButton} onClick={()=>setWizardStep("file")}>Continue to upload</button></div>
+    </section>}
+    {!batchId && wizardStep === "file" && <section className={visual.wizardCard} aria-labelledby="upload-title">
+      <h2 id="upload-title">Upload your product file</h2><p>Choose the export for {profile==="UNICOMMERCE"?"Unicommerce":profile==="SHOPIFY"?"Shopify":profile==="RENIVET"?"Renivet":"a custom CSV"}.</p>
+      <form onSubmit={startImport} noValidate>
+        <div className={visual.dropArea}><label htmlFor="import-file">Choose a CSV or XLSX file</label>
+          <input id="import-file" type="file" required accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={event=>setFile(event.target.files?.[0]??null)}/>
+          <small>{file ? file.name : "Up to 100 MiB. File is transferred through a private upload URL."}</small>
+        </div>
+        <div className={visual.formColumns}>
+          <div className={styles.field}><label htmlFor="import-as-of">Export created on</label><input id="import-as-of" type="datetime-local" required value={sourceAsOf} onChange={event=>setSourceAsOf(event.target.value)}/></div>
+          <div className={styles.field}><label htmlFor="import-conflicts">When products already exist</label><select id="import-conflicts" value={mode} onChange={event=>setMode(event.target.value as CreateRequest["mode"])}>
+            <option value="REVIEW_CONFLICT">Review each conflict first</option><option value="CREATE_ONLY">Add only new products</option><option value="UPDATE_MATCHED">Update matched drafts</option><option value="SKIP_EXISTING">Skip existing products</option>
+          </select></div>
+          {mfaField}
+        </div>
+        {error&&<p className={styles.error} role="alert">{error}</p>}
+        {notice&&<p className={styles.notice} role="status">{notice}</p>}
+        <div className={visual.wizardFooter}><button type="button" className={styles.secondaryButton} onClick={()=>setWizardStep("source")} disabled={busy}>Back</button>
+          <button type="submit" className={styles.primaryButton} disabled={busy||!file||!sourceAsOf}>{busy?"Uploading…":"Upload and continue"}</button></div>
       </form>
-    </section> : <>
-      <section className={styles.formPanel} aria-labelledby="mapping-heading"><div className={styles.formHeading}><div><p className={styles.kicker}>STEP 2 · FIELD MAPPING</p><h2 id="mapping-heading">Match source columns</h2><p>Edit the sample mappings to match your file. Keep source column names exact. Each destination may be used once.</p></div><span className={styles.draftBadge}>BATCH {batchId.slice(0, 8)}</span></div>
-        <form onSubmit={saveMapping}><div className={styles.importMappingList}><div className={styles.mappingHeader}><span>Source column</span><span>Renivet field</span></div>{mappingRows.map((row) => <div className={styles.mappingRow} key={row.id}><label className={styles.visuallyHidden} htmlFor={`source-${row.id}`}>Source column name</label><input id={`source-${row.id}`} value={row.source} onChange={(event) => setMappingRows((rows) => rows.map((item) => item.id === row.id ? { ...item, source: event.target.value } : item))} placeholder="Exact source header" /><span aria-hidden="true">→</span><label className={styles.visuallyHidden} htmlFor={`target-${row.id}`}>Renivet destination field</label><select id={`target-${row.id}`} value={row.target} onChange={(event) => setMappingRows((rows) => rows.map((item) => item.id === row.id ? { ...item, target: event.target.value } : item))}><option value="">Skip this source column</option>{targetFields.map((field) => <option key={field} value={field}>{field}</option>)}</select><button type="button" className={styles.textButton} onClick={() => setMappingRows((rows) => rows.filter((item) => item.id !== row.id))}>Remove</button></div>)}</div>
-          <button type="button" className={styles.textButton} onClick={addField}>Add field mapping</button>
-          <div className={styles.schemaPanel}><div><p className={styles.kicker}>CATEGORY MATCHING</p><h3>Map source categories</h3><p>Use the exact category text from your export and choose an active leaf category.</p></div><div className={styles.categoryMappingList}>{categoryRows.map((row) => <div className={styles.mappingRow} key={row.id}><label className={styles.visuallyHidden} htmlFor={`category-source-${row.id}`}>Source category</label><input id={`category-source-${row.id}`} value={row.source} onChange={(event) => setCategoryRows((rows) => rows.map((item) => item.id === row.id ? { ...item, source: event.target.value } : item))} placeholder="Source category" /><span aria-hidden="true">→</span><label className={styles.visuallyHidden} htmlFor={`category-target-${row.id}`}>Renivet leaf category</label><select id={`category-target-${row.id}`} value={row.target} onChange={(event) => setCategoryRows((rows) => rows.map((item) => item.id === row.id ? { ...item, target: event.target.value } : item))}><option value="">Choose a leaf category</option>{selectable.map((category) => <option key={category.id} value={category.code}>{categoryLabel(category, categories)}</option>)}</select><button type="button" className={styles.textButton} onClick={() => setCategoryRows((rows) => rows.filter((item) => item.id !== row.id))}>Remove</button></div>)}</div><button type="button" className={styles.textButton} onClick={addCategory}>Add category mapping</button></div>
-          <div className={styles.field}><label htmlFor="mapping-mfa">Authenticator or recovery code</label><input id="mapping-mfa" autoComplete="one-time-code" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} maxLength={26} /></div>
-          {error && <p className={styles.error} role="alert">{error}</p>}{notice && <p className={styles.notice} role="status">{notice}</p>}
-          <div className={styles.formActions}><p>Saving creates an immutable preview revision.</p><button type="submit" className={styles.primaryButton} disabled={busy}>{busy ? "Building preview…" : "Save mapping and preview"}</button></div>
-        </form>
-      </section>
-      {preview && <section className={styles.formPanel} aria-labelledby="preview-heading"><div className={styles.formHeading}><div><p className={styles.kicker}>STEP 3 · IMMUTABLE PREVIEW</p><h2 id="preview-heading">Review before confirming</h2><p>Revision {preview.previewRevision} · hash {preview.previewHash.slice(0, 12)}… · source {preview.sourceSha256.slice(0, 12)}…</p></div><span className={styles.draftBadge}>FROZEN</span></div>
-        <div className={styles.importCounts}>{Object.entries(preview.counts).map(([name, count]) => <div key={name}><strong>{count}</strong><span>{name}</span></div>)}</div>
-        {preview.rows.length > 0 && <div className={styles.tableWrap}><table className={styles.variantTable}><caption className={styles.visuallyHidden}>Import preview actions and conflicts</caption><thead><tr><th scope="col">Row</th><th scope="col">Action</th><th scope="col">Fields to change</th><th scope="col">Conflict codes</th></tr></thead><tbody>{preview.rows.slice(0, 100).map((row) => <tr key={row.sourceRowNumber}><th scope="row">{row.sourceRowNumber}</th><td>{row.action.replaceAll("_", " ")}</td><td>{row.fieldMask.join(", ") || "None"}</td><td>{row.conflicts.map((item) => item.code).join(", ") || "None"}</td></tr>)}</tbody></table></div>}
-        {preview.rows.length > 100 && <p className={styles.inlineError}>Showing the first 100 preview rows. Review totals for the full batch before confirming.</p>}
-        <label className={styles.checkboxLabel}><input type="checkbox" checked={allowPartial} onChange={(event) => setAllowPartial(event.target.checked)} /> Allow valid rows to continue if some rows fail. Successful row results remain recorded.</label>
-        <div className={styles.field}><label htmlFor="confirm-mfa">Authenticator or recovery code</label><input id="confirm-mfa" autoComplete="one-time-code" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} maxLength={26} /></div>
-        {error && <p className={styles.error} role="alert">{error}</p>}{notice && <p className={styles.notice} role="status">{notice}</p>}
-        <div className={styles.formActions}><p>Confirm applies only this frozen preview.</p><button type="button" className={styles.primaryButton} disabled={busy} onClick={confirmImport}>{busy ? "Confirming…" : "Confirm import"}</button></div>
-      </section>}
-      {confirmation && <section className={styles.formPanel} aria-labelledby="results-heading"><div className={styles.formHeading}><div><p className={styles.kicker}>STEP 4 · RESULTS</p><h2 id="results-heading">Import {confirmation.state.toLowerCase()}</h2><p>{confirmation.appliedRows} successful · {confirmation.failedRows} failed · {confirmation.noopRows} unchanged</p></div><span className={styles.draftBadge}>{confirmation.state}</span></div>
-        {results && <div className={styles.tableWrap}><table className={styles.variantTable}><caption className={styles.visuallyHidden}>Redacted import row results</caption><thead><tr><th scope="col">Row</th><th scope="col">Status</th><th scope="col">Error codes</th><th scope="col">Effect receipts</th></tr></thead><tbody>{results.items.map((item) => <tr key={item.rowNumber}><th scope="row">{item.rowNumber}</th><td>{item.status.replaceAll("_", " ")}</td><td>{item.errorCodes.join(", ") || "None"}</td><td>{item.effectReceiptIds.length}</td></tr>)}</tbody></table></div>}
-        {error && <p className={styles.error} role="alert">{error}</p>}{notice && <p className={styles.notice} role="status">{notice}</p>}
-        <div className={styles.formActions}><button type="button" className={styles.secondaryButton} disabled={busy} onClick={refreshResults}>Refresh results</button><button type="button" className={styles.primaryButton} disabled={busy || !results?.items.some((item) => item.status === "FAILED")} onClick={retryFailed}>Retry failed rows only</button></div>
-      </section>}
-    </>}
+    </section>}
+    {batchId && !preview && !results && <section className={visual.wizardCard} aria-labelledby="mapping-title">
+      <h2 id="mapping-title">Match columns</h2><p>Confirm which column from your source file belongs to each Renivet field.</p>
+      <form onSubmit={saveMapping}>
+        <div className={styles.importMappingList}><div className={styles.mappingHeader}><span>Source column</span><span>Renivet field</span></div>
+          {mappingRows.map(row=><div className={styles.mappingRow} key={row.id}><label className={styles.visuallyHidden} htmlFor={"source-"+row.id}>Source column</label><input id={"source-"+row.id} value={row.source} onChange={e=>setMappingRows(rows=>rows.map(item=>item.id===row.id?{...item,source:e.target.value}:item))}/><span aria-hidden="true">→</span>
+            <label className={styles.visuallyHidden} htmlFor={"target-"+row.id}>Destination field</label><select id={"target-"+row.id} value={row.target} onChange={e=>setMappingRows(rows=>rows.map(item=>item.id===row.id?{...item,target:e.target.value}:item))}>
+              <option value="">Skip this column</option>{targetFields.map(field=><option value={field} key={field}>{field}</option>)}</select>
+            <button type="button" className={styles.textButton} onClick={()=>setMappingRows(rows=>rows.filter(item=>item.id!==row.id))}>Remove</button>
+          </div>)}
+        </div><button type="button" className={styles.textButton} onClick={addField}>Add another column</button>
+        <h3>Source category mapping</h3>
+        {categoryRows.map(row=><div className={styles.mappingRow} key={row.id}>
+          <input aria-label="Source category" value={row.source} onChange={e=>setCategoryRows(rows=>rows.map(item=>item.id===row.id?{...item,source:e.target.value}:item))} />
+          <span aria-hidden="true">→</span>
+          <select aria-label="Renivet category" value={row.target} onChange={e=>setCategoryRows(rows=>rows.map(item=>item.id===row.id?{...item,target:e.target.value}:item))}>
+            <option value="">Choose category</option>{selectable.map(c=><option value={c.code} key={c.id}>{categoryLabel(c,categories)}</option>)}
+          </select><button type="button" className={styles.textButton} onClick={()=>setCategoryRows(rows=>rows.filter(item=>item.id!==row.id))}>Remove</button>
+        </div>)}
+        <button type="button" className={styles.textButton} onClick={addCategory}>Add category mapping</button>
+        {categoryError&&<p className={styles.notice}>{categoryError}</p>}
+        {mfaField}{error&&<p className={styles.error} role="alert">{error}</p>}
+        {notice&&<p className={styles.notice} role="status">{notice}</p>}
+        <div className={visual.wizardFooter}><button type="submit" className={styles.primaryButton} disabled={busy}>{busy?"Building preview…":"Review import preview"}</button></div>
+      </form>
+    </section>}
+    {preview && !results && <section className={visual.wizardCard} aria-labelledby="preview-title">
+      <h2 id="preview-title">Review before importing</h2><p>Only draft products change after you confirm this frozen preview.</p>
+      <div className={styles.importCounts}>{Object.entries(preview.counts).map(([name,count])=><div key={name}><strong>{count}</strong><span>{name}</span></div>)}</div>
+      {preview.rows.length>0&&<div className={styles.tableWrap}><table className={styles.variantTable}>
+        <caption className={styles.visuallyHidden}>Preview changes and conflicts</caption><thead><tr><th>Row</th><th>Action</th><th>Changed fields</th><th>Conflicts</th></tr></thead>
+        <tbody>{preview.rows.slice(0,100).map(row=><tr key={row.sourceRowNumber}><td>{row.sourceRowNumber}</td><td>{row.action.replaceAll("_"," ")}</td><td>{row.fieldMask.join(", ")||"None"}</td><td>{row.conflicts.map(c=>c.code).join(", ")||"None"}</td></tr>)}</tbody>
+      </table></div>}
+      {preview.rows.length>100&&<p>Showing the first 100 rows. Check the full summary before confirming.</p>}
+      <label className={visual.partialLabel}><input type="checkbox" checked={allowPartial} onChange={e=>setAllowPartial(e.target.checked)}/> Import valid rows even if some rows fail</label>
+      {mfaField}{error&&<p className={styles.error} role="alert">{error}</p>}{notice&&<p className={styles.notice} role="status">{notice}</p>}
+      <div className={visual.wizardFooter}><button type="button" className={styles.secondaryButton} onClick={()=>setPreview(null)} disabled={busy}>Back to mapping</button><button type="button" className={styles.primaryButton} onClick={()=>void confirmImport()} disabled={busy}>{busy?"Confirming…":"Confirm import"}</button></div>
+    </section>}
+    {results && <section className={visual.wizardCard} aria-labelledby="results-title">
+      <h2 id="results-title">Import results</h2><p>These are persisted backend results. No stock has been added.</p>
+      {confirmation&&<div className={styles.importCounts}><div><strong>{confirmation.appliedRows}</strong><span>Successful</span></div><div><strong>{confirmation.failedRows}</strong><span>Failed</span></div><div><strong>{confirmation.noopRows}</strong><span>Unchanged</span></div></div>}
+      <div className={styles.tableWrap}><table className={styles.variantTable}><thead><tr><th>Row</th><th>Status</th><th>Error</th></tr></thead>
+        <tbody>{results.items.map(row=><tr key={row.rowNumber}><td>{row.rowNumber}</td><td>{row.status.replaceAll("_"," ")}</td><td>{row.errorCodes.join(", ")||"None"}</td></tr>)}</tbody>
+      </table></div>
+      {mfaField}{error&&<p className={styles.error} role="alert">{error}</p>}
+      <div className={visual.wizardFooter}><button type="button" onClick={()=>void refreshResults()} disabled={busy} className={styles.secondaryButton}>Refresh results</button><button type="button" onClick={()=>void retryFailed()} disabled={busy||!results.items.some(row=>row.status==="FAILED")} className={styles.primaryButton}>Retry failed rows</button></div>
+    </section>}
   </main>;
 }

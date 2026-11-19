@@ -12,10 +12,14 @@ type Movement = { id: string; variantId: string; locationId: string; deltaPhysic
 type Reconciliation = { id: string; variantId: string; locationId: string; version: number; status: string; reasonCode?: string };
 
 function errorMessage(error: unknown) {
-  if (error instanceof W2ApiError && error.status === 404 && /Cannot GET|inventory\/balances|W2_REQUEST_FAILED/i.test(error.message)) {
-    return "The inventory service exists but is not activated in this environment. Local development requires RENIVET_INVENTORY_API_ENABLED=true and the W2 ledger migration. Do not enable the production gate before approval.";
+  if (error instanceof W2ApiError) {
+    if (error.status === 404) return "The inventory ledger API is not active in this environment. In disposable local development, the backend requires RENIVET_INVENTORY_API_ENABLED=true after the reviewed stock migrations. It remains gated in shared environments until the security and inventory acceptance checks are approved.";
+    if (error.status === 403) return "This account does not have permission to view inventory for the selected brand.";
+    if (error.status === 401) return "Your session has expired. Sign in again and reopen the brand workspace.";
+    if (error.status >= 500) return "The inventory ledger is temporarily unavailable. No stock has been changed.";
+    return error.message;
   }
-  return error instanceof W2ApiError ? error.message : "Inventory could not be loaded. Try again shortly.";
+  return "Inventory could not be loaded. Try again shortly.";
 }
 
 export function InventoryAvailability({ brandId }: { brandId: string }) {

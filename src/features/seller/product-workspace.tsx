@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { AuthApiError, getCurrentSession } from "@/features/identity/auth-api";
 import { categoryDraftVersion, categoryLabel, createIdempotencyKey, selectableCategories, type Category, type CategoryAttribute, type Paged, type ProductPage, type ProductSummary, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import styles from "./product-workspace.module.css";
+
 import { filteredLoadedProducts, loadedTabCount, productStatusTabs, type ProductTab } from "./product-list-filters";
 
 type CreateDraftReceipt = { productId: string; publicationState: "DRAFT"; categorySchemaVersion: number };
@@ -20,7 +21,7 @@ function ProductState({ state }: { state: ProductSummary["publicationState"] }) 
   return <span className={`${styles.state} ${state === "DRAFT" || state === "INCOMPLETE" ? styles.stateDraft : state === "PUBLISHED" ? styles.statePublished : styles.stateReview}`}>{state === "REJECTED" ? "Changes requested" : state === "PUBLISHED" ? "Live" : state.replaceAll("_", " ").toLocaleLowerCase()}</span>;
 }
 
-export function ProductWorkspace({ brandId }: { brandId: string }) {
+export function ProductWorkspace({ brandId, mode = "list" }: { brandId: string; mode?: "list" | "new" }) {
   const router = useRouter();
   const [products, setProducts] = useState<ProductSummary[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -32,7 +33,7 @@ export function ProductWorkspace({ brandId }: { brandId: string }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
-  const [showForm, setShowForm] = useState(false);
+  const showForm = mode === "new";
   const [searchText, setSearchText] = useState("");
   const [activeStatus, setActiveStatus] = useState<ProductTab>("all");
   const [title, setTitle] = useState("");
@@ -148,11 +149,13 @@ export function ProductWorkspace({ brandId }: { brandId: string }) {
   return (
     <main className={styles.page} aria-labelledby="products-title" data-screen-id="SE-08">
       <header className={styles.header}>
-        <div><h1 id="products-title">Products</h1><p className={styles.subtitle}>Everything in your catalogue, from drafts to live listings.</p></div>
-        <div className={styles.headerActions}><Link className={styles.secondaryButton} href={`/brands/${encodeURIComponent(brandId)}/imports`}>Import products</Link><button className={styles.primaryButton} type="button" onClick={() => { setShowForm((visible) => !visible); setFormError(""); setFormNotice(""); }}>
-          {showForm ? "Close draft form" : "Add a product"}
-        </button></div>
+        <div><h1 id="products-title">{mode === "new" ? "Add a product" : "Products"}</h1><p className={styles.subtitle}>{mode === "new" ? "Create a new draft. You can add details, images, sizes and prices in the editor." : "Everything in your catalogue, from drafts to live listings."}</p></div>
+        <div className={styles.headerActions}>{mode === "new" ? <Link className={styles.secondaryButton} href={"/brands/"+encodeURIComponent(brandId)+"/products"}>Back to products</Link> : <>
+          <Link className={styles.secondaryButton} href={"/brands/"+encodeURIComponent(brandId)+"/imports"}>Import products</Link>
+          <Link className={styles.primaryButton} href={"/brands/"+encodeURIComponent(brandId)+"/products/new"}>Add a product</Link>
+        </>}</div>
       </header>
+
 
 
       {showForm && <section className={styles.formPanel} aria-labelledby="draft-title">
@@ -185,7 +188,7 @@ export function ProductWorkspace({ brandId }: { brandId: string }) {
         </form>
       </section>}
 
-      <section className={styles.catalogueControls} aria-label="Find and filter products">
+      {mode === "list" && <section className={styles.catalogueControls} aria-label="Find and filter products">
         <label className={styles.visuallyHidden} htmlFor="product-search">Search by product name or style code</label>
         <input id="product-search" type="search" className={styles.productSearch} placeholder="Search by product name" value={searchText} onChange={(event) => setSearchText(event.currentTarget.value)} />
         <div className={styles.statusTabs} role="group" aria-label="Filter by product status">
@@ -194,18 +197,19 @@ export function ProductWorkspace({ brandId }: { brandId: string }) {
           </button>)}
         </div>
         <p className={styles.filterDisclosure}>Search and status filters apply to the {products.length} loaded product{products.length === 1 ? "" : "s"}. Load more to see additional records.</p>
-      </section>
-      <section className={styles.listSection} aria-label="Catalogue product rows">
+      </section>}
+      {mode === "list" && <section className={styles.listSection} aria-labelledby="draft-list-title">
+        <h2 id="draft-list-title" className={styles.visuallyHidden}>Products by publication state</h2>
         {loading && <p className={styles.stateMessage} role="status">Loading your brand catalogue…</p>}
         {!loading && loadError && <div className={styles.errorPanel} role="alert"><strong>Catalogue unavailable</strong><p>{loadError}</p><button className={styles.secondaryButton} type="button" onClick={() => setReloadKey((key) => key + 1)}>Try again</button></div>}
-        {!loading && !loadError && products.length === 0 && <div className={styles.emptyState}><span className={styles.emptyMark} aria-hidden="true">✳</span><h3>No products yet</h3><p>Your brand catalogue is empty. Start with a draft; you can add the details in stages.</p><button type="button" className={styles.secondaryButton} onClick={() => setShowForm(true)}>Create the first draft</button></div>}
+        {!loading && !loadError && products.length === 0 && <div className={styles.emptyState}><span className={styles.emptyMark} aria-hidden="true">✳</span><h3>No products yet</h3><p>Your brand catalogue is empty. Start with a draft; you can add the details in stages.</p><Link className={styles.secondaryButton} href={"/brands/"+encodeURIComponent(brandId)+"/products/new"}>Add your first product</Link></div>}
         {!loading && !loadError && products.length > 0 && <>
           <div className={styles.tableWrap}><div className={styles.tableHead} aria-hidden="true"><span>Product</span><span>Status</span><span>Version</span><span>Updated</span><span>Action</span></div>
             <ul className={styles.productList}>{filtered.map((product) => <li key={product.id}>
               <Link href={`/brands/${encodeURIComponent(brandId)}/products/${encodeURIComponent(product.id)}`} className={styles.productRow}>
                 <span className={styles.productCopy}><strong>{product.title}</strong><small>{product.categoryId ? categoryNames.get(product.categoryId) ?? `Style ${product.styleCode}` : `Style ${product.styleCode}`}</small></span>
                 <ProductState state={product.publicationState} />
-                <span className={styles.productVersion}>{product.publicationState === "PUBLISHED" ? "Live" : "v"}{product.publicationState === "PUBLISHED" ? `: v${product.contentVersion}` : product.contentVersion}</span>
+                <span className={styles.productVersion}>v{product.contentVersion}</span>
                 <span className={styles.productUpdated}>{product.updatedAt && !Number.isNaN(Date.parse(product.updatedAt)) ? new Date(product.updatedAt).toLocaleDateString("en-IN", {day:"2-digit",month:"short",year:"numeric"}) : "Not available"}</span>
                 <span className={styles.productOpen}>Open</span>
               </Link>
@@ -214,7 +218,7 @@ export function ProductWorkspace({ brandId }: { brandId: string }) {
           </div>
           <div className={styles.pagination}><span>Showing {products.length} of {totalCount}</span>{productCursor && <button className={styles.textButton} type="button" onClick={loadMoreProducts} disabled={loadingMoreProducts}>{loadingMoreProducts ? "Loading products…" : "Load more products"}</button>}</div>
         </>}
-      </section>
+      </section>}
     </main>
   );
 }

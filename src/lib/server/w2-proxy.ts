@@ -14,7 +14,10 @@ export type W2Method = "GET" | "POST" | "PATCH" | "DELETE";
 /** Exact allowlist for the registered catalog APIs used by the first seller slice. */
 export function resolveW2BackendPath(segments: string[], method: string): string | null {
   if (segments.some((segment) => !segment || segment === "." || segment === ".." || segment.includes("/") || segment.includes("\\"))) return null;
-  if (segments[0] === "admin" && segments[1] === "reviews" && ["taxonomy", "quality", "pricing", "claims", "publishing"].includes(segments[2] ?? "")) {
+  if (method === "GET" && segments.length === 2 && segments[0] === "admin" && segments[1] === "access-audit") {
+    return "/api/v1/admin/access-audit";
+  }
+    if (segments[0] === "admin" && segments[1] === "reviews" && ["taxonomy", "quality", "pricing", "claims", "publishing"].includes(segments[2] ?? "")) {
     if (method === "GET" && segments.length === 3) return `/api/v1/admin/reviews/${segments[2]}`;
     if (method === "GET" && segments.length === 4 && uuid.test(segments[3]!)) return `/api/v1/admin/reviews/${segments[2]}/${segments[3]}`;
     return null;
@@ -59,6 +62,12 @@ export function resolveW2BackendPath(segments: string[], method: string): string
   if (root !== "brands" || !brandId || !uuid.test(brandId)) return null;
   if (resource === "access" && segments.length === 3 && method === "GET") return `/api/v1/brands/${brandId}/access`;
   if (resource === "access" && resourceId === "team" && segments.length === 4 && method === "GET") return `/api/v1/brands/${brandId}/access/team`;
+  if (resource === "access" && resourceId === "team-v2" && segments.length === 4 && method === "GET") return `/api/v1/brands/${brandId}/access/team-v2`;
+  if (resource === "access" && resourceId === "invitations" && segments.length === 4 && method === "POST") return `/api/v1/brands/${brandId}/access/invitations`;
+  if (resource === "access" && resourceId === "invitations" && segments.length === 5 && segments[4] === "accept" && method === "POST") return `/api/v1/brands/${brandId}/access/invitations/accept`;
+  if (resource === "access" && resourceId === "invitations" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "cancel" && method === "POST") return `/api/v1/brands/${brandId}/access/invitations/${segments[4]}/cancel`;
+  if (resource === "access" && resourceId === "team" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "revoke" && method === "POST") return `/api/v1/brands/${brandId}/access/team/${segments[4]}/revoke`;
+
   if (resource === "inventory" && resourceId && segments.length === 4 && method === "GET" && ["balances", "observations", "adjustments", "movements", "reconciliations"].includes(resourceId)) return `/api/v1/brands/${brandId}/inventory/${resourceId}`;
   if (resource === "inventory" && resourceId && segments.length === 4 && method === "POST" && ["locations", "balances", "opening-receipts", "observations", "adjustments", "movements", "cycle-counts", "transfers", "returns"].includes(resourceId)) return `/api/v1/brands/${brandId}/inventory/${resourceId}`;
   if (resource === "inventory" && resourceId === "observations" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "propose-adjustment" && method === "POST") return `/api/v1/brands/${brandId}/inventory/observations/${segments[4]}/propose-adjustment`;
@@ -104,6 +113,7 @@ export function resolveW2BackendPath(segments: string[], method: string): string
   if (resource === "variants" && resourceId && uuid.test(resourceId) && segments[4] === "prices" && segments.length === 5 && (method === "GET" || method === "PATCH")) {
     return `/api/v1/brands/${brandId}/variants/${resourceId}/prices`;
   }
+  if (resource === "product-imports" && segments.length === 3 && method === "GET") return `/api/v1/brands/${brandId}/product-imports`;
   if (resource === "product-imports" && segments.length === 3 && method === "POST") return `/api/v1/brands/${brandId}/product-imports`;
   if (resource === "product-imports" && resourceId === "uploads" && segments.length === 4 && method === "POST") return `/api/v1/brands/${brandId}/product-imports/uploads`;
   if (resource === "product-imports" && resourceId && uuid.test(resourceId) && segments.length === 5) {
