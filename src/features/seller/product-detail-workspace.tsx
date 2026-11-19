@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { AuthApiError, getCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
+import { AuthApiError, getCurrentSession } from "@/features/identity/auth-api";
 import type { components, operations } from "@/generated/renivet-api";
 import { canonicalVariantOptions, createIdempotencyKey, createSubmissionRequestDigest, hasVariantCombination, type CategoryAttribute, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import { ProductMediaWorkspace } from "@/features/seller/product-media-workspace";
+import { ProductVariantMatrix } from "@/features/seller/product-variant-matrix";
 import styles from "./product-workspace.module.css";
 import prototypeStyles from "./product-editor-prototype.module.css";
 
@@ -26,6 +27,8 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [schema, setSchema] = useState<SchemaVersion | null>(null);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [activeStep, setActiveStep] = useState(0);
   const [attributes, setAttributes] = useState<Record<string, AttributeValue>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -46,7 +49,6 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
   const [validTo, setValidTo] = useState("");
   const [ruleVersion, setRuleVersion] = useState("");
   const [priceReason, setPriceReason] = useState("");
-  const [priceMfaCode, setPriceMfaCode] = useState("");
   const [priceError, setPriceError] = useState("");
   const [priceNotice, setPriceNotice] = useState("");
   const [priceSaving, setPriceSaving] = useState(false);
@@ -71,6 +73,7 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     w2Request<ProductDetail>(["brands", brandId, "products", productId], { signal: controller.signal }).then(async (value) => {
       setProduct(value);
       setTitle(value.title);
+      setDescription((value as ProductDetail & { description?: string }).description ?? "");
       setAttributes(Object.fromEntries(Object.entries(value.attributes).map(([key, entry]) => [key, normalizeAttributeValue(entry)])));
       const currentSchema = await w2Request<SchemaVersion>(["brands", brandId, "categories", value.categoryId, "schema-versions", String(value.categorySchemaVersion)], { signal: controller.signal });
       if (!controller.signal.aborted) setSchema(currentSchema);
@@ -86,6 +89,19 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
   const productFields = useMemo(() => schema?.attributes.filter((attribute) => attribute.scope === "PRODUCT") ?? [], [schema]);
   const variantFields = useMemo(() => schema?.attributes.filter((attribute) => attribute.scope === "VARIANT") ?? [], [schema]);
   const editable = product?.publicationState === "DRAFT" || product?.publicationState === "INCOMPLETE";
+  const detailsDirty = Boolean(product) && (title.trim() !== product?.title ||
+    description !== ((product as ProductDetail & { description?: string })?.description ?? "") ||
+    JSON.stringify(attributes) !== JSON.stringify(Object.fromEntries(Object.entries(product?.attributes ?? {}).map(([key, value]) => [key, normalizeAttributeValue(value)]))));
+  function goToStep(step: number) {
+    if (step === activeStep) return;
+    if (activeStep === 0 && detailsDirty && editable) {
+      setSaveError("Save your details before leaving this step, so nothing is lost.");
+      return;
+    }
+    setActiveStep(Math.max(0, Math.min(5, step)));
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   const readinessChecks = useMemo(() => {
     if (!product) return [];
     const requiredAttributesComplete = productFields.filter((field) => field.required).every((field) => {
@@ -109,8 +125,9 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     event.preventDefault();
     if (!product || !editable) return;
     setSaveError(""); setSaveNotice("");
-    const body: { title?: string; attributes?: Record<string, AttributeValue> } = {};
+    const body: { title?: string; description?: string; attributes?: Record<string, AttributeValue> } = {};
     if (title.trim() !== product.title) body.title = title.trim();
+    if (description !== ((product as ProductDetail & { description?: string }).description ?? "")) body.description = description;
     if (JSON.stringify(attributes) !== JSON.stringify(Object.fromEntries(Object.entries(product.attributes).map(([key, entry]) => [key, normalizeAttributeValue(entry)])))) body.attributes = attributes;
     if (Object.keys(body).length === 0) { setSaveNotice("There are no changes to save."); return; }
     const hash = JSON.stringify(body);
@@ -124,7 +141,7 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
         ifMatch: `"${product.rowVersion}"`,
       });
       idempotency.current = null;
-      setProduct(saved); setTitle(saved.title); setSaveNotice("Draft saved. You can continue later.");
+      setProduct(saved); setTitle(saved.title); setDescription((saved as ProductDetail & { description?: string }).description ?? description); setSaveNotice("Details saved to the draft.");
     } catch (error) {
       if (error instanceof W2ApiError && error.status === 409) {
         setSaveError("This draft changed in another tab. Reload the latest version before saving again.");
@@ -248,11 +265,9 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     const from = new Date(validFrom);
     const to = validTo ? new Date(validTo) : null;
     if (Number.isNaN(from.valueOf()) || (to && Number.isNaN(to.valueOf())) || (to && to <= from)) { setPriceError("The price validity window is invalid."); return; }
-    if (!/^(?:\d{6}|[A-Z2-7]{26})$/.test(priceMfaCode.trim().toUpperCase())) { setPriceError("Enter a six-digit authenticator code or unused recovery code."); return; }
     setPriceSaving(true);
     try {
       const session = await getCurrentSession();
-      const elevated = await stepUpWithMfa(priceMfaCode.trim().toUpperCase(), session.csrfToken);
       const receipt = await w2Request<PriceProposalReceipt>(["brands", brandId, "variants", priceVariantId, "prices"], {
         method: "PATCH",
         body: {
@@ -264,12 +279,12 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
           ruleVersion: rule,
           ...(priceReason.trim() ? { reasonCode: priceReason.trim() } : {}),
         },
-        csrfToken: elevated.csrfToken,
+        csrfToken: session.csrfToken,
         idempotencyKey: createIdempotencyKey(),
         ifMatch: `"${product.rowVersion}"`,
       });
       setPriceNotice(`Price proposal ${receipt.id} is pending independent review.`);
-      setPriceVariantId(null); setPriceMfaCode(""); setSellingPriceMinor(""); setMrpMinor(""); setValidFrom(""); setValidTo(""); setRuleVersion(""); setPriceReason("");
+      setPriceVariantId(null); setSellingPriceMinor(""); setMrpMinor(""); setValidFrom(""); setValidTo(""); setRuleVersion(""); setPriceReason("");
       setReloadKey((key) => key + 1);
     } catch (error) {
       setPriceError(error instanceof W2ApiError && (error.status === 409 || error.status === 412)
@@ -314,24 +329,29 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     </section>
     <nav className={prototypeStyles.stepper} aria-label="Product editor steps">
       {[
-        { href:"#details-heading", label:"Details", ready:readinessChecks.slice(0,3).every(check => check.ready) },
-        { href:"#variants-heading", label:"Sizes & colours", ready:readinessChecks[3]?.ready ?? false },
-        { href:"#media-heading", label:"Photos", ready:readinessChecks[5]?.ready ?? false },
-        { href:"#prices-heading", label:"Prices", ready:readinessChecks[4]?.ready ?? false },
-        { href:"#claims-heading", label:"Claims & evidence", ready:claims.some(claim => claim.claimState === "VERIFIED") },
-        { href:editable ? "#submission-heading" : "#claims-heading", label:"Review & submit", ready:false },
-      ].map((step, index) => <a href={step.href} key={step.label} className={prototypeStyles.step}>
-        <span className={step.ready ? prototypeStyles.done : prototypeStyles.number} aria-hidden="true">{step.ready ? "✓" : index+1}</span>
+        { label: "Details", done: readinessChecks.slice(0,3).every((check) => check.ready) },
+        { label: "Sizes & colours", done: readinessChecks[3]?.ready ?? false },
+        { label: "Photos", done: readinessChecks[5]?.ready ?? false },
+        { label: "Prices", done: readinessChecks[4]?.ready ?? false },
+        { label: "Claims & evidence", done: claims.length === 0 || claims.every((claim) => claim.claimState === "VERIFIED") },
+        { label: "Review & submit", done: !editable },
+      ].map((step, index) => <button key={step.label} type="button"
+        aria-current={activeStep === index ? "step" : undefined}
+        onClick={() => goToStep(index)}
+        className={prototypeStyles.stepButton + (activeStep === index ? " " + prototypeStyles.stepSelected : "")}>
+        <span className={prototypeStyles.stepNumber + (step.done ? " " + prototypeStyles.stepDone : "")} aria-hidden="true">{step.done ? "✓" : index + 1}</span>
         <span>{step.label}</span>
-      </a>)}
+      </button>)}
     </nav>
 
+    <div hidden={activeStep !== 0}>
     <section className={styles.formPanel} aria-labelledby="details-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>PRODUCT DETAILS</p><h2 id="details-heading">Continue where you left off</h2><p>Update the parent product details. Variants, images, prices and claims stay in their own workflow steps.</p></div><span className={styles.draftBadge}>SCHEMA V{product.categorySchemaVersion}</span></div>
       {!editable && <div className={styles.readOnlyNotice} role="status">This product is {product.publicationState.toLowerCase().replaceAll("_", " ")} and is read-only in this draft editor. No lifecycle action is available here.</div>}
       <form onSubmit={saveDraft}>
         <div className={styles.formGrid}>
-          <div className={styles.fieldWide}><label htmlFor="detail-title-input">Product name</label><input id="detail-title-input" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} disabled={!editable} /><small>Row version {product.rowVersion} protects edits from overwriting newer work.</small></div>
+          <div className={styles.fieldWide}><label htmlFor="detail-title-input">Product name</label><input id="detail-title-input" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} disabled={!editable} /><small>Give your product a clear, searchable name.</small></div>
+          <div className={styles.fieldWide}><label htmlFor="detail-description-input">Description (optional)</label><textarea id="detail-description-input" rows={4} maxLength={4000} value={description} onChange={(event) => setDescription(event.target.value)} disabled={!editable} placeholder="Describe the look, feel, material and making of your product." /><small>Describe the product accurately. Keep sustainability claims in their own review step.</small></div>
           {productFields.map((field) => <AttributeEditor key={`${field.scope}-${field.code}`} field={field} value={attributes[field.code]} disabled={!editable} onChange={(value) => setAttributes((current) => ({ ...current, [field.code]: value }))} />)}
         </div>
         {schema && <div className={styles.schemaPanel}><div><p className={styles.kicker}>PINNED CATEGORY SCHEMA</p><h3>{schema.state === "PUBLISHED" ? "Published schema" : "Draft schema"} · version {schema.version}</h3><p>Attributes are shown from the exact version pinned to this product draft.</p></div><p className={styles.schemaLoading}>{productFields.length} product field{productFields.length === 1 ? "" : "s"} · {schema.validatorVersion}</p></div>}
@@ -340,8 +360,12 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
         <div className={styles.formActions}><p>Saving updates this draft only.</p>{editable && <button type="submit" className={styles.primaryButton} disabled={saving}>{saving ? "Saving…" : "Save changes"}</button>}</div>
       </form>
     </section>
-    <section className={styles.formPanel} aria-labelledby="variants-heading">
-      <div className={styles.formHeading}><div><p className={styles.kicker}>SKU MATRIX</p><h2 id="variants-heading">Sizes and colors</h2><p>Each SKU is unique to this product. The backend checks the pinned category schema and catches concurrent conflicts.</p></div><span className={styles.draftBadge}>{product.variants.length} SKU{product.variants.length === 1 ? "" : "s"}</span></div>
+    </div>
+    <div hidden={activeStep !== 1}>
+      <section className={styles.formPanel} aria-labelledby="variants-heading">
+        <ProductVariantMatrix brandId={brandId} productId={productId} product={product} fields={variantFields} editable={editable} onChanged={() => setReloadKey((key) => key + 1)} />
+        <details className={prototypeStyles.advancedVariant}>
+          <summary>Advanced SKU options — edit, deactivate, or add an individual variant</summary>
       {product.variants.length > 0 && <div className={styles.tableWrap}><table className={styles.variantTable}><caption className={styles.visuallyHidden}>Product SKU variants</caption><thead><tr><th scope="col">SKU</th><th scope="col">Options</th><th scope="col">State</th><th scope="col">Image scan</th>{editable && <th scope="col">Draft actions</th>}</tr></thead><tbody>{product.variants.map((variant) => <tr key={variant.id}><th scope="row">{variant.sku}</th><td>{Object.entries(variant.options).map(([key, value]) => `${key}: ${value}`).join(" · ") || "No options"}</td><td>{variant.variantState.replaceAll("_", " ")}</td><td>{variant.mediaLinks?.map((media) => media.scanState).join(", ") || "No variant image"}</td>{editable && <td>{variant.variantState === "INACTIVE" ? <span>Retired</span> : <div className={styles.mediaActions}><button type="button" className={styles.textButton} disabled={variantSaving} onClick={() => editingVariantId === variant.id ? setEditingVariantId(null) : startVariantEdit(variant.id, variant.options)}>{editingVariantId === variant.id ? "Cancel edit" : "Edit SKU options"}</button>{confirmingDeactivationId === variant.id ? <><button type="button" className={styles.textButton} disabled={variantSaving} onClick={() => void deactivateVariant(variant.id)}>Confirm deactivation</button><button type="button" className={styles.textButton} disabled={variantSaving} onClick={() => setConfirmingDeactivationId(null)}>Keep SKU</button></> : <button type="button" className={styles.textButton} disabled={variantSaving} onClick={() => { setVariantError(""); setConfirmingDeactivationId(variant.id); }}>Deactivate SKU</button>}</div>}</td>}</tr>)}</tbody></table></div>}
       {editingVariantId && editable && <div className={styles.schemaPanel} aria-labelledby="edit-variant-heading"><div><p className={styles.kicker}>EDIT SKU OPTIONS</p><h3 id="edit-variant-heading">Update the variant</h3><p>The SKU itself is permanent. Changes use this SKU’s current version and can be rejected if another SKU or a dependent record conflicts.</p></div><div className={styles.formGrid}>{variantFields.filter((field) => field.type === "enum" || field.type === "text").map((field) => <div className={styles.field} key={field.code}><label htmlFor={`edit-variant-${field.code}`}>{field.code.replaceAll("_", " ")}{field.required && " *"}</label>{field.type === "enum" ? <select id={`edit-variant-${field.code}`} value={editVariantOptions[field.code] ?? ""} onChange={(event) => setEditVariantOptions((current) => ({ ...current, [field.code]: event.target.value }))}><option value="">Choose an option</option>{(field.allowedValues ?? []).map((value) => <option key={value} value={value}>{value}</option>)}</select> : <input id={`edit-variant-${field.code}`} value={editVariantOptions[field.code] ?? ""} onChange={(event) => setEditVariantOptions((current) => ({ ...current, [field.code]: event.target.value }))} maxLength={128} />}</div>)}</div><div className={styles.formActions}><p>Changes are saved only to this draft.</p><button type="button" className={styles.primaryButton} disabled={variantSaving} onClick={() => void saveVariant(editingVariantId)}>{variantSaving ? "Saving SKU…" : "Save SKU changes"}</button></div></div>}
       {variantError && <p className={styles.error} role="alert">{variantError}</p>}
@@ -350,8 +374,14 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
         {variantFields.filter((field) => field.type === "enum" || field.type === "text").map((field) => <div className={styles.field} key={field.code}><label htmlFor={`variant-${field.code}`}>{field.code.replaceAll("_", " ")}{field.required && " *"}</label>{field.type === "enum" ? <select id={`variant-${field.code}`} value={variantOptions[field.code] ?? ""} onChange={(event) => setVariantOptions((current) => ({ ...current, [field.code]: event.target.value }))}><option value="">Choose an option</option>{(field.allowedValues ?? []).map((value) => <option key={value} value={value}>{value}</option>)}</select> : <input id={`variant-${field.code}`} value={variantOptions[field.code] ?? ""} onChange={(event) => setVariantOptions((current) => ({ ...current, [field.code]: event.target.value }))} maxLength={128} />}</div>)}
       </div>{variantFields.some((field) => field.type !== "enum" && field.type !== "text") && <p className={styles.inlineError}>Some pinned variant fields use types the current variant API cannot safely submit. Those fields are left out; the server will reject incomplete variants.</p>}
       <div className={styles.formActions}><p>Combination: {canonicalVariantOptions(variantOptions)}</p><button className={styles.primaryButton} type="submit" disabled={variantSaving || variantFields.length === 0}>{variantSaving ? "Adding SKU…" : "Add SKU"}</button></div></form> : <p className={styles.readOnlyNotice} role="status">Variants are read-only after the draft enters review or publication.</p>}
-    </section>
-    <ProductMediaWorkspace brandId={brandId} productId={productId} product={product} editable={editable} onChanged={() => setReloadKey((key) => key + 1)} />
+
+        </details>
+      </section>
+    </div>
+    <div hidden={activeStep !== 2}>
+      <ProductMediaWorkspace brandId={brandId} productId={productId} product={product} editable={editable} onChanged={() => setReloadKey((key) => key + 1)} />
+    </div>
+    <div hidden={activeStep !== 3}>
     <section className={styles.formPanel} aria-labelledby="prices-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>PRICE HISTORY</p><h2 id="prices-heading">Price proposals</h2><p>Only backend price states are shown. A pending proposal is not an approved selling price.</p></div></div>
       {product.variants.some((variant) => (variant.priceVersions?.length ?? 0) > 0) ? product.variants.map((variant) => {
@@ -373,6 +403,8 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
       </div>}
       {!editable && <p className={styles.inlineError}>New price proposals are disabled after submission; review the persisted price history above.</p>}
     </section>
+    </div>
+    <div hidden={activeStep !== 4}>
     <section className={styles.formPanel} aria-labelledby="claims-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>SUSTAINABILITY EVIDENCE</p><h2 id="claims-heading">Claims and verification</h2><p>Claims remain pending until an independent reviewer checks current evidence and expiry. The brand cannot self-verify.</p></div><span className={styles.draftBadge}>{claims.length} claim{claims.length === 1 ? "" : "s"}</span></div>
       {claimsError && <p className={styles.error} role="alert">{claimsError}</p>}
@@ -384,6 +416,8 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
         <fieldset className={styles.fieldWide}><legend>Supporting images that passed scan and rights checks</legend>{product.mediaLinks.filter((link) => link.scanState === "CLEAN" && link.rightsState === "ATTESTED").map((link) => <label className={styles.checkboxLabel} key={link.mediaAssetId}><input type="checkbox" checked={claimEvidence.includes(link.mediaAssetId)} onChange={(event) => setClaimEvidence((current) => event.target.checked ? [...new Set([...current, link.mediaAssetId])] : current.filter((id) => id !== link.mediaAssetId))} /> Evidence asset {link.mediaAssetId}</label>)}{product.mediaLinks.every((link) => link.scanState !== "CLEAN" || link.rightsState !== "ATTESTED") && <p>No eligible linked evidence is available yet.</p>}</fieldset>
       </div>{claimNotice && <p className={styles.notice} role="status">{claimNotice}</p>}<div className={styles.formActions}><p>Verification is performed by a separate reviewer.</p><button className={styles.primaryButton} type="submit" disabled={claimSaving}>{claimSaving ? "Submitting…" : "Submit claim for review"}</button></div></form> : <p className={styles.readOnlyNotice} role="status">A claim can be proposed only against a published product revision.</p>}
     </section>
+    </div>
+    <div hidden={activeStep !== 5}>
     {editable && <section className={styles.formPanel} aria-labelledby="readiness-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>SUBMISSION READINESS</p><h2 id="readiness-heading">Ready for independent review?</h2><p>These checks mirror the server-side submission gates. A green item is only a client-side indication; the backend remains authoritative.</p></div><span className={styles.draftBadge}>{readinessChecks.filter((check) => check.ready).length}/{readinessChecks.length} ready</span></div>
       <ul className={styles.readinessList}>{readinessChecks.map((check) => <li key={check.label} className={check.ready ? styles.readinessReady : styles.readinessBlocked}><span aria-hidden="true">{check.ready ? "✓" : "!"}</span><span>{check.label}</span><strong>{check.ready ? "Ready" : "Needs attention"}</strong></li>)}</ul>
@@ -395,7 +429,12 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
       {submissionNotice && <p className={styles.notice} role="status">{submissionNotice}</p>}
       <div className={styles.formActions}><p>Requires the brand’s current catalog submission permission.</p><button className={styles.primaryButton} type="button" onClick={() => void submitForReview()} disabled={submitting}>{submitting ? "Submitting revision…" : "Submit for independent review"}</button></div>
     </section>}
-
+    </div>
+    <div className={prototypeStyles.stepNavigation}>
+      <button type="button" disabled={activeStep === 0} onClick={() => goToStep(activeStep - 1)}>Back</button>
+      <p>Step {activeStep + 1} of 6 · This product stays in draft until approved.</p>
+      <button type="button" disabled={activeStep === 5} onClick={() => goToStep(activeStep + 1)}>Next: {["Sizes & colours", "Photos", "Prices", "Claims & evidence", "Review & submit", ""][activeStep]}</button>
+    </div>
   </main>;
 }
 
