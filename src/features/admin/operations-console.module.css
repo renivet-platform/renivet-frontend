@@ -187,3 +187,7 @@
  .reviewCard { grid-template-columns:minmax(0,1fr); }.reviewCard .disabledAction{grid-column:1;grid-row:auto;justify-self:start;}
 }
 @media(prefers-reduced-motion:reduce) { .reviewCard,.detailPanel {transition:none!important;animation:none!important;} }
+
+/* An author can inspect a submitted taxonomy proposal but must never be shown
+   an apparently actionable publish form for their own work. */
+.reviewBlockedHint{border:1px solid #cfe1d1;background:#edf5ef;color:#245741;border-radius:9px;margin-top:15px;padding:14px 16px;font-size:13px;line-height:1.5}

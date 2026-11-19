@@ -33,6 +33,7 @@ export function TaxonomyAdminWorkspace() {
   const [newCode,setNewCode] = useState("");
   const [newParentId,setNewParentId] = useState("");
   const selected = useMemo(() => categories.find(x => x.id === categoryId),[categoryId,categories]);
+  const pendingCategories = useMemo(() => categories.filter(category => category.hasDraft), [categories]);
   const available = useMemo(() => categories.filter(x => x.isLeaf && (x.name + " " + x.code).toLowerCase().includes(search.toLowerCase())),[categories,search]);
   const version = (selected?.currentSchemaVersion ?? selected?.schemaVersion ?? 0) + 1;
 
@@ -116,14 +117,14 @@ export function TaxonomyAdminWorkspace() {
   }
   return <main className={styles.simplePage} data-screen-id="AD-07">
     <header className={styles.simpleHeader}>
-      <div><p className={styles.simpleEyebrow}>CATALOGUE SETTINGS</p><h1>Taxonomy</h1><p>Manage the categories and product details brands use.</p></div>
+      <div><p className={styles.simpleEyebrow}>CATALOGUE SETTINGS</p><h1>Taxonomy</h1><p>Categories and the details brands must give for each.</p></div>
       <div className={styles.headerActions}><button type="button" className={styles.simplePrimary} onClick={()=>{setCreating(true);setError("");}}>+ Create category</button><Link href="/operations/taxonomy" className={styles.reviewLink}>Review requests</Link></div>
     </header>
-    <div className={styles.simpleSteps} aria-label="Category update workflow">
-      <span className={step==="choose"?styles.stepActive:styles.step}>1. Create update</span>
-      <span className={step==="review"?styles.stepActive:styles.step}>2. Review details</span>
-      <span className={styles.step}>3. Another admin approves</span>
-    </div>
+    {!loading && pendingCategories.length > 0 && <section className={styles.pendingBanner} aria-labelledby="pending-taxonomy-title">
+      <div><h2 id="pending-taxonomy-title">Waiting for a second admin</h2><p>{pendingCategories.length === 1 ? "A category update has been submitted and is awaiting independent approval." : `${pendingCategories.length} category updates have been submitted and are awaiting independent approval.`}</p>
+        <div className={styles.pendingNames}>{pendingCategories.slice(0,3).map(category => <button key={category.id} type="button" onClick={() => chooseCategory(category.id)}>{category.name} <span>· Pending</span></button>)}{pendingCategories.length > 3 && <span>+{pendingCategories.length - 3} more</span>}</div>
+      </div><Link href="/operations/taxonomy" className={styles.simplePrimary}>Open review queue</Link>
+    </section>}
     {error && <div className={styles.simpleError} role="alert">{error} <button type="button" onClick={()=>void load()}>Refresh</button></div>}
     {notice && <div className={styles.simpleSuccess} role="status">{notice} <Link href="/operations/taxonomy">View approval queue</Link></div>}
     {creating && <section className={styles.createPanel} aria-labelledby="new-category-title">
@@ -149,7 +150,7 @@ export function TaxonomyAdminWorkspace() {
         <div className={styles.simpleCategoryList}>
           {available.map(category=><button type="button" key={category.id} className={categoryId===category.id?styles.categorySelected:styles.categoryOption} onClick={()=>chooseCategory(category.id)}>
             <strong>{category.name}</strong>
-            <small>{category.active===false||category.isActive===false?"Not active":"Active"} · {category.hasDraft?"Awaiting approval":category.schemaVersion?"Version "+category.schemaVersion:"No published version"}</small>
+            <small>{category.hasDraft?"● Awaiting second admin":category.active===false||category.isActive===false?"● Not active":"● Active"} · {category.schemaVersion?"Published version "+category.schemaVersion:"No published version"}</small>
           </button>)}
           {!available.length && <p>No matching categories.</p>}
         </div>
@@ -157,7 +158,7 @@ export function TaxonomyAdminWorkspace() {
       <section className={styles.simpleCard} aria-labelledby="category-editor-heading">
         <h2 id="category-editor-heading">{selected ? selected.name : "Create a category update"}</h2>
         {!selected ? <p>Choose a category on the left or use Create category to add a new one.</p>
-        : selected.hasDraft ? <div className={styles.simpleSuccess}>An update is already awaiting approval. <Link href="/operations/taxonomy">Review request</Link></div>
+        : selected.hasDraft ? <div className={styles.pendingDetail}><strong>Waiting for a second admin</strong><p>Your category update is saved in the review queue. A different authorized admin must approve it before it becomes a published version. You cannot approve your own submission.</p><Link href="/operations/taxonomy">View pending review</Link></div>
         : step==="choose" ? <>
             <p>Choose which details a brand must provide when listing products here.</p>
             <div className={styles.simpleFieldList}>
