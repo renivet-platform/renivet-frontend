@@ -127,7 +127,7 @@ try {
       ["/brand-approvals", "AD-03", null],
       ["/brand-approvals/11111111-1111-4111-8111-111111111111", "AD-04", null],
       ["/operations/bank", "AD-05", "Bank verification", true],
-      ["/operations/staff", "AD-06", "Staff and access", true],
+      ["/operations/staff", "AD-06", "Staff and access", false],
       ["/taxonomy", "AD-07", null],
       ["/operations/quality", "AD-08A", null],
       ["/operations/quality/22222222-2222-4222-8222-222222222222", "AD-08B", null],

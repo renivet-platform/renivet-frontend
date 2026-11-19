@@ -14,6 +14,14 @@ export type W2Method = "GET" | "POST" | "PATCH" | "DELETE";
 /** Exact allowlist for the registered catalog APIs used by the first seller slice. */
 export function resolveW2BackendPath(segments: string[], method: string): string | null {
   if (segments.some((segment) => !segment || segment === "." || segment === ".." || segment.includes("/") || segment.includes("\\"))) return null;
+  if (segments[0] === "brand-applications") {
+    if (segments.length === 1 && method === "POST") return "/api/v1/brand-applications";
+    if (segments.length === 2 && segments[1] === "mine" && method === "GET") return "/api/v1/brand-applications/mine";
+    return null;
+  }
+  if (method === "GET" && segments.length === 2 && segments[0] === "admin" && segments[1] === "staff") {
+    return "/api/v1/admin/staff";
+  }
   if (method === "GET" && segments.length === 2 && segments[0] === "admin" && segments[1] === "access-audit") {
     return "/api/v1/admin/access-audit";
   }
@@ -21,6 +29,9 @@ export function resolveW2BackendPath(segments: string[], method: string): string
     if (method === "GET" && segments.length === 3) return `/api/v1/admin/reviews/${segments[2]}`;
     if (method === "GET" && segments.length === 4 && uuid.test(segments[3]!)) return `/api/v1/admin/reviews/${segments[2]}/${segments[3]}`;
     return null;
+  }
+  if (segments[0] === "admin" && segments[1] === "brand-application-reviews" && segments.length === 3 && segments[2] === "reviewers" && method === "GET") {
+    return "/api/v1/admin/brand-application-reviews/reviewers";
   }
   if (segments[0] === "admin" && segments[1] === "brand-application-reviews" && segments.length === 2 && method === "GET") {
     return "/api/v1/admin/brand-application-reviews";

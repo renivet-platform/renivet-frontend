@@ -1,0 +1,21 @@
+.page{padding:4px 0 52px;color:#1b2420;max-width:1320px;margin:0 auto}
+.header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.header h1{font-size:30px;letter-spacing:-.03em;margin:0 0 6px}.header p{color:#79817c;margin:0}.kicker{font-size:11px!important;letter-spacing:.1em;font-weight:750;margin-bottom:9px!important}
+.header button{border:1px solid #96a79c;background:#fff;border-radius:8px;padding:10px 16px;min-height:43px;color:#1f5a45;cursor:pointer;font-weight:700}
+.header button:disabled{opacity:.65}
+.filterPanel,.panel,.policy{border:1px solid #e1ddd3;background:#fff;border-radius:12px;margin-bottom:16px}
+.filterPanel{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 21px;flex-wrap:wrap}
+.filterPanel h2{margin:0 0 4px;font-size:17px}.filterPanel p{margin:0;color:#79817c;font-size:13px}
+.filters{display:flex;gap:12px;flex-wrap:wrap}.filters label{display:grid;gap:5px;font-size:12px;font-weight:650}
+.filters input,.filters select{min-height:43px;min-width:180px;border:1px solid #99a69c;border-radius:8px;background:#fff;padding:10px}
+.warning{padding:18px;border-radius:10px;border:1px solid #e6d8ba;background:#fffaf0;margin:0 0 16px}
+.warning p{margin:5px 0 0;color:#6b5b42;font-size:13px}
+.heading{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid #e1ddd3}
+.heading h2{font-size:18px;margin:0}.heading span{font-size:12px;color:#79817c}
+.tableWrap{overflow-x:auto}.tableWrap table{width:100%;border-collapse:collapse;text-align:left}
+.tableWrap th,.tableWrap td{padding:15px 20px;border-bottom:1px solid #eee;vertical-align:middle;font-size:13px}
+.tableWrap th{background:#faf9f6;color:#69766e;font-size:12px}.tableWrap td strong,.tableWrap td small{display:block}
+.tableWrap td small{color:#79817c;margin-top:5px}.active{color:#1f6747;background:#e5f3e8;border-radius:999px;padding:6px 10px;font-weight:700}
+.empty{padding:24px;text-align:center;color:#79817c;font-size:13px}
+.policy{padding:18px 20px}.policy h2{font-size:18px;margin:0 0 9px}.policy p{margin:0;color:#79817c;font-size:13px;line-height:1.5}
+@media(max-width:700px){.header h1{font-size:25px}.filterPanel{padding:16px}.filters,.filters label{width:100%}.filters input,.filters select{width:100%}.tableWrap table,.tableWrap tbody,.tableWrap tr,.tableWrap td{display:block;width:100%}.tableWrap thead{position:absolute;clip:rect(0 0 0 0);overflow:hidden;width:1px;height:1px}.tableWrap tr{padding:10px 16px;border-bottom:1px solid #e1ddd3}.tableWrap td{padding:6px 0;border:0}.tableWrap td:before{content:attr(data-label);display:block;color:#79817c;font-size:11px;margin-bottom:3px}}
