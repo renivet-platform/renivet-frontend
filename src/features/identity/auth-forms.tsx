@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState, type RefObject } from "react";
 import {
   AuthApiError,
-  beginMfaEnrollment,
-  confirmMfaEnrollment,
   createPasswordSession,
   getCurrentSession,
   logoutCurrentSession,
@@ -55,57 +53,6 @@ function OtpInput({ id, value, onChange, inputRef, describedBy, invalid = false 
     <input ref={inputRef} id={id} className={styles.otpNative} name="one-time-code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={value} aria-invalid={invalid || undefined} aria-describedby={describedBy} onChange={(event) => onChange(normalizeOtpEntry(event.currentTarget.value))} />
     <div className={styles.otpCells} aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <span className={`${styles.otpCell} ${index === activeIndex ? styles.otpCellActive : ""}`} key={index}>{value[index] ?? ""}</span>)}</div>
   </div>;
-}
-
-function MfaEnrollmentPanel({ csrfToken, onCsrfToken }: { csrfToken: string; onCsrfToken: (value: string) => void }) {
-  const [state, setState] = useState<"idle" | "pending" | "enabled">("idle");
-  const [uri, setUri] = useState("");
-  const [code, setCode] = useState("");
-  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function start() {
-    setBusy(true); setError("");
-    try {
-      const response = await beginMfaEnrollment(csrfToken);
-      setUri(response.provisioningUri); setState("pending");
-    } catch (cause) { setError(messageFor(cause)); }
-    finally { setBusy(false); }
-  }
-
-  async function verify(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true); setError("");
-    try {
-      const response = await confirmMfaEnrollment(code, csrfToken);
-      setRecoveryCodes(response.recoveryCodes); onCsrfToken(response.csrfToken); setState("enabled");
-    } catch (cause) { setError(messageFor(cause)); }
-    finally { setBusy(false); }
-  }
-
-  return <section className={styles.subForm} aria-labelledby="mfa-enrollment-heading">
-    <hr className={styles.separator} />
-    <h2 className={styles.sectionHeading} id="mfa-enrollment-heading">Authenticator app MFA</h2>
-      <p className={styles.hint}>Optional: add an authenticator app for another layer of account protection. Your secret is shown only once.</p>
-    {error && <FormMessage error={error} status="" />}
-    {state === "idle" && <button className={styles.secondaryButton} type="button" onClick={() => void start()} disabled={busy}>
-      {busy ? "Starting enrollment…" : "Set up MFA"}
-    </button>}
-    {state === "pending" && <form className={styles.form} onSubmit={verify}>
-      <label className={styles.label} htmlFor="mfa-provisioning-uri">Authenticator setup URI</label>
-      <textarea id="mfa-provisioning-uri" className={styles.textarea} value={uri} readOnly rows={4} />
-      <p className={styles.hint}>Copy this URI into your authenticator app, then enter the current six-digit code.</p>
-      <label className={styles.label} htmlFor="mfa-enrollment-code">Authenticator code</label>
-      <OtpInput id="mfa-enrollment-code" value={code} onChange={setCode} />
-      <button className={styles.primaryButton} type="submit" disabled={busy || code.length !== 6}>{busy ? "Confirming…" : "Confirm MFA"}</button>
-    </form>}
-    {state === "enabled" && <div className={styles.successBox} role="status">
-      <strong>MFA enabled.</strong>
-      <p>Save these recovery codes somewhere secure. They are shown only once.</p>
-      <pre>{recoveryCodes.join("\n")}</pre>
-    </div>}
-  </section>;
 }
 
 function PasswordField({ id, label, autoComplete, value, onChange }: {
@@ -495,7 +442,6 @@ export function AccountSession() {
     {state === "loading" && <p className={styles.loading} role="status">Checking your session…</p>}
     {state === "ready" && account && <div className={styles.form}><p className={styles.successBox} role="status">You are signed in.</p>
       {error && <FormMessage error={error} status="" />}
-      <MfaEnrollmentPanel csrfToken={csrf} onCsrfToken={setCsrf} />
       {account.signInMethod === "phone"
         ? <section className={styles.subForm} aria-labelledby="phone-sign-in-heading">
           <hr className={styles.separator} />
