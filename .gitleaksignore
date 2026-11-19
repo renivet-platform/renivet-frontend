@@ -1,0 +1,3 @@
+# REN2-117 verified false positive: documentation mentions product pricing; no credential or API key exists.
+# Scope: exactly one historical Gitleaks generic-api-key finding from the approved SE-08 design notes.
+4e6b3bd74aa307ea9161a1449576a5a28dbfc6a9:docs/ren2-117-se08-exact-list.md:generic-api-key:9
