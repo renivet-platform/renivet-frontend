@@ -36,6 +36,7 @@ export function resolveW2BackendPath(segments: string[], method: string): string
   }
   if (segments[0] === "admin" && segments[1] === "catalog" && segments[2] === "categories") {
     if (segments.length === 3 && method === "GET") return "/api/v1/admin/catalog/categories";
+    if (segments.length === 3 && method === "POST") return "/api/v1/admin/catalog/categories";
     if (segments.length === 4 && segments[3] === "attributes" && method === "GET") return "/api/v1/admin/catalog/categories/attributes";
     return null;
   }
