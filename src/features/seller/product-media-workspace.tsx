@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AuthApiError, getCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
+import { AuthApiError, getCurrentSession } from "@/features/identity/auth-api";
 import type { operations } from "@/generated/renivet-api";
 import { createIdempotencyKey, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import styles from "./product-workspace.module.css";
@@ -29,7 +29,6 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
   brandId: string; productId: string; product: ProductDetail; editable: boolean; onChanged: () => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
-  const [mfaCode, setMfaCode] = useState("");
   const [rightsAttested, setRightsAttested] = useState(false);
   const [altText, setAltText] = useState("");
   const [displayRole, setDisplayRole] = useState("primary");
@@ -65,27 +64,24 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
     }
     if (!rightsAttested) { setError("Confirm that your brand has the rights required to use this image."); return; }
     if (!altText.trim()) { setError("Add concise alt text so this image is accessible."); return; }
-    if (!/^(?:\d{6}|[A-Z2-7]{26})$/.test(mfaCode.trim().toUpperCase())) { setError("Enter a six-digit authenticator code or an unused recovery code."); return; }
     setBusy(true); setUploadProgress(0);
     try {
       const digest = await sha256(file);
       const session = await getCurrentSession();
-      const elevated = await stepUpWithMfa(mfaCode.trim().toUpperCase(), session.csrfToken);
       const intent = await w2Request<UploadIntent>(["brands", brandId, "media"], {
         method: "POST", body: { fileName: file.name, mimeType: file.type, byteLength: file.size, rightsAttested: true, sha256: digest },
-        csrfToken: elevated.csrfToken, idempotencyKey: createIdempotencyKey(),
+        csrfToken: session.csrfToken, idempotencyKey: createIdempotencyKey(),
       });
       const uploadUrl = new URL(intent.uploadUrl);
       if (uploadUrl.protocol !== "https:" || intent.uploadMethod !== "PUT") throw new Error("Upload intent is invalid.");
       await putPrivateUpload(uploadUrl, intent.headers, file);
       setUploadProgress(100);
       const receipt = await w2Request<CompleteReceipt>(["brands", brandId, "media", intent.mediaAssetId, "complete"], {
-        method: "POST", body: { sha256: digest, sizeBytes: file.size }, csrfToken: elevated.csrfToken, idempotencyKey: createIdempotencyKey(),
+        method: "POST", body: { sha256: digest, sizeBytes: file.size }, csrfToken: session.csrfToken, idempotencyKey: createIdempotencyKey(),
       });
       setMediaId(intent.mediaAssetId);
       setNotice(`Upload received. Scan status: ${receipt.status}. The image cannot be attached until scanning and rights checks pass.`);
       setStatus(await w2Request<MediaStatus>(["brands", brandId, "media", intent.mediaAssetId]));
-      setMfaCode("");
     } catch (caught) { setError(safeError(caught)); }
     finally { setBusy(false); setUploadProgress(null); }
   }
@@ -129,7 +125,6 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
       <div className={styles.field}><label htmlFor="media-role">Display role</label><input id="media-role" value={displayRole} onChange={(event) => setDisplayRole(event.target.value)} maxLength={64} /></div>
       {product.variants.length > 0 && <div className={styles.field}><label htmlFor="media-variant">Attach to</label><select id="media-variant" value={variantId} onChange={(event) => setVariantId(event.target.value)}><option value="">Parent product</option>{product.variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.sku}</option>)}</select></div>}
       <div className={styles.fieldWide}><label className={styles.checkboxLabel}><input type="checkbox" checked={rightsAttested} onChange={(event) => setRightsAttested(event.target.checked)} /> I confirm this brand has the rights required to use this image.</label></div>
-      <div className={styles.fieldWide}><label htmlFor="media-mfa">Authenticator or recovery code</label><input id="media-mfa" autoComplete="one-time-code" inputMode="text" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} maxLength={26} /><small>Required for the protected upload. A successful check rotates your session and lasts five minutes.</small></div>
     </div>
     {mediaId && status && <div className={styles.schemaPanel} role="status"><div><p className={styles.kicker}>SCAN STATUS</p><h3>{status.scanState} · {status.rightsState}</h3><p>{status.scanState === "CLEAN" && status.rightsState === "ATTESTED" ? "Checks passed. You can attach this image now." : "This image stays private until all checks pass."}</p></div><div className={styles.mediaActions}><button type="button" className={styles.secondaryButton} disabled={busy} onClick={checkStatus}>Check status</button>{status.scanState === "CLEAN" && status.rightsState === "ATTESTED" && <button type="button" className={styles.primaryButton} disabled={busy} onClick={attach}>Attach image</button>}</div></div>}
     {error && <p className={styles.error} role="alert">{error}</p>}{notice && <p className={styles.notice} role="status">{notice}</p>}
