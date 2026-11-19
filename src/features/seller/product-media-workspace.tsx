@@ -17,7 +17,7 @@ type Link = Product["mediaLinks"][number] & { altText?: string };
 type Photo = {
   id: string; file: File; preview: string; description: string; role: string; target: string;
   state: "READY" | "UPLOADING" | "SCANNING" | "PENDING" | "ATTACHED" | "FAILED";
-  progress: number; error: string; mediaId: string;
+  progress: number; error: string; mediaId: string; uploaded: boolean; completed: boolean;
 };
 const maxImageBytes = 10 * 1024 * 1024;
 const acceptedMime = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -50,6 +50,7 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
 }) {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [busy, setBusy] = useState(false);
+  const [rightsAttested, setRightsAttested] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [previews, setPreviews] = useState<Record<string, string>>({});
@@ -100,7 +101,7 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
       return {
         id: crypto.randomUUID(), file, preview, description: "", target: "",
         role: linked.length === 0 && photos.length === 0 && index === 0 ? "primary" : "gallery",
-        state: "READY", progress: 0, error: "", mediaId: "",
+        state: "READY", progress: 0, error: "", mediaId: "", uploaded: false, completed: false,
       };
     });
     setPhotos((current) => [...current, ...additions]);
@@ -155,7 +156,7 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
         ...(variantId ? { variantId } : {}),
       };
       await w2Request(["brands", brandId, "products", productId, "media"], {
-        method: "POST", body, csrfToken, idempotencyKey: createIdempotencyKey(),
+        method: "POST", body, csrfToken, idempotencyKey: "attach-" + photo.id + "-" + variantId.replaceAll("-", "").slice(0, 18),
       });
       counts[variantId] = (counts[variantId] ?? 0) + 1;
     }
@@ -165,6 +166,7 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
     if (!editable || busy) return;
     const ready = photos.filter((photo) => photo.state === "READY" || photo.state === "FAILED" || photo.state === "PENDING");
     if (!ready.length) return;
+    if (!rightsAttested) { setError("Confirm that your brand has permission to use all selected photos before uploading."); return; }
     const missing = ready.filter((photo) => !photo.description.trim());
     if (missing.length) { setError("Add a description to each photo before uploading."); return; }
     setBusy(true); setError(""); setNotice("");
@@ -175,24 +177,29 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
       for (const photo of ready) {
         try {
           let assetId = photo.mediaId;
-          if (!assetId) {
+          const digest = await checksum(photo.file);
+          if (!photo.uploaded) {
             patchPhoto(photo.id, { state: "UPLOADING", error: "", progress: 0 });
-            const digest = await checksum(photo.file);
+            // Reuse the upload key on retry: a failed PUT must not skip the private upload.
             const intent = await w2Request<UploadIntent>(["brands", brandId, "media"], {
               method: "POST", body: {
                 fileName: photo.file.name, mimeType: photo.file.type, byteLength: photo.file.size,
                 rightsAttested: true, sha256: digest,
-              }, csrfToken: session.csrfToken, idempotencyKey: createIdempotencyKey(),
+              }, csrfToken: session.csrfToken, idempotencyKey: photo.id,
             });
             assetId = intent.mediaAssetId;
             patchPhoto(photo.id, { mediaId: assetId });
             await privatePut(intent, photo.file, photo.id);
-            patchPhoto(photo.id, { state: "SCANNING", progress: 100 });
+            patchPhoto(photo.id, { uploaded: true, state: "SCANNING", progress: 100 });
+          }
+          if (!assetId) throw new Error("The media upload did not return an asset identifier.");
+          if (!photo.completed) {
             const complete = await w2Request<CompleteReceipt>(["brands", brandId, "media", assetId, "complete"], {
               method: "POST", body: { sha256: digest, sizeBytes: photo.file.size },
-              csrfToken: session.csrfToken, idempotencyKey: createIdempotencyKey(),
+              csrfToken: session.csrfToken, idempotencyKey: "complete-" + photo.id,
             });
             if (!complete.id) throw new Error("The image scan did not return a valid completion receipt.");
+            patchPhoto(photo.id, { completed: true });
           }
           const status = await w2Request<MediaStatus>(["brands", brandId, "media", assetId]);
           if (status.scanState === "REJECTED") throw new Error("The image failed security or format checks and cannot be attached.");
@@ -201,7 +208,7 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
             continue;
           }
           await attachMedia(assetId, photo, session.csrfToken, counts);
-          patchPhoto(photo.id, { state: "ATTACHED", error: "", progress: 100 });
+          patchPhoto(photo.id, { state: "ATTACHED", error: "", progress: 100, mediaId: assetId, uploaded: true, completed: true });
           success += 1;
         } catch (caught) {
           patchPhoto(photo.id, { state: "FAILED", error: uploadError(caught) });
@@ -299,7 +306,8 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
           </div>
         </div>)}
       </div>}
-      <div className={styles.formActions}><p>Confirm by uploading that your brand owns or may use these images. Photos stay private until verified.</p>
+      <label className={styles.checkboxLabel}><input type="checkbox" checked={rightsAttested} onChange={(event) => setRightsAttested(event.target.checked)} disabled={busy} /> I confirm this brand owns these photos or has the rights required to use them.</label>
+      <div className={styles.formActions}><p>Photos stay private until malware scanning, integrity and rights checks pass.</p>
         <button type="button" className={styles.primaryButton} disabled={busy || outstanding === 0} onClick={() => void uploadSelected()}>{busy ? "Processing photos…" : "Upload " + outstanding + " photo" + (outstanding === 1 ? "" : "s")}</button>
       </div>
     </>}
