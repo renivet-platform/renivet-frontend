@@ -65,8 +65,15 @@ export function TaxonomyAdminWorkspace() {
         w2Request<{items:Category[]}>(["admin","catalog","categories"]),
         w2Request<{items:Attribute[]}>(["admin","catalog","categories","attributes"])
       ]);
-      setCategories(categoryResponse.items ?? []);
+      const loaded = categoryResponse.items ?? [];
+      setCategories(loaded);
       setAttributes(attributeResponse.items ?? []);
+      // Prioritize the next actionable item when first opening the workspace.
+      if (!categoryId) {
+        const firstReady = loaded.find(category => category.isLeaf && !isLive(category) && !category.retired && currentVersion(category) != null);
+        const first = firstReady ?? loaded.find(category => category.isLeaf);
+        if (first) { setCategoryId(first.id); setFields(savedSelection(first)); }
+      }
     } catch(cause) { setError(friendlyError(cause)); }
     finally { setLoading(false); }
   }
