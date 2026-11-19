@@ -18,7 +18,7 @@ test("REN2-125 automatically attaches only fully scanned, rights-attested images
   assert.match(source, /verified\.scanState === "CLEAN" && verified\.rightsState === "ATTESTED" && verified\.derivativeState === "READY"/);
   assert.match(source, /await w2Request\(\["brands", brandId, "products", productId, "media"\]/);
   assert.match(source, /setNotice\("Image uploaded, checked and attached to this product\."\)/);
-  assert.match(source, /setMediaId\(" "\)/.source ? "" : /setMediaId\(""\)/);
+  assert.match(source, /setMediaId\(""\)/);
 });
 test("REN2-125 distinguishes upload authorization, session protection and unavailable storage", () => {
   for (const code of ["BRAND_ACCESS_DENIED", "CSRF_REJECTED", "MEDIA_STORAGE_UNAVAILABLE", "MEDIA_SCANNER_UNAVAILABLE"]) {
