@@ -34,7 +34,8 @@ describe("REN2-100 authenticated admin review console", () => {
     assert.match(source, /maker-checker/i);
     assert.match(source, /expiresAt/);
     assert.match(source, /expired/i);
-    assert.match(source, /disabled=.*self|self.*disabled/i);
+    assert.match(source, /decisionBlocked = selfSubmitted \|\| expiredClaim/);
+    assert.match(source, /active === "taxonomy" && selfSubmitted/);
   });
 
   it("keeps keyboard focus visible and contrasts text against the console surface", () => {
