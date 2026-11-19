@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { AuthApiError, getCurrentSession } from "@/features/identity/auth-api";
 import type { operations } from "@/generated/renivet-api";
 import { createIdempotencyKey, W2ApiError, w2Request } from "./w2-catalog";
+import { isAllowedPrivateMediaUploadUrl } from "./private-media-upload";
 import styles from "./product-workspace.module.css";
 import ui from "./product-editor-prototype.module.css";
 
@@ -126,7 +127,9 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
 
   async function privatePut(intent: UploadIntent, file: File, id: string): Promise<void> {
     const url = new URL(intent.uploadUrl);
-    if (url.protocol !== "https:" || intent.uploadMethod !== "PUT") throw new Error("The private image-upload link was not valid.");
+    if (!isAllowedPrivateMediaUploadUrl(url.toString(), process.env.NODE_ENV) || intent.uploadMethod !== "PUT") {
+      throw new Error("The private image-upload link was not valid.");
+    }
     await new Promise<void>((resolve, reject) => {
       const request = new XMLHttpRequest();
       request.open("PUT", url.toString(), true);
