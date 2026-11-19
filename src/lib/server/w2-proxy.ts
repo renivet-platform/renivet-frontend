@@ -59,6 +59,12 @@ export function resolveW2BackendPath(segments: string[], method: string): string
   if (root !== "brands" || !brandId || !uuid.test(brandId)) return null;
   if (resource === "access" && segments.length === 3 && method === "GET") return `/api/v1/brands/${brandId}/access`;
   if (resource === "access" && resourceId === "team" && segments.length === 4 && method === "GET") return `/api/v1/brands/${brandId}/access/team`;
+  if (resource === "access" && resourceId === "team-v2" && segments.length === 4 && method === "GET") return `/api/v1/brands/${brandId}/access/team-v2`;
+  if (resource === "access" && resourceId === "invitations" && segments.length === 4 && method === "POST") return `/api/v1/brands/${brandId}/access/invitations`;
+  if (resource === "access" && resourceId === "invitations" && segments.length === 5 && segments[4] === "accept" && method === "POST") return `/api/v1/brands/${brandId}/access/invitations/accept`;
+  if (resource === "access" && resourceId === "invitations" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "cancel" && method === "POST") return `/api/v1/brands/${brandId}/access/invitations/${segments[4]}/cancel`;
+  if (resource === "access" && resourceId === "team" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "revoke" && method === "POST") return `/api/v1/brands/${brandId}/access/team/${segments[4]}/revoke`;
+
   if (resource === "inventory" && resourceId && segments.length === 4 && method === "GET" && ["balances", "observations", "adjustments", "movements", "reconciliations"].includes(resourceId)) return `/api/v1/brands/${brandId}/inventory/${resourceId}`;
   if (resource === "inventory" && resourceId && segments.length === 4 && method === "POST" && ["locations", "balances", "opening-receipts", "observations", "adjustments", "movements", "cycle-counts", "transfers", "returns"].includes(resourceId)) return `/api/v1/brands/${brandId}/inventory/${resourceId}`;
   if (resource === "inventory" && resourceId === "observations" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "propose-adjustment" && method === "POST") return `/api/v1/brands/${brandId}/inventory/observations/${segments[4]}/propose-adjustment`;
