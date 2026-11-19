@@ -19,6 +19,9 @@ export function resolveW2BackendPath(segments: string[], method: string): string
     if (segments.length === 2 && segments[1] === "mine" && method === "GET") return "/api/v1/brand-applications/mine";
     return null;
   }
+  if (method === "GET" && segments.length === 2 && segments[0] === "admin" && segments[1] === "staff") {
+    return "/api/v1/admin/staff";
+  }
   if (method === "GET" && segments.length === 2 && segments[0] === "admin" && segments[1] === "access-audit") {
     return "/api/v1/admin/access-audit";
   }
