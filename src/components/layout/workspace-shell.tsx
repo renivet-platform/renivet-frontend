@@ -133,7 +133,7 @@ export function WorkspaceShell({ role, children }: { role: "seller" | "admin"; c
         <Link href={home?.href ?? "/"} className={styles.mobileBrand}>RENIVET</Link>
         <Link href="/account" className={styles.accountAction}>Account</Link>
       </header>
-      <div className={styles.page}>{sessionState === "expired"
+      <div className={styles.page}>{pathname === "/operations/sign-in" ? children : sessionState === "expired"
         ? <section className={styles.sessionNotice} role="alert"><h2>Sign in to continue</h2><p>Your session is no longer active. Your work is protected until you sign in again.</p><Link href={"/sign-in?next=" + encodeURIComponent(pathname)}>Sign in</Link></section>
         : sessionState === "checking" ? <p role="status" className={styles.sessionNotice}>Checking your signed-in session…</p>
         : sessionState === "unavailable" ? <section className={styles.sessionNotice} role="alert"><h2>Unable to verify session</h2><p>Check the backend connection and try refreshing. No account state was changed.</p></section>
