@@ -71,3 +71,14 @@
 .mediaTileActions { display:flex; flex-wrap:wrap; gap:8px; }
 .mediaTileActions button { padding:7px 9px; border-radius:6px; border:1px solid #cad4cc; color:#15513b; background:#fff; font-size:12px; cursor:pointer; }
 @media(max-width:750px) { .optionGroups {grid-template-columns:1fr;} .matrixHeading {display:block;} .matrixActions {flex-wrap:wrap;} .stepButton {font-size:12px;padding:8px;} }
+
+.reviewChecklist { list-style:none; padding:0; margin:8px 0 0; }
+.reviewChecklist li { display:flex; align-items:flex-start; gap:12px; padding:15px 0; border-bottom:1px solid #e7e5df; }
+.reviewChecklist li:last-child { border:0; }
+.reviewMark { display:grid; place-items:center; flex:none; border-radius:50%; width:27px; height:27px; background:#9d690b; color:white; font-size:16px; font-weight:800; }
+.reviewReady .reviewMark { background:#1f724f; }
+.reviewChecklist li > div { flex:1; }
+.reviewChecklist strong { display:block; margin:1px 0 4px; color:#1f2c25; font-size:14px; }
+.reviewChecklist small { display:block; color:#6b756d; font-size:12px; line-height:1.5; }
+.reviewChecklist button { flex:none; border:1px solid #b5c2ba; border-radius:8px; background:#fff; color:#174b37; font-weight:650; padding:8px 13px; cursor:pointer; }
+.reviewChecklist button:hover { background:#eef4f0; }
