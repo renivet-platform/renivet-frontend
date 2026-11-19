@@ -18,7 +18,7 @@ type Claim = operations["listProductClaims"]["responses"][200]["content"]["appli
 type PriceProposalReceipt = operations["proposeVariantPrice"]["responses"][202]["content"]["application/json"];
 
 function inrToMinor(value: string): number {
-  if (!/^\\d{1,9}(?:\\.\\d{1,2})?$/.test(value.trim())) return NaN;
+  if (!/^\d{1,9}(?:\.\d{1,2})?$/.test(value.trim())) return NaN;
   const [rupees, paise = ""] = value.trim().split(".");
   return Number(rupees) * 100 + Number(paise.padEnd(2, "0"));
 }
