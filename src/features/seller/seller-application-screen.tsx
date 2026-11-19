@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getCurrentSession } from "@/features/identity/auth-api";
+import { W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import styles from "./seller-application-screen.module.css";
 
 const steps = ["Business details", "Brand profile", "Documents", "Payout account", "Review & submit"] as const;
@@ -11,8 +13,35 @@ const empty: FormState = { legalName: "", entityType: "", gstin: "", pan: "", ad
 export function SellerApplicationScreen() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(empty);
+  const [saved, setSaved] = useState<{brandId:string;brandName:string;brandState:string}|null>(null);
+  const [prior, setPrior] = useState<Array<{brandId:string;brandName:string;brandState:string}>>([]);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let mounted=true;
+    w2Request<{items:Array<{brandId:string;brandName:string;brandState:string}>}>(["brand-applications","mine"])
+      .then(data=>{if(mounted)setPrior(data.items??[]);})
+      .catch(()=>{});
+    return ()=>{mounted=false};
+  },[]);
+  async function submit() {
+    if(sending || !form.legalName.trim() || !form.brandName.trim())return;
+    setSending(true);setError("");
+    try{
+      const session=await getCurrentSession();
+      const result=await w2Request<{brandId:string;brandName:string;brandState:string}>(["brand-applications"],{
+        method:"POST",csrfToken:session.csrfToken,idempotencyKey:crypto.randomUUID(),
+        body:{legalName:form.legalName.trim(),brandName:form.brandName.trim()}
+      });
+      setSaved(result);
+      setPrior(items=>[result,...items.filter(item=>item.brandId!==result.brandId)]);
+    }catch(cause){
+      setError(cause instanceof W2ApiError && cause.status===401 ? "Sign in before submitting your application." :
+        cause instanceof Error?cause.message:"Application could not be submitted.");
+    }finally{setSending(false);}
+  }
   const current = steps[step];
-  const canContinue = step === 0 ? Boolean(form.legalName.trim() && form.entityType && form.email.trim()) : step === 1 ? Boolean(form.brandName.trim() && form.story.trim()) : true;
+  const canContinue = step === 0 ? Boolean(form.legalName.trim()) : step === 1 ? Boolean(form.brandName.trim()) : true;
 
   function update(field: keyof FormState, value: string) { setForm((state) => ({ ...state, [field]: value })); }
   function field(label: string, key: keyof FormState, options: { type?: string; hint?: string; placeholder?: string } = {}) {
@@ -21,12 +50,12 @@ export function SellerApplicationScreen() {
   }
 
   return <main className={styles.page} data-screen-id="SE-02" aria-labelledby="application-title">
-    <header className={styles.topbar}><Link href="/" className={styles.wordmark}>RENIVET</Link><nav aria-label="Brand workspace"><Link href="/brands">Your brands</Link><span aria-hidden="true">/</span><span>Application</span></nav><span className={styles.preview} role="status">Design preview · not saved</span></header>
+    <header className={styles.topbar}><Link href="/" className={styles.wordmark}>RENIVET</Link><nav aria-label="Brand workspace"><Link href="/brands">Your brands</Link><span aria-hidden="true">/</span><span>Application</span></nav><span className={styles.preview} role="status">Live application · documents pending</span></header>
     <div className={styles.shell}>
       <aside className={styles.sidebar}><span className={styles.brandMark} aria-hidden="true">R</span><p className={styles.kicker}>BRAND WORKSPACE</p><strong>New application</strong><Link href="/brands">Switch brand</Link></aside>
       <div className={styles.mainContent}>
         <div className={styles.breadcrumb}><Link href="/brands">Your brands</Link><span>/</span><span>Application</span><span>/</span><span>{current}</span></div>
-        <header className={styles.heading}><p className={styles.kicker}>SELLER APPLICATION · STEP {step + 1} OF {steps.length}</p><h1 id="application-title">Apply to sell on Renivet</h1><p>Enter business and brand information to preview the five-step application. There is no save or submit API yet; do not enter sensitive information in this demonstration.</p></header>
+        <header className={styles.heading}><p className={styles.kicker}>SELLER APPLICATION · STEP {step + 1} OF {steps.length}</p><h1 id="application-title">Apply to sell on Renivet</h1><p>Your business and brand names are submitted securely to the Renivet review queue. Document upload, tax verification and payout setup are separate later steps; their fields on this screen are not submitted.</p></header>
         <ol className={styles.stepper} aria-label="Application steps">{steps.map((label, index) => <li key={label} className={index === step ? styles.activeStep : index < step ? styles.doneStep : ""} aria-current={index === step ? "step" : undefined}><span>{index + 1}</span>{label}</li>)}</ol>
         <section className={styles.panel} aria-labelledby="step-title">
           <div className={styles.panelHeading}><div><p className={styles.kicker}>APPLICATION DETAILS</p><h2 id="step-title">{current}</h2></div><span className={styles.stepCount}>{step + 1} / {steps.length}</span></div>
@@ -44,10 +73,16 @@ export function SellerApplicationScreen() {
           </div>}
           {step === 2 && <div className={styles.documentList}><p className={styles.panelIntro}>Documents will be uploaded privately once Renivet’s secure application service is connected.</p>{["GST registration or exemption declaration", "PAN of the business", "Trademark certificate or brand authorisation", "Authorised signatory ID"].map((name) => <div className={styles.documentRow} key={name}><span><strong>{name}</strong><small>Accepted formats and size limits will appear here.</small></span><button type="button" disabled>Upload unavailable</button></div>)}</div>}
           {step === 3 && <div className={styles.payoutNotice}><span className={styles.payoutIcon} aria-hidden="true">₹</span><h3>Payout account</h3><p>Do not enter bank details here. Payout account setup and independent verification are not connected.</p><p>Renivet will show only masked account details after an approved secure payout flow is available.</p></div>}
-          {step === 4 && <div className={styles.review}><h3>Review your details</h3><dl><div><dt>Legal business name</dt><dd>{form.legalName || "Not provided"}</dd></div><div><dt>Business type</dt><dd>{form.entityType || "Not provided"}</dd></div><div><dt>Brand name</dt><dd>{form.brandName || "Not provided"}</dd></div><div><dt>Business email</dt><dd>{form.email || "Not provided"}</dd></div></dl><p className={styles.notice}>This application preview is held only in this page. No application has been saved or submitted.</p><button className={styles.primary} type="button" disabled>Submit application unavailable</button></div>}
-          <div className={styles.actions}><button type="button" className={styles.secondary} onClick={() => setStep((value) => Math.max(0, value - 1))} disabled={step === 0}>Back</button><button type="button" className={styles.secondary} disabled>Save for later</button>{step < steps.length - 1 && <button type="button" className={styles.primary} onClick={() => setStep((value) => Math.min(steps.length - 1, value + 1))} disabled={!canContinue}>Continue</button>}</div>
+          {step === 4 && <div className={styles.review}><h3>Review your details</h3><dl><div><dt>Legal business name</dt><dd>{form.legalName || "Not provided"}</dd></div><div><dt>Business type</dt><dd>{form.entityType || "Not provided"}</dd></div><div><dt>Brand name</dt><dd>{form.brandName || "Not provided"}</dd></div><div><dt>Business email</dt><dd>{form.email || "Not provided"}</dd></div></dl><p className={styles.notice}>Submitting creates a pending brand application with the business and brand names above. Other information on these design steps is not yet saved or verified.</p>
+            {error&&<p role="alert" className={styles.notice}>{error}</p>}
+            {saved?<p role="status" className={styles.notice}><strong>{saved.brandName}</strong> submitted. Status: {saved.brandState}. You can revisit your application later.</p>:
+              <button className={styles.primary} type="button" onClick={()=>void submit()} disabled={sending||!form.legalName.trim()||!form.brandName.trim()}>{sending?"Submitting…":"Submit initial application"}</button>}</div>}
+          <div className={styles.actions}><button type="button" className={styles.secondary} onClick={() => setStep((value) => Math.max(0, value - 1))} disabled={step === 0}>Back</button>{step < steps.length - 1 && <button type="button" className={styles.primary} onClick={() => setStep((value) => Math.min(steps.length - 1, value + 1))} disabled={!canContinue}>Continue</button>}</div>
         </section>
-        <p className={styles.privacyNote}>Application fields are not sent to Renivet from this screen. <Link href="/brands/join">Leave application</Link></p>
+        {prior.length>0&&<section className={styles.panel} aria-label="Your submitted brand applications">
+          <h2>Your applications</h2>{prior.map(item=><p key={item.brandId}><strong>{item.brandName}</strong> — {item.brandState}</p>)}
+        </section>}
+        <p className={styles.privacyNote}>Only your legal business name and brand name are persisted in this initial application. Tax, documents and bank details are not collected yet. <Link href="/brands/join">Leave application</Link></p>
       </div>
     </div>
   </main>;
