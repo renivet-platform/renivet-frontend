@@ -1,3 +1,5 @@
-import { redirect } from "next/navigation";
+import { SignInForm } from "@/features/identity/auth-forms";
 
-export default function OperationsSignInPage() { redirect("/sign-in?next=%2Foperations"); }
+export default function OperationsSignInPage() {
+  return <SignInForm nextPath="/operations" screenId="AD-01" />;
+}

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { getCurrentSession } from "@/features/identity/auth-api";
+import { AuthApiError, getCurrentSession, logoutCurrentSession, type CurrentSession } from "@/features/identity/auth-api";
 import { buildWorkspaceNavigation, mobileWorkspaceLinks, type WorkspaceGroup, type WorkspaceNavigationItem } from "./workspace-navigation";
 import styles from "./workspace-shell.module.css";
 
@@ -36,6 +36,11 @@ function NavigationLink({ item, onNavigate, mobile = false }: { item: WorkspaceN
 
 export function WorkspaceShell({ role, children }: { role: "seller" | "admin"; children: ReactNode }) {
   const pathname = usePathname() || "/";
+  const router = useRouter();
+  const [session, setSession] = useState<CurrentSession | null>(null);
+  const [sessionState, setSessionState] = useState<"checking" | "active" | "expired" | "unavailable">("checking");
+  const [signOutBusy, setSignOutBusy] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [brandName, setBrandName] = useState("Brand workspace");
   const items = buildWorkspaceNavigation(role, pathname);
@@ -54,6 +59,44 @@ export function WorkspaceShell({ role, children }: { role: "seller" | "admin"; c
     return () => { live = false; };
   }, [pathname, role]);
 
+  useEffect(() => {
+    let live = true;
+    setSessionState("checking");
+    getCurrentSession().then((value) => {
+      if (!live) return;
+      setSession(value);
+      setSessionState("active");
+      if (role === "admin" && value.destination.kind !== "operations") {
+        router.replace("/account");
+      } else if (role === "seller" && value.destination.kind !== "brands" && value.destination.kind !== "operations") {
+        router.replace("/account");
+      }
+    }).catch((error: unknown) => {
+      if (!live) return;
+      setSession(null);
+      setSessionState(error instanceof AuthApiError && error.status === 401 ? "expired" : "unavailable");
+    });
+    return () => { live = false; };
+  }, [role, router, pathname]);
+
+  async function signOut() {
+    if (!session || signOutBusy) return;
+    setSignOutBusy(true);
+    setSignOutError("");
+    try {
+      await logoutCurrentSession(session.csrfToken);
+      setSession(null);
+      setSessionState("expired");
+      setMenuOpen(false);
+      router.replace("/sign-in");
+      router.refresh();
+    } catch {
+      setSignOutError("Sign out could not be confirmed. Please try again.");
+    } finally { setSignOutBusy(false); }
+  }
+
+  const signedInName = session?.profile?.displayName?.trim() || session?.profile?.email || "Your account";
+
   const home = items.find((item) => item.group === "home");
   const grouped = (Object.keys(groupLabels) as WorkspaceGroup[]).map((group) => ({
     group,
@@ -66,7 +109,7 @@ export function WorkspaceShell({ role, children }: { role: "seller" | "admin"; c
       <Link className={styles.brand} href={home?.href ?? "/"} onClick={() => setMenuOpen(false)}>
         <span className={styles.wordmark}>RENIVET</span><span className={styles.brandDescriptor}>{role === "seller" ? "Brand workspace" : "Renivet operations"}</span>
       </Link>
-      {role === "seller" ? <div className={styles.brandSwitch}><span className={styles.brandMark} aria-hidden="true">{brandName.charAt(0).toUpperCase()}</span><span className={styles.brandIdentity}><strong>{brandName}</strong><Link href="/brands" onClick={() => setMenuOpen(false)}>Choose an authorized brand</Link></span></div> : <p className={styles.signedInNote}>Review workspaces use your current Renivet staff session.</p>}
+      {role === "seller" ? <div className={styles.brandSwitch}><span className={styles.brandMark} aria-hidden="true">{brandName.charAt(0).toUpperCase()}</span><span className={styles.brandIdentity}><strong>{brandName}</strong><Link href="/brands" onClick={() => setMenuOpen(false)}>Choose an authorized brand</Link></span></div> : <div className={styles.signedInNote}><strong>{sessionState === "active" ? signedInName : "Checking your account…"}</strong><span>{session?.profile?.email ?? (sessionState === "expired" ? "Session expired" : "Operations reviewer")}</span></div>}
       <nav className={styles.nav}>
         {home && <NavigationLink item={home} onNavigate={() => setMenuOpen(false)} />}
         {grouped.map((section) => <section className={styles.navSection} key={section.group} aria-label={section.label}>
@@ -74,7 +117,14 @@ export function WorkspaceShell({ role, children }: { role: "seller" | "admin"; c
           {section.items.map((item) => <NavigationLink key={item.href} item={item} onNavigate={() => setMenuOpen(false)} />)}
         </section>)}
       </nav>
-      <Link className={styles.accountLink} href="/account" onClick={() => setMenuOpen(false)}>Account &amp; security</Link>
+      <div className={styles.accountControls}>
+        {sessionState === "active" ? <>
+          <div className={styles.accountIdentity}><span className={styles.avatar} aria-hidden="true">{signedInName.charAt(0).toUpperCase()}</span><span><strong>{signedInName}</strong><small>{session?.profile?.email || "Signed in"}</small></span></div>
+          <Link className={styles.accountLink} href="/account" onClick={() => setMenuOpen(false)}>Account &amp; security</Link>
+          <button className={styles.signOut} type="button" disabled={signOutBusy} onClick={() => void signOut()}>{signOutBusy ? "Signing out…" : "Sign out"}</button>
+          {signOutError && <p role="alert" className={styles.sessionError}>{signOutError}</p>}
+        </> : <Link className={styles.accountLink} href="/sign-in" onClick={() => setMenuOpen(false)}>{sessionState === "expired" ? "Session expired · Sign in" : "Sign in to manage account"}</Link>}
+      </div>
     </aside>
     {menuOpen && <button className={styles.scrim} type="button" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />}
     <div className={styles.content}>
@@ -83,7 +133,11 @@ export function WorkspaceShell({ role, children }: { role: "seller" | "admin"; c
         <Link href={home?.href ?? "/"} className={styles.mobileBrand}>RENIVET</Link>
         <Link href="/account" className={styles.accountAction}>Account</Link>
       </header>
-      <div className={styles.page}>{children}</div>
+      <div className={styles.page}>{pathname === "/operations/sign-in" ? children : sessionState === "expired"
+        ? <section data-session-gate="expired" className={styles.sessionNotice} role="alert"><h2>Sign in to continue</h2><p>Your session is no longer active. Your work is protected until you sign in again.</p><Link href={"/sign-in?next=" + encodeURIComponent(pathname)}>Sign in</Link></section>
+        : sessionState === "checking" ? <p role="status" className={styles.sessionNotice}>Checking your signed-in session…</p>
+        : sessionState === "unavailable" ? <section data-session-gate="unavailable" className={styles.sessionNotice} role="alert"><h2>Unable to verify session</h2><p>Check the backend connection and try refreshing. No account state was changed.</p></section>
+        : children}</div>
       <nav className={styles.mobileNav} aria-label={role === "seller" ? "Brand shortcuts" : "Operations shortcuts"}>{mobileItems.map((item) => <NavigationLink key={item.href} item={item} mobile />)}</nav>
     </div>
   </div>;

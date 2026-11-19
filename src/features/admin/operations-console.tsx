@@ -123,7 +123,7 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
     const brandId = display(selected.brandId);
     if (!id || (active !== "taxonomy" && !/^[0-9a-f-]{36}$/i.test(brandId))) { setDetailError("This review item is missing its persisted reference."); return; }
     const normalizedReason = reasonCode.trim().toUpperCase();
-    if (!/^[A-Z][A-Z0-9_]{1,63}$/.test(normalizedReason)) { setDetailError("Enter a reason code using uppercase letters, numbers, and underscores."); return; }
+    if (active !== "taxonomy" && !/^[A-Z][A-Z0-9_]{1,63}$/.test(normalizedReason)) { setDetailError("Enter a reason code using uppercase letters, numbers, and underscores."); return; }
     setBusy(true); setDetailError(""); setNotice("");
     try {
       const session = await getCurrentSession();
@@ -177,7 +177,7 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
       <main className={styles.main} id="overview" aria-labelledby="operations-title" data-screen-id={initialItemId || selected ? "AD-08B" : "AD-08A"}>
         <header className={styles.topbar}><p><span>Workspace</span><span aria-hidden="true">/</span><strong>Operations</strong></p><div className={styles.topbarActions}>{initialItemId ? <a className={styles.navLink} href={reviewQueuePath(active)}>Back to queue</a> : null}{sessionReady ? <button className={styles.sessionButton} type="button" onClick={() => void signOut()} disabled={signOutBusy}>{signOutBusy ? "Signing out…" : "Sign out"}</button> : sessionError ? <a className={styles.sessionButton} href="/sign-in">Sign in</a> : null}<span className={styles.previewBadge}><span aria-hidden="true" /> Authenticated review</span></div></header>
         <div className={selected ? `${styles.content} ${styles.withDetail}` : styles.content}>
-          <section className={styles.hero} aria-labelledby="operations-title"><div><h1 id="operations-title">{area.title}</h1><p className={styles.heroCopy}>Check each submitted version, its current evidence and authorized review decisions. The backend is the source of truth.</p></div></section>
+          <section className={styles.hero} aria-labelledby="operations-title"><div><h1 id="operations-title">{area.title}</h1><p className={styles.heroCopy}>{active === "taxonomy" ? "Review category details created by another admin. Approve to publish the new version." : "Check each submitted version, its current evidence and authorized review decisions. The backend is the source of truth."}</p></div></section>
           {sessionError ? <section className={styles.statusPanel} role="alert"><h2>Sign in required</h2><p>{sessionError}</p><a href="/sign-in">Go to sign in</a></section> : null}
           {sessionReady ? <section className={styles.reviewSection} aria-labelledby="queue-title">
             <nav className={styles.queueTabs} aria-label="Review queues">
@@ -194,32 +194,32 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
                 return <article key={id ?? JSON.stringify(item)} className={styles.reviewCard}>
                   <div className={styles.cardTop}><span className={styles.cardIndex}>{display(item.brandName ?? item.categoryCode ?? item.status)}</span><span className={styles.gatedBadge}>{display(item.status ?? item.publicationState ?? "Pending")}</span></div>
                   <h3>{display(item.title ?? item.categoryLabel ?? item.claimText ?? item.sku ?? item.styleCode ?? id)}</h3>
-                  <p className={styles.cardCopy}>Brand: {display(item.brandName)} · Submitted: {display(item.submittedAt)}</p>
-                  <p className={styles.cardCopy}>Revision: {display(item.revisionId ?? item.version)} · Version: {display(item.rowVersion ?? item.contentVersion)}</p>
+                  <p className={styles.cardCopy}>{active === "taxonomy" ? `Category update · Version ${display(item.version)} · ${display(item.ruleCount)} details` : `Brand: ${display(item.brandName)} · Submitted: ${display(item.submittedAt)}`}</p>
+                  {active !== "taxonomy" ? <p className={styles.cardCopy}>Revision: {display(item.revisionId ?? item.version)} · Version: {display(item.rowVersion ?? item.contentVersion)}</p> : null}
                   <button className={styles.disabledAction} type="button" disabled={!id} onClick={() => void openItem(item)}>Review details</button>
                 </article>;
               })}
             </div>
           </section> : null}
           {detailError ? <p className={styles.availability} role="alert">{detailError}</p> : null}
-          {selected ? <section className={`${styles.statusPanel} ${styles.detailPanel}`} aria-labelledby="detail-title"><p className={styles.eyebrow}>EXACT PERSISTED ITEM</p><h2 id="detail-title">{title}</h2>
-                    <dl className={styles.statusFacts}>{Object.entries(selected).filter(([key]) => !["snapshot", "rules", "evidence", "media", "history", "ruleset"].includes(key)).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{display(value)}</dd></div>)}</dl>
+          {selected ? <section className={`${styles.statusPanel} ${styles.detailPanel}`} aria-labelledby="detail-title"><p className={styles.eyebrow}>{active === "taxonomy" ? "CATEGORY APPROVAL" : "EXACT PERSISTED ITEM"}</p><h2 id="detail-title">{title}</h2>
+                    {active === "taxonomy" ? <div className={styles.statusFacts}><p>Version {display(selected.version)} · {Array.isArray(selected.rules) ? selected.rules.length : 0} product details</p>{Array.isArray(selected.rules) && selected.rules.map((rule, i) => { const entry=rule as Record<string,unknown>; return <p key={i}><strong>{display(entry.label ?? entry.code)}</strong> · {entry.requiredByDefault ? "Required" : "Optional"}</p>; })}</div> : <dl className={styles.statusFacts}>{Object.entries(selected).filter(([key]) => !["snapshot", "rules", "evidence", "media", "history", "ruleset"].includes(key)).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{display(value)}</dd></div>)}</dl>}
                     <p className={styles.availability} role="status"><strong>Maker-checker:</strong> submitted by {display(selected.submittedBy)}; current reviewer {display(sessionUserId)}. {selfSubmitted ? "Decision disabled because the submitter cannot review their own work." : expiredClaim ? "Decision disabled because claim evidence is expired." : "Independent reviewer required."}</p>
             {selected.snapshot ? <details><summary>Frozen revision snapshot</summary><pre>{JSON.stringify(selected.snapshot, null, 2)}</pre></details> : null}
-            {selected.rules ? <details><summary>Typed taxonomy rules</summary><pre>{JSON.stringify(selected.rules, null, 2)}</pre></details> : null}
+            
             {selected.evidence ? <details><summary>Evidence and expiry metadata</summary><pre>{JSON.stringify(selected.evidence, null, 2)}</pre></details> : null}
             {selected.media ? <details><summary>Media safety status</summary><pre>{JSON.stringify(selected.media, null, 2)}</pre></details> : null}
             {selected.history ? <details><summary>Price review history</summary><pre>{JSON.stringify(selected.history, null, 2)}</pre></details> : null}
             <form onSubmit={(event) => { event.preventDefault(); void decide(active === "taxonomy" ? "PUBLISH_SCHEMA" : active === "publishing" ? (selected.publicationState === "PUBLISHED" ? "RESTRICT" : selected.publicationState === "RESTRICTED" ? "UNPUBLISH" : "PUBLISH") : active === "quality" ? "APPROVED" : active === "claims" ? "VERIFY" : "APPROVE"); }}>
               <label className={styles.confirmation}><input type="checkbox" checked={confirmedRevision} onChange={(event) => setConfirmedRevision(event.target.checked)} /> I reviewed the exact revision and evidence shown above.</label>
-              <label htmlFor="review-reason">Reason code</label><input id="review-reason" value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} required maxLength={64} autoComplete="off" />
-              <label htmlFor="review-comment">Reviewer comment <span>(optional)</span></label><textarea id="review-comment" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={2000} />
+              {active !== "taxonomy" ? <><label htmlFor="review-reason">Reason code</label><input id="review-reason" value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} required maxLength={64} autoComplete="off" /></> : null}
+              {active !== "taxonomy" ? <><label htmlFor="review-comment">Reviewer comment <span>(optional)</span></label><textarea id="review-comment" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={2000} /></> : null}
               {sessionReady && shouldRequestMfaStepUp(mfaEnforcementMode) ? <><label htmlFor="review-mfa">Authenticator or recovery code</label><input id="review-mfa" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} required autoComplete="one-time-code" inputMode="text" /></> : null}
               <div className={styles.cardTop}>
                         {active === "quality" ? <><button type="submit" disabled={busy || decisionBlocked}>Approve exact revision</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("REJECTED")}>Reject</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("CORRECTION_REQUIRED")}>Request correction</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("RESTRICTED")}>Restrict revision</button></> : null}
                         {active === "pricing" ? <><button type="submit" disabled={busy || decisionBlocked}>Approve price</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("REJECT")}>Reject</button></> : null}
                         {active === "claims" ? <><button type="submit" disabled={busy || decisionBlocked}>Verify claim</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("REJECT")}>Reject</button></> : null}
-                        {active === "taxonomy" ? <button type="submit" disabled={busy || decisionBlocked || selected.isLeaf === false || selected.retired === true}>Publish this schema version</button> : null}
+                        {active === "taxonomy" ? <button type="submit" disabled={busy || decisionBlocked || selected.isLeaf === false || selected.retired === true}>Approve and publish</button> : null}
                         {active === "publishing" ? <>{selected.publicationState === "APPROVED" ? <button type="submit" disabled={busy || decisionBlocked}>Publish exact approved revision</button> : selected.publicationState === "PUBLISHED" ? <><button type="submit" disabled={busy || decisionBlocked}>Restrict listing</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("UNPUBLISH")}>Unpublish</button></> : <button type="submit" disabled={busy || decisionBlocked}>Unpublish restricted listing</button>}</> : null}
               </div>
             </form>

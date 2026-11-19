@@ -1,15 +1,43 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getCurrentSession, logoutCurrentSession, type CurrentSession } from "@/features/identity/auth-api";
 import Link from "next/link";
 import styles from "./storefront-home.module.css";
 
 const craftNotes = ["Ajrakh", "Dabu", "Handloom", "Shibori", "Block print"];
 
 export function StorefrontHome() {
+  const router=useRouter();
+  const [session,setSession]=useState<CurrentSession|null>(null);
+  const [signOutBusy,setSignOutBusy]=useState(false);
+  const [accountError,setAccountError]=useState("");
+  useEffect(()=>{
+    let live=true;
+    getCurrentSession().then(value=>{if(live)setSession(value);}).catch(()=>{if(live)setSession(null);});
+    return ()=>{live=false;};
+  },[]);
+  async function signOut(){
+    if(!session||signOutBusy)return;
+    setSignOutBusy(true);setAccountError("");
+    try{
+      await logoutCurrentSession(session.csrfToken);
+      setSession(null);
+      router.refresh();
+    }catch{
+      setAccountError("Could not confirm sign out. Try again.");
+    }finally{setSignOutBusy(false);}
+  }
+  const accountLabel=session?.profile?.displayName?.trim()||session?.profile?.email||"Account";
+  const workspacePath=session?.destination.kind==="operations"?"/operations":session?.destination.kind==="brands"?"/brands":"/account";
   return <div className={styles.page} data-screen-id="CU-01">
     <header className={styles.header}>
       <Link className={styles.wordmark} href="/" aria-label="Renivet home">RENIVET</Link>
       <nav className={styles.primaryNav} aria-label="Shop navigation"><Link className={styles.current} href="/">New in</Link><Link href="/shop/brands">Brands</Link><Link href="/shop/brands">The makers</Link></nav>
-      <nav className={styles.accountNav} aria-label="Your account"><Link href="/shop/brands" aria-label="Search brands">Search</Link><Link href="/shop/saved">Saved</Link><Link href="/sign-in">Sign in</Link></nav>
+      <nav className={styles.accountNav} aria-label="Your account"><Link href="/shop/brands" aria-label="Search brands">Search</Link><Link href="/shop/saved">Saved</Link>{session ? <><Link href="/account" title={accountLabel}>{accountLabel}</Link><Link href={workspacePath}>Workspace</Link><button type="button" disabled={signOutBusy} onClick={()=>void signOut()}>{signOutBusy?"Signing out…":"Sign out"}</button></> : <Link href="/sign-in">Sign in</Link>}</nav>
     </header>
+    {accountError&&<p role="alert" style={{margin:"10px auto",maxWidth:"1176px",color:"#9d3028"}}>{accountError}</p>}
     <main>
       <section className={styles.hero} aria-labelledby="storefront-title">
         <div className={styles.heroCopy}><p className={styles.kicker}>NEW THIS WEEK</p><h1 id="storefront-title">Made by hand, with the proof to show for it.</h1><p>Clothes from independent Indian brands. Every brand is reviewed before it sells here, and every claim tells you how it was checked.</p><div className={styles.actions}><Link className={styles.primary} href="/shop/brands">Meet the brands</Link><Link className={styles.secondary} href="/shop/saved">Your saved pieces</Link></div></div>

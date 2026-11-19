@@ -139,7 +139,7 @@ try {
     for (const [route, id, title, requiresUnavailable] of adminScreens) {
       await command("Page.navigate", { url: new URL(route, url).href });
       let state;
-      const expression = "(() => { const main = document.querySelector('[data-screen-id]'); const h1 = main?.querySelector('h1') ?? document.querySelector('h1'); return document.readyState === 'complete' && main && h1 ? { id: main.dataset.screenId, title: h1.textContent.trim(), status: main.innerText.includes('Not connected'), width: document.documentElement.scrollWidth, viewport: innerWidth, height: main.getBoundingClientRect().height } : null; })()";
+      const expression = "(() => { const main = document.querySelector('[data-screen-id]'); const gate = document.querySelector('[data-session-gate]'); const h1 = main?.querySelector('h1') ?? document.querySelector('h1'); if (document.readyState !== 'complete') return null; if (gate) return { gated: true, gate: gate.getAttribute('data-session-gate'), hasSignIn: Boolean(gate.querySelector('a[href^=\\\"/sign-in\\\"]')), width: document.documentElement.scrollWidth, viewport: innerWidth, height: gate.getBoundingClientRect().height }; return main && h1 ? { id: main.dataset.screenId, title: h1.textContent.trim(), status: main.innerText.includes('Not connected'), width: document.documentElement.scrollWidth, viewport: innerWidth, height: main.getBoundingClientRect().height } : null; })()";
       for (let i = 0; i < 60; i++) {
         const response = await command("Runtime.evaluate", { expression, returnByValue: true });
         state = response.result?.value;
@@ -147,6 +147,18 @@ try {
         await sleep(200);
       }
       assert.ok(state, size + " " + route + ": page not ready");
+      if (state.gated) {
+        // Unauthenticated visual runners must see an explicit, safe session gate.
+        // They cannot claim an authenticated review page was visually validated.
+        assert.ok(state.gate === "expired" || state.gate === "unavailable", size + " " + route + ": unexpected gate");
+        if (state.gate === "expired") assert.equal(state.hasSignIn, true, size + " " + route + ": missing sign-in recovery");
+        assert.ok(state.width <= width, size + " " + route + ": gate overflows horizontally");
+        assert.ok(state.height > 0, size + " " + route + ": empty gate");
+        const screenshot = await command("Page.captureScreenshot", { format: "png", fromSurface: true });
+        await writeFile(path.join(output, "admin-" + id + "-" + size + "-unauthenticated.png"), Buffer.from(screenshot.data, "base64"));
+        console.log("PASS " + size + " " + id + " unauthenticated session gate");
+        continue;
+      }
       assert.equal(state.id, id, size + " " + route + ": wrong screen ID");
       assert.ok(state.title.length > 0, size + " " + route + ": page title is missing");
       if (title) assert.equal(state.title, title, size + " " + route + ": wrong page title");
