@@ -16,7 +16,25 @@ const maxImageBytes = 10 * 1024 * 1024;
 const acceptedMime = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 function safeError(error: unknown): string {
-  if (error instanceof W2ApiError || error instanceof AuthApiError) return error.message;
+  if (error instanceof W2ApiError) {
+    if (error.code === "BRAND_ACCESS_DENIED" || error.code === "MEDIA_ACCESS_DENIED") {
+      return "Your brand account is missing image-upload access (media.write). A brand owner or an authorized catalogue editor must have this permission. Your draft is unchanged.";
+    }
+    if (error.code === "CSRF_REJECTED" || error.code === "CSRF_VALIDATION_FAILED") {
+      return "Your session security check failed. Sign out, sign in again and retry the upload.";
+    }
+    if (error.code === "AUTH_MFA_STEP_UP_REQUIRED") {
+      return "The backend is still requiring an old authenticator step-up for media. Restart the updated backend with the deferred MFA policy.";
+    }
+    if (error.code === "MEDIA_STORAGE_UNAVAILABLE") {
+      return "Private image storage is not configured or available. Contact the platform administrator.";
+    }
+    if (error.code === "MEDIA_SCANNER_UNAVAILABLE") {
+      return "Image scanning is not available. The image cannot be attached until it passes the security checks.";
+    }
+    return error.message;
+  }
+  if (error instanceof AuthApiError) return error.message;
   return "The image workflow could not be completed. Your product draft is unchanged.";
 }
 
@@ -80,8 +98,23 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
         method: "POST", body: { sha256: digest, sizeBytes: file.size }, csrfToken: session.csrfToken, idempotencyKey: createIdempotencyKey(),
       });
       setMediaId(intent.mediaAssetId);
-      setNotice(`Upload received. Scan status: ${receipt.status}. The image cannot be attached until scanning and rights checks pass.`);
-      setStatus(await w2Request<MediaStatus>(["brands", brandId, "media", intent.mediaAssetId]));
+      const verified = await w2Request<MediaStatus>(["brands", brandId, "media", intent.mediaAssetId]);
+      setStatus(verified);
+      if (verified.scanState === "CLEAN" && verified.rightsState === "ATTESTED" && verified.derivativeState === "READY") {
+        const body: AttachBody = {
+          mediaAssetId: intent.mediaAssetId, displayRole: displayRole.trim(),
+          displayOrder: product.mediaLinks.length, altText: altText.trim(),
+          ...(variantId ? { variantId } : {}),
+        };
+        await w2Request(["brands", brandId, "products", productId, "media"], {
+          method: "POST", body, csrfToken: session.csrfToken, idempotencyKey: createIdempotencyKey(),
+        });
+        setNotice("Image uploaded, checked and attached to this product.");
+        setMediaId(""); setStatus(null); setFile(null); setAltText(""); setRightsAttested(false);
+        onChanged();
+      } else {
+        setNotice(`Upload received. Scan status: ${receipt.status}. The image stays private until scanning and rights checks pass.`);
+      }
     } catch (caught) { setError(safeError(caught)); }
     finally { setBusy(false); setUploadProgress(null); }
   }
@@ -126,9 +159,9 @@ export function ProductMediaWorkspace({ brandId, productId, product, editable, o
       {product.variants.length > 0 && <div className={styles.field}><label htmlFor="media-variant">Attach to</label><select id="media-variant" value={variantId} onChange={(event) => setVariantId(event.target.value)}><option value="">Parent product</option>{product.variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.sku}</option>)}</select></div>}
       <div className={styles.fieldWide}><label className={styles.checkboxLabel}><input type="checkbox" checked={rightsAttested} onChange={(event) => setRightsAttested(event.target.checked)} /> I confirm this brand has the rights required to use this image.</label></div>
     </div>
-    {mediaId && status && <div className={styles.schemaPanel} role="status"><div><p className={styles.kicker}>SCAN STATUS</p><h3>{status.scanState} · {status.rightsState}</h3><p>{status.scanState === "CLEAN" && status.rightsState === "ATTESTED" ? "Checks passed. You can attach this image now." : "This image stays private until all checks pass."}</p></div><div className={styles.mediaActions}><button type="button" className={styles.secondaryButton} disabled={busy} onClick={checkStatus}>Check status</button>{status.scanState === "CLEAN" && status.rightsState === "ATTESTED" && <button type="button" className={styles.primaryButton} disabled={busy} onClick={attach}>Attach image</button>}</div></div>}
+    {mediaId && status && <div className={styles.schemaPanel} role="status"><div><p className={styles.kicker}>SCAN STATUS</p><h3>{status.scanState} · {status.rightsState}</h3><p>{status.scanState === "CLEAN" && status.rightsState === "ATTESTED" ? "Checks passed. You can attach this image now." : "This image stays private until all checks pass."}</p></div><div className={styles.mediaActions}><button type="button" className={styles.secondaryButton} disabled={busy} onClick={checkStatus}>Check status</button>{status.scanState === "CLEAN" && status.rightsState === "ATTESTED" && status.derivativeState === "READY" && <button type="button" className={styles.primaryButton} disabled={busy} onClick={attach}>Attach image</button>}</div></div>}
     {error && <p className={styles.error} role="alert">{error}</p>}{notice && <p className={styles.notice} role="status">{notice}</p>}
-    {!mediaId && <div className={styles.formActions}><p>No image is made public by this step.</p><button type="submit" className={styles.primaryButton} disabled={busy}>{busy ? "Uploading securely…" : "Upload image"}</button></div>}
+    {!mediaId && <div className={styles.formActions}><p>Upload, scan and attach the image to your product. It stays private until all checks pass.</p><button type="submit" className={styles.primaryButton} disabled={busy}>{busy ? "Uploading securely…" : "Upload image"}</button></div>}
     {uploadProgress !== null && <div className={styles.uploadProgress} role="status" aria-live="polite"><div className={styles.uploadProgressLabel}><span>Private upload progress</span><span>{uploadProgress}%</span></div><progress max="100" value={uploadProgress}>{uploadProgress}%</progress></div>}
     </form>}
     {!editable && <p className={styles.readOnlyNotice} role="status">Images cannot be changed while the product is in {product.publicationState.toLowerCase().replaceAll("_", " ")} state.</p>}
