@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AuthApiError, getCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
+import { shouldRequestMfaStepUp, type MfaEnforcementMode } from "@/features/identity/mfa-policy";
 import type { operations } from "@/generated/renivet-api";
 import { categoryLabel, createIdempotencyKey, selectableCategories, type Category, type Paged, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import { isStaleImportPreview, validateImportFieldMappings } from "@/features/seller/import-workspace-state";
@@ -66,11 +67,14 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
   const [categoryRows, setCategoryRows] = useState<CategoryMappingRow[]>([]);
   const [nextRowId, setNextRowId] = useState(10);
   const [mfaCode, setMfaCode] = useState("");
+  const [mfaMode, setMfaMode] = useState<MfaEnforcementMode>("enforced");
+  const [newImport, setNewImport] = useState(false);
   const [allowPartial, setAllowPartial] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  useEffect(() => { let mounted = true; getCurrentSession().then(session => { if (mounted) setMfaMode(session.mfaEnforcementMode); }).catch(() => {}); return () => { mounted = false; }; }, []);
   useEffect(() => {
     const controller = new AbortController();
     w2Request<Paged<Category>>(["brands", brandId, "categories"], { query: { limit: "100" }, signal: controller.signal })
@@ -85,8 +89,10 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
   const selectable = selectableCategories(categories);
 
   async function elevate(): Promise<string> {
-    if (!/^(?:\d{6}|[A-Z2-7]{26})$/.test(mfaCode.trim().toUpperCase())) throw new Error("Enter a six-digit authenticator code or unused recovery code.");
     const session = await getCurrentSession();
+    setMfaMode(session.mfaEnforcementMode);
+    if (!shouldRequestMfaStepUp(session.mfaEnforcementMode)) return session.csrfToken;
+    if (!/^(?:\d{6}|[A-Z2-7]{26})$/.test(mfaCode.trim().toUpperCase())) throw new Error("Enter a six-digit authenticator code or unused recovery code.");
     const response = await stepUpWithMfa(mfaCode.trim().toUpperCase(), session.csrfToken);
     setMfaCode("");
     return response.csrfToken;
@@ -181,8 +187,8 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
 
   return <main className={styles.page} aria-labelledby="imports-title" data-screen-id={results ? "SE-12C" : batchId ? "SE-12A" : "SE-12"}>
     <nav className={styles.detailBreadcrumb} aria-label="Breadcrumb"><a href={`/brands/${encodeURIComponent(brandId)}/products`}>Products</a><span aria-hidden="true">/</span><span>Imports</span></nav>
-    <header className={styles.header}><div><p className={styles.kicker}>BRAND WORKSPACE / DATA IMPORT</p><h1 id="imports-title">{results ? "Import results" : batchId ? "New import" : "Imports"}</h1><p className={styles.subtitle}>Upload privately, map columns, review a frozen preview, then confirm explicitly.</p></div><span className={styles.draftBadge}>NO STOCK WRITES</span></header>
-    <nav className={visual.importProgress} aria-label="Import progress">
+    <header className={styles.header}><div><p className={styles.kicker}>BRAND WORKSPACE / DATA IMPORT</p><h1 id="imports-title">{results ? "Import results" : batchId || newImport ? "New import" : "Imports"}</h1><p className={styles.subtitle}>Bring many products in at once. Imported products arrive as drafts for you to check and submit.</p></div><div className={visual.importActions}>{!batchId && !newImport && <button type="button" className={styles.primaryButton} onClick={() => setNewImport(true)}>New import</button>}{newImport && !batchId && <button type="button" className={styles.secondaryButton} onClick={() => setNewImport(false)} disabled={busy}>Back to imports</button>}</div></header>
+    {(newImport || batchId) && <nav className={visual.importProgress} aria-label="Import progress">
       <ol>{["Source","File","Match columns","Preview","Results"].map((label,index) => {
         const number=index+1;
         const active=number===importStep;
@@ -190,13 +196,13 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
           <span className={visual.stepNumber} aria-hidden="true">{index+1<importStep?"✓":number}</span><span>{label}</span>
         </li>;
       })}</ol>
-    </nav>
+    </nav>}
     <section className={visual.sourceNotice} aria-label="What the import does"><strong>Catalogue drafts only</strong><p>CSV/XLSX imports create or update draft product records after your explicit confirmation. Quantities from a source file are observations—not stock receipts or available-to-sell inventory.</p></section>
-    {!batchId && <section className={visual.currentImports} aria-labelledby="past-imports-title">
+    {!batchId && !newImport && <section className={visual.currentImports} aria-labelledby="past-imports-title">
       <div><h2 id="past-imports-title">Your imports</h2><p>There is no approved backend endpoint to list previous imports by brand. To check results, use an import opened in this session. No previous imports or statuses are invented.</p></div>
       <span className={visual.unavailable}>History not connected</span>
     </section>}
-    {!batchId ? <section className={styles.formPanel} aria-labelledby="upload-heading"><div className={styles.formHeading}><div><p className={styles.kicker}>STEP 1 · SOURCE</p><h2 id="upload-heading">Choose an export</h2><p>CSV and XLSX files are uploaded to private storage using a short-lived signed URL. The import only stages catalogue data until you confirm.</p></div></div>
+    {!batchId && !newImport ? null : !batchId ? <section className={styles.formPanel} aria-labelledby="upload-heading"><div className={styles.formHeading}><div><p className={styles.kicker}>STEP 1 · SOURCE</p><h2 id="upload-heading">Choose an export</h2><p>CSV and XLSX files are uploaded to private storage using a short-lived signed URL. The import only stages catalogue data until you confirm.</p></div></div>
       <div role="group" aria-label="Choose a source export" className={visual.sourceChoices}>
         {([
           ["RENIVET","Renivet template","CSV for Renivet's product fields"],
@@ -212,7 +218,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
         <div className={styles.field}><label htmlFor="import-mode">Conflict handling</label><select id="import-mode" value={mode} onChange={(event) => setMode(event.target.value as CreateRequest["mode"])}><option value="REVIEW_CONFLICT">Review conflicts before changes</option><option value="CREATE_ONLY">Create new records only</option><option value="UPDATE_MATCHED">Update matched records</option><option value="SKIP_EXISTING">Skip records that already exist</option></select></div>
         <div className={styles.fieldWide}><label htmlFor="import-file">Source file</label><input id="import-file" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /><small>CSV or XLSX, up to 100 MiB. File contents are never placed in the URL or application logs.</small></div>
         <div className={styles.field}><label htmlFor="source-as-of">Export created at</label><input id="source-as-of" type="datetime-local" value={sourceAsOf} onChange={(event) => setSourceAsOf(event.target.value)} /></div>
-        <div className={styles.field}><label htmlFor="import-mfa">Authenticator or recovery code</label><input id="import-mfa" autoComplete="one-time-code" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} maxLength={26} /><small>Required for private file access and import mutations.</small></div>
+        {shouldRequestMfaStepUp(mfaMode) && <div className={styles.field}><label htmlFor="import-mfa">Authenticator or recovery code</label><input id="import-mfa" autoComplete="one-time-code" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} maxLength={26} /><small>Required when server MFA enforcement is enabled.</small></div>}
       </div>
       {error && <p className={styles.error} role="alert">{error}</p>}{notice && <p className={styles.notice} role="status">{notice}</p>}
       <div className={styles.formActions}><p>{categoryError ? categoryError : selectable.length ? `Available active categories: ${selectable.length}` : "No active leaf categories are published yet. An admin must publish taxonomy before category mapping is available."}</p><button type="submit" className={styles.primaryButton} disabled={busy}>{busy ? "Uploading and staging…" : "Upload and start mapping"}</button></div>
