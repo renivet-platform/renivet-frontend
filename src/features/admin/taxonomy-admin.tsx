@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { getCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
-import { shouldRequestMfaStepUp } from "@/features/identity/mfa-policy";
+import { getCurrentSession } from "@/features/identity/auth-api";
 import { W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import styles from "./taxonomy-admin.module.css";
 
@@ -28,8 +27,6 @@ export function TaxonomyAdminWorkspace() {
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState("");
   const [notice,setNotice] = useState("");
-  const [mfaRequired,setMfaRequired] = useState(false);
-  const [mfaCode,setMfaCode] = useState("");
   const [search,setSearch] = useState("");
   const [creating,setCreating] = useState(false);
   const [newName,setNewName] = useState("");
@@ -42,14 +39,12 @@ export function TaxonomyAdminWorkspace() {
   async function load() {
     setLoading(true); setError("");
     try {
-      const [categoryResponse,attributeResponse,session] = await Promise.all([
+      const [categoryResponse,attributeResponse] = await Promise.all([
         w2Request<{items:Category[]}>(["admin","catalog","categories"]),
-        w2Request<{items:Attribute[]}>(["admin","catalog","categories","attributes"]),
-        getCurrentSession()
+        w2Request<{items:Attribute[]}>(["admin","catalog","categories","attributes"])
       ]);
       setCategories(categoryResponse.items ?? []);
       setAttributes(attributeResponse.items ?? []);
-      setMfaRequired(shouldRequestMfaStepUp(session.mfaEnforcementMode));
     } catch(cause) { setError(friendlyError(cause)); }
     finally { setLoading(false); }
   }
@@ -78,16 +73,12 @@ export function TaxonomyAdminWorkspace() {
     setBusy(true);setError("");setNotice("");
     try {
       const session=await getCurrentSession();
-      let csrfToken=session.csrfToken;
-      if(shouldRequestMfaStepUp(session.mfaEnforcementMode)){
-        if(!/^(?:\d{6}|[A-Z2-7]{26})$/.test(mfaCode.trim().toUpperCase()))throw new Error("Enter your authenticator code.");
-        csrfToken=(await stepUpWithMfa(mfaCode.trim().toUpperCase(),csrfToken)).csrfToken;
-      }
+      const csrfToken=session.csrfToken;
       const result=await w2Request<{id:string;status:string}>(["admin","catalog","categories"],{
         method:"POST",body:{name,code,...(newParentId?{parentId:newParentId}:{})},
         csrfToken,idempotencyKey:crypto.randomUUID()
       });
-      setCreating(false);setNewName("");setNewCode("");setNewParentId("");setMfaCode("");
+      setCreating(false);setNewName("");setNewCode("");setNewParentId("");
       await load();
       setCategoryId(result.id);setFields([]);setStep("choose");
       setNotice("Category created. Select the product details below and send the first version for approval.");
@@ -100,14 +91,7 @@ export function TaxonomyAdminWorkspace() {
     setBusy(true);setError("");setNotice("");
     try {
       const session = await getCurrentSession();
-      const requireMfa = shouldRequestMfaStepUp(session.mfaEnforcementMode);
-      setMfaRequired(requireMfa);
-      let csrfToken = session.csrfToken;
-      if (requireMfa) {
-        if (!/^(?:\d{6}|[A-Z2-7]{26})$/.test(mfaCode.trim().toUpperCase())) throw new Error("Enter your authenticator code to continue.");
-        const elevated = await stepUpWithMfa(mfaCode.trim().toUpperCase(), csrfToken);
-        csrfToken = elevated.csrfToken;
-      }
+      const csrfToken = session.csrfToken;
       const ruleset = { attributes: fields.map(field => {
         const source = attributes.find(a => a.code === field.code)!;
         return {
@@ -125,7 +109,7 @@ export function TaxonomyAdminWorkspace() {
         csrfToken,idempotencyKey:crypto.randomUUID()
       });
       setNotice("Submitted for approval. Another authorized admin can review and publish this update.");
-      setStep("choose");setFields([]);setMfaCode("");
+      setStep("choose");setFields([]);
       await load();
     } catch(cause) { setError(friendlyError(cause)); }
     finally { setBusy(false); }
@@ -154,7 +138,6 @@ export function TaxonomyAdminWorkspace() {
           <option value="">Top-level category</option>
           {categories.filter(c=>!c.isLeaf && !c.active && !c.isActive && !c.schemaVersion).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
         </select></label>
-        {mfaRequired && <label>Authenticator code<input value={mfaCode} inputMode="numeric" autoComplete="one-time-code" onChange={e=>setMfaCode(e.currentTarget.value)} placeholder="Enter code"/></label>}
       </div>
       <div className={styles.simpleActions}><button type="button" className={styles.simpleSecondary} disabled={busy} onClick={()=>setCreating(false)}>Cancel</button><button type="button" className={styles.simplePrimary} disabled={busy||newName.trim().length<3} onClick={()=>void createCategory()}>{busy?"Creating…":"Create and continue"}</button></div>
     </section>}
@@ -190,7 +173,6 @@ export function TaxonomyAdminWorkspace() {
             <div className={styles.reviewSummary}><strong>{selected.name} · Version {version}</strong>
               {fields.map(field=><div key={field.code}>{attributes.find(a=>a.code===field.code)?.label||field.code}<span>{field.required?"Required":"Optional"}</span></div>)}
             </div>
-            {mfaRequired&&<label className={styles.mfaLabel}>Authenticator code<input inputMode="numeric" autoComplete="one-time-code" value={mfaCode} onChange={e=>setMfaCode(e.currentTarget.value)} placeholder="Enter code" /></label>}
             <div className={styles.simpleActions}><button type="button" className={styles.simpleSecondary} disabled={busy} onClick={()=>setStep("choose")}>Back</button><button className={styles.simplePrimary} type="button" disabled={busy} onClick={()=>void submit()}>{busy?"Submitting…":"Send for approval"}</button></div>
           </>}
       </section>

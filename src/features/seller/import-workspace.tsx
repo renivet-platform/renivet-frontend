@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AuthApiError, getCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
-import { shouldRequestMfaStepUp } from "@/features/identity/mfa-policy";
+import { AuthApiError, getCurrentSession } from "@/features/identity/auth-api";
 import Link from "next/link";
 import type { operations } from "@/generated/renivet-api";
 import { categoryLabel, createIdempotencyKey, selectableCategories, type Category, type Paged, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
@@ -67,10 +66,8 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
   const [mappingRows, setMappingRows] = useState<MappingRow[]>(profileMappings.UNICOMMERCE.map(([source, target], id) => ({ id, source, target })));
   const [categoryRows, setCategoryRows] = useState<CategoryMappingRow[]>([]);
   const [nextRowId, setNextRowId] = useState(10);
-  const [mfaCode, setMfaCode] = useState("");
   const [allowPartial, setAllowPartial] = useState(false);
   const [wizardStep, setWizardStep] = useState<"source" | "file">("source");
-  const [mfaMode, setMfaMode] = useState<"deferred" | "enforced">("enforced");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -83,7 +80,6 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
     return () => controller.abort();
   }, [brandId]);
 
-  useEffect(() => { getCurrentSession().then(session => setMfaMode(session.mfaEnforcementMode)).catch(() => setMfaMode("enforced")); }, []);
 
   const sourceKind: UploadRequest["sourceKind"] = file?.name.toLowerCase().endsWith(".xlsx")
     ? "RENIVET_XLSX"
@@ -92,11 +88,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
 
   async function elevate(): Promise<string> {
     const session = await getCurrentSession();
-    if (!shouldRequestMfaStepUp(session.mfaEnforcementMode)) return session.csrfToken;
-    if (!/^(?:\d{6}|[A-Z2-7]{26})$/.test(mfaCode.trim().toUpperCase())) throw new Error("Enter a six-digit authenticator code or unused recovery code.");
-    const response = await stepUpWithMfa(mfaCode.trim().toUpperCase(), session.csrfToken);
-    setMfaCode("");
-    return response.csrfToken;
+    return session.csrfToken;
   }
 
   async function startImport(event: React.FormEvent<HTMLFormElement>) {
@@ -187,11 +179,6 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
   function addCategory() { setCategoryRows((rows) => [...rows, { id: nextRowId, source: "", target: "" }]); setNextRowId((id) => id + 1); }
 
 
-  const mfaField = mfaMode === "enforced" ? <div className={styles.field}>
-    <label htmlFor="import-mfa">Authenticator code</label>
-    <input id="import-mfa" inputMode="numeric" autoComplete="one-time-code" maxLength={26} value={mfaCode} onChange={event => setMfaCode(event.currentTarget.value)} />
-    <small>This environment requires a verified step-up for import changes.</small>
-  </div> : null;
   const wizardLabels = ["Choose source", "Upload file", "Match columns", "Preview", "Results"];
   return <main className={styles.page} data-screen-id={results ? "SE-12C" : "SE-12A"} aria-labelledby="imports-title">
     <nav className={styles.detailBreadcrumb} aria-label="Breadcrumb">
@@ -235,7 +222,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
           <div className={styles.field}><label htmlFor="import-conflicts">When products already exist</label><select id="import-conflicts" value={mode} onChange={event=>setMode(event.target.value as CreateRequest["mode"])}>
             <option value="REVIEW_CONFLICT">Review each conflict first</option><option value="CREATE_ONLY">Add only new products</option><option value="UPDATE_MATCHED">Update matched drafts</option><option value="SKIP_EXISTING">Skip existing products</option>
           </select></div>
-          {mfaField}
+          
         </div>
         {error&&<p className={styles.error} role="alert">{error}</p>}
         {notice&&<p className={styles.notice} role="status">{notice}</p>}
@@ -263,7 +250,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
         </div>)}
         <button type="button" className={styles.textButton} onClick={addCategory}>Add category mapping</button>
         {categoryError&&<p className={styles.notice}>{categoryError}</p>}
-        {mfaField}{error&&<p className={styles.error} role="alert">{error}</p>}
+        {error&&<p className={styles.error} role="alert">{error}</p>}
         {notice&&<p className={styles.notice} role="status">{notice}</p>}
         <div className={visual.wizardFooter}><button type="submit" className={styles.primaryButton} disabled={busy}>{busy?"Building preview…":"Review import preview"}</button></div>
       </form>
@@ -277,7 +264,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
       </table></div>}
       {preview.rows.length>100&&<p>Showing the first 100 rows. Check the full summary before confirming.</p>}
       <label className={visual.partialLabel}><input type="checkbox" checked={allowPartial} onChange={e=>setAllowPartial(e.target.checked)}/> Import valid rows even if some rows fail</label>
-      {mfaField}{error&&<p className={styles.error} role="alert">{error}</p>}{notice&&<p className={styles.notice} role="status">{notice}</p>}
+      {error&&<p className={styles.error} role="alert">{error}</p>}{notice&&<p className={styles.notice} role="status">{notice}</p>}
       <div className={visual.wizardFooter}><button type="button" className={styles.secondaryButton} onClick={()=>setPreview(null)} disabled={busy}>Back to mapping</button><button type="button" className={styles.primaryButton} onClick={()=>void confirmImport()} disabled={busy}>{busy?"Confirming…":"Confirm import"}</button></div>
     </section>}
     {results && <section className={visual.wizardCard} aria-labelledby="results-title">
@@ -286,7 +273,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
       <div className={styles.tableWrap}><table className={styles.variantTable}><thead><tr><th>Row</th><th>Status</th><th>Error</th></tr></thead>
         <tbody>{results.items.map(row=><tr key={row.rowNumber}><td>{row.rowNumber}</td><td>{row.status.replaceAll("_"," ")}</td><td>{row.errorCodes.join(", ")||"None"}</td></tr>)}</tbody>
       </table></div>
-      {mfaField}{error&&<p className={styles.error} role="alert">{error}</p>}
+      {error&&<p className={styles.error} role="alert">{error}</p>}
       <div className={visual.wizardFooter}><button type="button" onClick={()=>void refreshResults()} disabled={busy} className={styles.secondaryButton}>Refresh results</button><button type="button" onClick={()=>void retryFailed()} disabled={busy||!results.items.some(row=>row.status==="FAILED")} className={styles.primaryButton}>Retry failed rows</button></div>
     </section>}
   </main>;
