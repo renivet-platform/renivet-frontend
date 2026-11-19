@@ -109,17 +109,27 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
       return value !== null && value !== undefined && value !== "" && (!Array.isArray(value) || value.length > 0);
     });
     const activeVariants = product.variants.filter((variant) => variant.variantState !== "INACTIVE");
-    const hasApprovedPrice = activeVariants.length > 0 && activeVariants.every((variant) => variant.priceVersions?.some((price) => price.priceState === "APPROVED") ?? false);
-    const hasEligibleMedia = product.mediaLinks.some((link) => link.scanState === "CLEAN" && link.rightsState === "ATTESTED");
+    const allMedia = [...product.mediaLinks, ...product.variants.flatMap((variant) => variant.mediaLinks ?? [])] as Array<ProductDetail["mediaLinks"][number] & { altText?: string }>;
+    const eligible = (link: ProductDetail["mediaLinks"][number]) => link.scanState === "CLEAN" && link.rightsState === "ATTESTED";
+    const colours = Array.from(new Set(activeVariants.map((variant) => variant.options.color ?? variant.options.colour).filter(Boolean)));
+    const coloursWithPhotos = colours.every((colour) => activeVariants
+      .filter((variant) => (variant.options.color ?? variant.options.colour) === colour)
+      .some((variant) => variant.mediaLinks?.some(eligible)));
+    const photoReady = activeVariants.length > 0 && (colours.length <= 1
+      ? allMedia.some(eligible)
+      : coloursWithPhotos);
+    const described = allMedia.length > 0 && allMedia.every((link) => Boolean(link.altText?.trim()));
+    const priced = activeVariants.length > 0 && activeVariants.every((variant) => variant.priceVersions?.some((price) => price.priceState === "APPROVED"));
+    const claimEvidenceComplete = claims.length === 0 || claims.every((claim) => claim.evidenceAssetIds.length > 0);
     return [
-      { label: "Product title", ready: product.title.trim().length > 0 },
-      { label: "Pinned category schema", ready: Boolean(schema) && product.categorySchemaVersion > 0 },
-      { label: "Required attributes", ready: requiredAttributesComplete },
-      { label: "At least one active SKU", ready: activeVariants.length > 0 },
-      { label: "Approved price for every active SKU", ready: hasApprovedPrice },
-      { label: "Clean, rights-attested media", ready: hasEligibleMedia },
+      { label: "Required details filled", detail: "Save the product name and required fields from this category.", ready: title.trim().length > 0 && Boolean(schema) && requiredAttributesComplete && !detailsDirty, step: 0 },
+      { label: "At least one size and colour", detail: activeVariants.length ? String(activeVariants.length) + " active SKU(s)" : "Add sizes and colours to create SKUs.", ready: activeVariants.length > 0, step: 1 },
+      { label: "Every colour has a photo", detail: "Add a clear product photo for each offered colour.", ready: photoReady, step: 2 },
+      { label: "Every photo has a description", detail: "Descriptions help shoppers who use screen readers.", ready: described, step: 2 },
+      { label: "Prices approved for every SKU", detail: "Propose a price for each active SKU. Renivet must approve it before submission.", ready: priced, step: 3 },
+      { label: "Claims have evidence", detail: claims.length ? "Each submitted claim needs supporting evidence." : "No claims yet — they are optional.", ready: claimEvidenceComplete, step: 4 },
     ];
-  }, [attributes, product, productFields, schema]);
+  }, [attributes, claims, detailsDirty, product, productFields, schema, title]);
 
   async function saveDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -329,11 +339,11 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     </section>
     <nav className={prototypeStyles.stepper} aria-label="Product editor steps">
       {[
-        { label: "Details", done: readinessChecks.slice(0,3).every((check) => check.ready) },
-        { label: "Sizes & colours", done: readinessChecks[3]?.ready ?? false },
-        { label: "Photos", done: readinessChecks[5]?.ready ?? false },
+        { label: "Details", done: readinessChecks[0]?.ready ?? false },
+        { label: "Sizes & colours", done: readinessChecks[1]?.ready ?? false },
+        { label: "Photos", done: (readinessChecks[2]?.ready ?? false) && (readinessChecks[3]?.ready ?? false) },
         { label: "Prices", done: readinessChecks[4]?.ready ?? false },
-        { label: "Claims & evidence", done: claims.length === 0 || claims.every((claim) => claim.claimState === "VERIFIED") },
+        { label: "Claims & evidence", done: readinessChecks[5]?.ready ?? false },
         { label: "Review & submit", done: !editable },
       ].map((step, index) => <button key={step.label} type="button"
         aria-current={activeStep === index ? "step" : undefined}
@@ -418,15 +428,20 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     </div>
     <div hidden={activeStep !== 5}>
     {editable && <section className={styles.formPanel} aria-labelledby="readiness-heading">
-      <div className={styles.formHeading}><div><p className={styles.kicker}>SUBMISSION READINESS</p><h2 id="readiness-heading">Ready for independent review?</h2><p>These checks mirror the server-side submission gates. A green item is only a client-side indication; the backend remains authoritative.</p></div><span className={styles.draftBadge}>{readinessChecks.filter((check) => check.ready).length}/{readinessChecks.length} ready</span></div>
-      <ul className={styles.readinessList}>{readinessChecks.map((check) => <li key={check.label} className={check.ready ? styles.readinessReady : styles.readinessBlocked}><span aria-hidden="true">{check.ready ? "✓" : "!"}</span><span>{check.label}</span><strong>{check.ready ? "Ready" : "Needs attention"}</strong></li>)}</ul>
+      <div className={styles.formHeading}><div><h2 id="readiness-heading">Ready for review?</h2><p>Check the remaining tasks before you send this revision to an independent Renivet reviewer.</p></div></div>
+      <ul className={prototypeStyles.reviewChecklist}>
+        {readinessChecks.map((check) => <li key={check.label} className={check.ready ? prototypeStyles.reviewReady : prototypeStyles.reviewMissing}>
+          <span className={prototypeStyles.reviewMark} aria-hidden="true">{check.ready ? "✓" : "!"}</span>
+          <div><strong>{check.label}</strong><small>{check.detail}</small></div>
+          {!check.ready && <button type="button" onClick={() => goToStep(check.step)}>Fix</button>}
+        </li>)}
+      </ul>
     </section>}
-
     {editable && <section className={styles.formPanel} aria-labelledby="submission-heading">
       <div className={styles.formHeading}><div><p className={styles.kicker}>READY FOR A SEPARATE REVIEW?</p><h2 id="submission-heading">Submit this revision</h2><p>Submission checks the saved product, active SKUs, approved prices and eligible media on the server. Once accepted, this exact revision is frozen for an independent reviewer.</p></div></div>
       {submissionError && <p className={styles.error} role="alert">{submissionError}</p>}
       {submissionNotice && <p className={styles.notice} role="status">{submissionNotice}</p>}
-      <div className={styles.formActions}><p>Requires the brand’s current catalog submission permission.</p><button className={styles.primaryButton} type="button" onClick={() => void submitForReview()} disabled={submitting}>{submitting ? "Submitting revision…" : "Submit for independent review"}</button></div>
+      <div className={styles.formActions}><p>{readinessChecks.filter((check) => !check.ready).length ? readinessChecks.filter((check) => !check.ready).length + " item(s) to fix before submitting." : "Everything needed is in place. The server will verify all requirements again."}</p><button className={styles.primaryButton} type="button" onClick={() => void submitForReview()} disabled={submitting || readinessChecks.some((check) => !check.ready)}>{submitting ? "Submitting revision…" : "Submit version " + product.contentVersion + " for review"}</button></div>
     </section>}
     </div>
     <div className={prototypeStyles.stepNavigation}>
