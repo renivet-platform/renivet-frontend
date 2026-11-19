@@ -6,10 +6,23 @@ import { getCurrentSession } from "@/features/identity/auth-api";
 import { W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import styles from "./taxonomy-admin.module.css";
 
-type Category = { id: string; code: string; name: string; active?: boolean; isActive?: boolean; schemaVersion?: number | null; currentSchemaVersion?: number | null; isLeaf: boolean; hasDraft?: boolean };
+type StoredRule = { code: string; requiredByDefault?: boolean; [key: string]: unknown };
+type Category = { id: string; code: string; name: string; parentId?: string | null; active?: boolean; isActive?: boolean; retired?: boolean; schemaVersion?: number | null; currentSchemaVersion?: number | null; publishedRuleset?: { attributes?: StoredRule[]; [key: string]: unknown } | null; isLeaf: boolean; hasDraft?: boolean };
 type Attribute = { id?: string; code: string; label?: string; valueType?: string; type?: string; scopeType?: string; scope?: string; allowedValues?: unknown; unitCode?: string | null };
 type SelectedAttribute = { code: string; required: boolean };
 const validatorVersion = "w2-attribute-validator-v1";
+function isLive(category: Category) { return category.active === true || category.isActive === true; }
+function currentVersion(category: Category) { return category.schemaVersion ?? category.currentSchemaVersion ?? null; }
+function categoryStatus(category: Category): { label: string; tone: "live" | "ready" | "waiting" | "setup" | "retired"; note: string } {
+  if (category.retired) return { label: "Retired", tone: "retired", note: "Previously deactivated" };
+  if (isLive(category)) return { label: "Live", tone: "live", note: category.hasDraft ? "Update awaiting approval" : "Available to brands" };
+  if (currentVersion(category) != null) return { label: "Ready to activate", tone: "ready", note: "Approved — not live yet" };
+  if (category.hasDraft) return { label: "Waiting for approval", tone: "waiting", note: "Another admin must review" };
+  return { label: "Needs details", tone: "setup", note: "Select product details" };
+}
+function savedSelection(category: Category | undefined): SelectedAttribute[] {
+  return (category?.publishedRuleset?.attributes ?? []).filter(rule => typeof rule.code === "string").map(rule => ({ code: rule.code, required: rule.requiredByDefault === true }));
+}
 const friendlyError = (cause: unknown) => cause instanceof W2ApiError
   ? cause.status === 401 ? "Your session expired. Sign in and try again."
   : cause.status === 403 ? "You need permission to create this category update."
@@ -29,12 +42,20 @@ export function TaxonomyAdminWorkspace() {
   const [notice,setNotice] = useState("");
   const [search,setSearch] = useState("");
   const [creating,setCreating] = useState(false);
+  const [editing,setEditing] = useState(false);
+  const [confirmActivation,setConfirmActivation] = useState(false);
+  const [filter,setFilter] = useState<"all" | "action" | "live">("all");
   const [newName,setNewName] = useState("");
   const [newCode,setNewCode] = useState("");
   const [newParentId,setNewParentId] = useState("");
   const selected = useMemo(() => categories.find(x => x.id === categoryId),[categoryId,categories]);
   const pendingCategories = useMemo(() => categories.filter(category => category.hasDraft), [categories]);
-  const available = useMemo(() => categories.filter(x => x.isLeaf && (x.name + " " + x.code).toLowerCase().includes(search.toLowerCase())),[categories,search]);
+  const leafCategories = useMemo(() => categories.filter(category => category.isLeaf), [categories]);
+  const available = useMemo(() => leafCategories.filter(category => (category.name + " " + category.code).toLowerCase().includes(search.toLowerCase()) &&
+    (filter === "all" || (filter === "live" ? isLive(category) : !isLive(category) && !category.retired))), [leafCategories, search, filter]);
+  const liveCount = leafCategories.filter(isLive).length;
+  const readyCategories = leafCategories.filter(category => !isLive(category) && !category.retired && currentVersion(category) != null);
+  const waitingCount = leafCategories.filter(category => category.hasDraft).length;
   const version = (selected?.currentSchemaVersion ?? selected?.schemaVersion ?? 0) + 1;
 
   async function load() {
@@ -52,7 +73,8 @@ export function TaxonomyAdminWorkspace() {
   useEffect(() => { void load(); }, []);
 
   function chooseCategory(id:string) {
-    setCategoryId(id); setFields([]); setStep("choose"); setNotice(""); setError("");
+    setCategoryId(id); setFields(savedSelection(categories.find(category => category.id === id)));
+    setStep("choose"); setEditing(false); setConfirmActivation(false); setNotice(""); setError("");
   }
   function toggleField(code:string) {
     setFields(current => current.some(f => f.code === code) ? current.filter(f => f.code !== code) : [...current,{code,required:false}]);
@@ -81,7 +103,7 @@ export function TaxonomyAdminWorkspace() {
       });
       setCreating(false);setNewName("");setNewCode("");setNewParentId("");
       await load();
-      setCategoryId(result.id);setFields([]);setStep("choose");
+      setCategoryId(result.id);setFields([]);setStep("choose");setEditing(true);setConfirmActivation(false);
       setNotice("Category created. Select the product details below and send the first version for approval.");
     } catch(cause){setError(friendlyError(cause));}
     finally{setBusy(false);}
@@ -93,7 +115,11 @@ export function TaxonomyAdminWorkspace() {
     try {
       const session = await getCurrentSession();
       const csrfToken = session.csrfToken;
-      const ruleset = { attributes: fields.map(field => {
+      // Retain immutable published rule details (conditional logic, value limits, units)
+      // when preparing a revision; the simple editor only changes membership/requiredness.
+      const ruleset = { ...(selected.publishedRuleset ?? {}), attributes: fields.map(field => {
+        const publishedRule = selected.publishedRuleset?.attributes?.find(rule => rule.code === field.code);
+        if (publishedRule) return { ...publishedRule, requiredByDefault: field.required };
         const source = attributes.find(a => a.code === field.code)!;
         return {
           attributeId:source.id,
@@ -110,10 +136,30 @@ export function TaxonomyAdminWorkspace() {
         csrfToken,idempotencyKey:crypto.randomUUID()
       });
       setNotice("Submitted for approval. Another authorized admin can review and publish this update.");
-      setStep("choose");setFields([]);
+      setStep("choose");setEditing(false);setFields([]);
       await load();
     } catch(cause) { setError(friendlyError(cause)); }
     finally { setBusy(false); }
+  }
+  async function activateCategory() {
+    if (!selected || busy || isLive(selected) || selected.retired || currentVersion(selected) == null) return;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const session = await getCurrentSession();
+      await w2Request(["admin","catalog","categories",selected.id,"activate"], {
+        method: "POST",
+        body: { reasonCode: "APPROVED_FOR_LISTING" },
+        csrfToken: session.csrfToken,
+        idempotencyKey: crypto.randomUUID()
+      });
+      setConfirmActivation(false);
+      await load();
+      setNotice(`${selected.name} is now active. Brands can use its published details when listing products.`);
+    } catch (cause) {
+      if (cause instanceof W2ApiError && cause.status === 409) {
+        setError("This category has changed or cannot be activated. Refresh to check the latest status.");
+      } else { setError(friendlyError(cause)); }
+    } finally { setBusy(false); }
   }
   return <main className={styles.simplePage} data-screen-id="AD-07">
     <header className={styles.simpleHeader}>
