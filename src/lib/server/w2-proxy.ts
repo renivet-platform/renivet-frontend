@@ -14,7 +14,10 @@ export type W2Method = "GET" | "POST" | "PATCH" | "DELETE";
 /** Exact allowlist for the registered catalog APIs used by the first seller slice. */
 export function resolveW2BackendPath(segments: string[], method: string): string | null {
   if (segments.some((segment) => !segment || segment === "." || segment === ".." || segment.includes("/") || segment.includes("\\"))) return null;
-  if (segments[0] === "admin" && segments[1] === "reviews" && ["taxonomy", "quality", "pricing", "claims", "publishing"].includes(segments[2] ?? "")) {
+  if (method === "GET" && segments.length === 2 && segments[0] === "admin" && segments[1] === "access-audit") {
+    return "/api/v1/admin/access-audit";
+  }
+    if (segments[0] === "admin" && segments[1] === "reviews" && ["taxonomy", "quality", "pricing", "claims", "publishing"].includes(segments[2] ?? "")) {
     if (method === "GET" && segments.length === 3) return `/api/v1/admin/reviews/${segments[2]}`;
     if (method === "GET" && segments.length === 4 && uuid.test(segments[3]!)) return `/api/v1/admin/reviews/${segments[2]}/${segments[3]}`;
     return null;
