@@ -86,13 +86,18 @@ export function ProductVariantMatrix({ brandId, productId, product, fields, edit
       const session = await getCurrentSession();
       let rowVersion = product.rowVersion;
       for (const row of pending) {
-        await w2Request(["brands", brandId, "products", productId, "variants"], {
+        const receipt = await w2Request<{ parentRowVersion?: number }>(["brands", brandId, "products", productId, "variants"], {
           method: "POST", body: { sku: row.sku, options: row.options },
           csrfToken: session.csrfToken, idempotencyKey: createIdempotencyKey(), ifMatch: '"' + rowVersion + '"',
         });
         completed += 1;
-        const refreshed = await w2Request<Product>(["brands", brandId, "products", productId]);
-        rowVersion = refreshed.rowVersion;
+        // The backend's authoritative compare-and-swap receipt avoids a GET per SKU.
+        if (Number.isSafeInteger(receipt.parentRowVersion) && (receipt.parentRowVersion ?? 0) > rowVersion) {
+          rowVersion = receipt.parentRowVersion!;
+        } else {
+          const refreshed = await w2Request<Product>(["brands", brandId, "products", productId]);
+          rowVersion = refreshed.rowVersion;
+        }
       }
       setNotice(String(completed) + " SKU" + (completed === 1 ? "" : "s") + " saved to this draft.");
     } catch (caught) {
