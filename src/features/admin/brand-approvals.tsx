@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
-import { shouldRequestMfaStepUp, type MfaEnforcementMode } from "@/features/identity/mfa-policy";
+import { getCurrentSession } from "@/features/identity/auth-api";
 import { W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import { brandApprovalDetailPath, findPendingBrandApplication } from "./brand-approval-route";
 import styles from "./brand-approvals.module.css";
@@ -29,9 +28,6 @@ function errorText(error: unknown) {
 export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
   const [items, setItems] = useState<Application[]>([]);
   const [selected, setSelected] = useState<Application | null>(null);
-  const [mfa, setMfa] = useState("");
-  const [mfaEnforcementMode, setMfaEnforcementMode] = useState<MfaEnforcementMode>("enforced");
-  const [mfaModeLoaded, setMfaModeLoaded] = useState(false);
   const [checker, setChecker] = useState("");
   const [reviewers, setReviewers] = useState<Array<{id:string;name:string}>>([]);
   const [signedInReviewerId, setSignedInReviewerId] = useState("");
@@ -62,11 +58,8 @@ export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
       .then(data=>setReviewers(data.items??[])).catch(()=>setReviewers([]));
     void getCurrentSession().then((session) => {
       setSignedInReviewerId(session.user.id);
-      setMfaEnforcementMode(session.mfaEnforcementMode);
-      setMfaModeLoaded(true);
     }).catch(() => {
-      setMfaEnforcementMode("enforced");
-      setMfaModeLoaded(true);
+      setSignedInReviewerId("");
     });
   }, []);
 
@@ -76,15 +69,7 @@ export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
     setBusy(true); setError("");
     try {
       const session = await getCurrentSession();
-      setMfaEnforcementMode(session.mfaEnforcementMode);
-      setMfaModeLoaded(true);
-      let csrfToken = session.csrfToken;
-      if (shouldRequestMfaStepUp(session.mfaEnforcementMode)) {
-        if (!/^\d{6}$/.test(mfa.trim())) throw new Error("Enter the six-digit MFA code.");
-        const elevated = await stepUpWithMfa(mfa.trim(), session.csrfToken);
-        csrfToken = elevated.csrfToken;
-        setMfa("");
-      }
+      const csrfToken = session.csrfToken;
       await w2Request(["admin", "brands", selected.brandId, "application-review"], {
         method: "POST",
         body: { applicantUserId: selected.applicantUserId, checkedByUserId: checker.trim(), decision, eventId: crypto.randomUUID() },
@@ -153,7 +138,6 @@ export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
             {reviewers.filter(r=>r.id!==signedInReviewerId&&r.id!==selected.applicantUserId).map(reviewer=><option key={reviewer.id} value={reviewer.id}>{reviewer.name}</option>)}
           </select></label>
           {reviewers.filter(r=>r.id!==signedInReviewerId&&r.id!==selected.applicantUserId).length===0 && <p className={styles.muted}>No independent verified reviewer is available. Ask another Renivet admin to be assigned before proceeding.</p>}
-          {mfaModeLoaded && shouldRequestMfaStepUp(mfaEnforcementMode) ? <label>Fresh MFA code<input value={mfa} onChange={(event) => setMfa(event.target.value)} inputMode="numeric" autoComplete="one-time-code" /></label> : null}
           <div className={styles.actions}><button className={styles.approve} disabled={busy} onClick={() => void decide("approved")}>Approve application</button><button className={styles.reject} disabled={busy} onClick={() => void decide("rejected")}>Reject application</button></div>
           <p className={styles.muted}>Maker-checker is enforced by the backend; the submitter and checker cannot be the same person. This W1 decision records approve or reject only; it does not attest that the unavailable W2 evidence was checked.</p>
         </div>}

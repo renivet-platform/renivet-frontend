@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AuthApiError, getCurrentSession, logoutCurrentSession, stepUpWithMfa } from "@/features/identity/auth-api";
-import { shouldRequestMfaStepUp, type MfaEnforcementMode } from "@/features/identity/mfa-policy";
+import { AuthApiError, getCurrentSession, logoutCurrentSession } from "@/features/identity/auth-api";
 import { W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import type { components } from "@/generated/renivet-api";
 import styles from "./operations-console.module.css";
@@ -44,7 +43,6 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
   const [sessionReady, setSessionReady] = useState(false);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [sessionCsrfToken, setSessionCsrfToken] = useState("");
-  const [mfaEnforcementMode, setMfaEnforcementMode] = useState<MfaEnforcementMode>("enforced");
   const [sessionError, setSessionError] = useState("");
   const [signOutBusy, setSignOutBusy] = useState(false);
   const [items, setItems] = useState<ReviewItem[]>([]);
@@ -53,7 +51,6 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
   const [detailError, setDetailError] = useState("");
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [mfaCode, setMfaCode] = useState("");
   const [confirmedRevision, setConfirmedRevision] = useState(false);
   const [reasonCode, setReasonCode] = useState("");
   const [comment, setComment] = useState("");
@@ -75,7 +72,7 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
 
   useEffect(() => {
     let live = true;
-    getCurrentSession().then((session) => { if (live) { setSessionReady(true); setSessionUserId(session.user.id); setSessionCsrfToken(session.csrfToken); setMfaEnforcementMode(session.mfaEnforcementMode); setSessionError(""); } })
+    getCurrentSession().then((session) => { if (live) { setSessionReady(true); setSessionUserId(session.user.id); setSessionCsrfToken(session.csrfToken); setSessionError(""); } })
       .catch((error: unknown) => { if (live) setSessionError(errorMessage(error)); });
     return () => { live = false; };
   }, []);
@@ -127,17 +124,7 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
     setBusy(true); setDetailError(""); setNotice("");
     try {
       const session = await getCurrentSession();
-      setMfaEnforcementMode(session.mfaEnforcementMode);
-      let csrfToken = session.csrfToken;
-      if (shouldRequestMfaStepUp(session.mfaEnforcementMode)) {
-        if (!/^(?:\d{6}|[A-Z2-7]{26})$/.test(mfaCode.trim().toUpperCase())) {
-          throw new Error("Enter a six-digit authenticator code or unused recovery code.");
-        }
-        const elevated = await stepUpWithMfa(mfaCode.trim().toUpperCase(), session.csrfToken);
-        csrfToken = elevated.csrfToken;
-        setSessionCsrfToken(elevated.csrfToken);
-        setMfaCode("");
-      }
+      const csrfToken = session.csrfToken;
       const idempotencyKey = crypto.randomUUID();
       let path: string[]; let body: Record<string, unknown>; let ifMatch: string | undefined;
       if (active === "taxonomy") {
@@ -214,7 +201,7 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
               <label className={styles.confirmation}><input type="checkbox" checked={confirmedRevision} onChange={(event) => setConfirmedRevision(event.target.checked)} /> I reviewed the exact revision and evidence shown above.</label>
               {active !== "taxonomy" ? <><label htmlFor="review-reason">Reason code</label><input id="review-reason" value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} required maxLength={64} autoComplete="off" /></> : null}
               {active !== "taxonomy" ? <><label htmlFor="review-comment">Reviewer comment <span>(optional)</span></label><textarea id="review-comment" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={2000} /></> : null}
-              {sessionReady && shouldRequestMfaStepUp(mfaEnforcementMode) ? <><label htmlFor="review-mfa">Authenticator or recovery code</label><input id="review-mfa" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} required autoComplete="one-time-code" inputMode="text" /></> : null}
+              
               <div className={styles.cardTop}>
                         {active === "quality" ? <><button type="submit" disabled={busy || decisionBlocked}>Approve exact revision</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("REJECTED")}>Reject</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("CORRECTION_REQUIRED")}>Request correction</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("RESTRICTED")}>Restrict revision</button></> : null}
                         {active === "pricing" ? <><button type="submit" disabled={busy || decisionBlocked}>Approve price</button><button type="button" disabled={busy || decisionBlocked} onClick={() => void decide("REJECT")}>Reject</button></> : null}
@@ -224,7 +211,7 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
               </div>
             </form> : <p className={styles.reviewBlockedHint}>This proposal is waiting for another admin. Sign in as a different authorized reviewer to approve and publish it.</p>}
           </section> : null}
-          <footer className={styles.footer}><span>RENIVET · OPERATIONS</span><span>Writes require global W1 permission, CSRF and the server’s current MFA policy.</span></footer>
+          <footer className={styles.footer}><span>RENIVET · OPERATIONS</span><span>Writes require authenticated sessions, global permissions, CSRF and independent review.</span></footer>
         </div>
       </main>
     </div>
