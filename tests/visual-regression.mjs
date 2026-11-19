@@ -133,7 +133,7 @@ try {
       ["/operations/quality/22222222-2222-4222-8222-222222222222", "AD-08B", null],
       ["/operations/exceptions", "AD-09", "Inventory exceptions", true],
       ["/operations/privacy", "AD-19", "Privacy requests", true],
-      ["/operations/audit", "AD-20", "Audit log", true],
+      ["/operations/audit", "AD-20", "Audit log", false],
     ];
     await command("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile });
     for (const [route, id, title, requiresUnavailable] of adminScreens) {
