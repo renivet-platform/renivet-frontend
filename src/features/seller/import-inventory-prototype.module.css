@@ -46,3 +46,11 @@
 .inventoryFilters .outOfStockFilter { display:flex; flex-direction:row; gap:10px; align-items:center; min-height:43px; padding:0 14px; border-radius:999px; background:#fff; border:1px solid #a8b1ab; cursor:pointer; }
 .outOfStockFilter input { width:17px; height:17px; accent-color:#1f5a45; }
 @media(max-width:600px) {.inventoryTopActions{width:100%;}.inventoryTopActions a{flex:1;}.inventoryFilters{gap:8px;}.inventoryFilters label:first-child{width:100%;}.inventoryFilters select{width:100%;max-width:none;}.inventoryFilters .outOfStockFilter{min-height:42px;}}
+
+/* SE-12 simple Imports index / deliberate New import wizard. */
+.importActions { display:flex; align-items:center; gap:8px; }
+.importActions button { min-height:44px; }
+.templateHelp { display:flex; align-items:center; flex-wrap:wrap; justify-content:space-between; gap:12px; width:100%; grid-column:1 / -1; padding:10px 0 16px; }
+.templateHelp p { color:#5d6963; font-size:13px; margin:0; }
+.templateHelp button { min-height:40px; }
+@media(max-width:600px) { .importActions { width:100%; }.importActions button { flex:1; }.templateHelp { align-items:flex-start; flex-direction:column; } }
