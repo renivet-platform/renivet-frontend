@@ -163,9 +163,14 @@ export function TaxonomyAdminWorkspace() {
   }
   return <main className={styles.simplePage} data-screen-id="AD-07">
     <header className={styles.simpleHeader}>
-      <div><p className={styles.simpleEyebrow}>CATALOGUE SETTINGS</p><h1>Taxonomy</h1><p>Categories and the details brands must give for each.</p></div>
+      <div><p className={styles.simpleEyebrow}>CATALOGUE SETTINGS</p><h1>Taxonomy</h1><p>Create product categories, approve their details and make them available to brands.</p></div>
       <div className={styles.headerActions}><button type="button" className={styles.simplePrimary} onClick={()=>{setCreating(true);setError("");}}>+ Create category</button><Link href="/operations/taxonomy" className={styles.reviewLink}>Review requests</Link></div>
     </header>
+    {!loading && <div className={styles.summaryGrid} aria-label="Category progress">
+      <div className={styles.summaryMetric}><span className={styles.metricDotLive} aria-hidden="true"/><strong>{liveCount}</strong><span>Live categories</span></div>
+      <div className={styles.summaryMetric}><span className={styles.metricDotReady} aria-hidden="true"/><strong>{readyCategories.length}</strong><span>Ready to activate</span>{readyCategories.length > 0 && <button type="button" onClick={() => chooseCategory(readyCategories[0].id)}>View next <span aria-hidden="true">→</span></button>}</div>
+      <div className={styles.summaryMetric}><span className={styles.metricDotWaiting} aria-hidden="true"/><strong>{waitingCount}</strong><span>Awaiting approval</span></div>
+    </div>}
     {!loading && pendingCategories.length > 0 && <section className={styles.pendingBanner} aria-labelledby="pending-taxonomy-title">
       <div><h2 id="pending-taxonomy-title">Waiting for a second admin</h2><p>{pendingCategories.length === 1 ? "A category update has been submitted and is awaiting independent approval." : `${pendingCategories.length} category updates have been submitted and are awaiting independent approval.`}</p>
         <div className={styles.pendingNames}>{pendingCategories.slice(0,3).map(category => <button key={category.id} type="button" onClick={() => chooseCategory(category.id)}>{category.name} <span>· Pending</span></button>)}{pendingCategories.length > 3 && <span>+{pendingCategories.length - 3} more</span>}</div>
@@ -190,40 +195,62 @@ export function TaxonomyAdminWorkspace() {
     </section>}
     {loading ? <p role="status">Loading categories and details…</p> : <div className={styles.simpleGrid}>
       <section className={styles.simpleCard} aria-labelledby="category-list-heading">
-        <h2 id="category-list-heading">Choose a category</h2>
-        <p>Select the category you want to update.</p>
-        <input aria-label="Search categories" className={styles.searchBox} placeholder="Search categories" value={search} onChange={e=>setSearch(e.currentTarget.value)} />
+        <h2 id="category-list-heading">Your categories</h2>
+        <p>Choose one to see its next step.</p>
+        <input aria-label="Search categories" className={styles.searchBox} placeholder="Search by category name" value={search} onChange={e=>setSearch(e.currentTarget.value)} />
+        <div className={styles.categoryFilters} role="group" aria-label="Filter categories">
+          <button type="button" className={filter==="all"?styles.filterActive:styles.filterButton} aria-pressed={filter==="all"} onClick={()=>setFilter("all")}>All</button>
+          <button type="button" className={filter==="action"?styles.filterActive:styles.filterButton} aria-pressed={filter==="action"} onClick={()=>setFilter("action")}>Needs action</button>
+          <button type="button" className={filter==="live"?styles.filterActive:styles.filterButton} aria-pressed={filter==="live"} onClick={()=>setFilter("live")}>Live</button>
+        </div>
         <div className={styles.simpleCategoryList}>
-          {available.map(category=><button type="button" key={category.id} className={categoryId===category.id?styles.categorySelected:styles.categoryOption} onClick={()=>chooseCategory(category.id)}>
-            <strong>{category.name}</strong>
-            <small>{category.hasDraft?"● Awaiting second admin":category.active===false||category.isActive===false?"● Not active":"● Active"} · {category.schemaVersion?"Published version "+category.schemaVersion:"No published version"}</small>
-          </button>)}
-          {!available.length && <p>No matching categories.</p>}
+          {available.map(category=>{const status=categoryStatus(category);return <button type="button" key={category.id} aria-pressed={categoryId===category.id} className={categoryId===category.id?styles.categorySelected:styles.categoryOption} onClick={()=>chooseCategory(category.id)}>
+            <span className={styles.categoryRowTop}><strong>{category.name}</strong><span className={styles.statusPill} data-tone={status.tone}>{status.label}</span></span>
+            <small>{status.note}{currentVersion(category)!=null ? ` · Version ${currentVersion(category)}` : ""}</small>
+          </button>;})}
+          {!available.length && <p className={styles.emptyList}>No categories match. Try a different search or filter.</p>}
         </div>
       </section>
       <section className={styles.simpleCard} aria-labelledby="category-editor-heading">
-        <h2 id="category-editor-heading">{selected ? selected.name : "Create a category update"}</h2>
-        {!selected ? <p>Choose a category on the left or use Create category to add a new one.</p>
-        : selected.hasDraft ? <div className={styles.pendingDetail}><strong>Waiting for a second admin</strong><p>Your category update is saved in the review queue. A different authorized admin must approve it before it becomes a published version. You cannot approve your own submission.</p><Link href="/operations/taxonomy">View pending review</Link></div>
-        : step==="choose" ? <>
-            <p>Choose which details a brand must provide when listing products here.</p>
+        <div className={styles.detailHeader}>
+          <div><p className={styles.detailEyebrow}>CATEGORY DETAILS</p><h2 id="category-editor-heading">{selected ? selected.name : "Select a category"}</h2></div>
+          {selected && <span className={styles.statusPill} data-tone={categoryStatus(selected).tone}>{categoryStatus(selected).label}</span>}
+        </div>
+        {!selected ? <div className={styles.welcomePanel}><strong>Choose a category to get started</strong><p>Select one from the list, or create a new category using the button above.</p></div> :
+        <>
+          {selected.retired ? <div className={styles.statePanel} role="status"><h3>This category has been retired</h3><p>A retired category cannot be made active again. Create a new category if you need to resume listings.</p></div> : null}
+          {isLive(selected) && <div className={styles.livePanel} role="status"><span className={styles.stateIcon} aria-hidden="true">✓</span><div><h3>Category is live</h3><p>Brands can select this category when listing products. Version {currentVersion(selected)} is published.</p>{selected.hasDraft && <p>An updated version is also awaiting another admin’s approval.</p>}</div></div>}
+          {!isLive(selected) && !selected.retired && currentVersion(selected) != null && <div className={styles.activatePanel}>
+            <div className={styles.activationIntro}><span className={styles.stateIcon} aria-hidden="true">✓</span><div><h3>Approved — ready to go live</h3><p>Version {currentVersion(selected)} is published. One final step remains: activate this category so brands can use it.</p></div></div>
+            {!confirmActivation ? <button type="button" className={styles.simplePrimary} disabled={busy} onClick={()=>setConfirmActivation(true)}>Activate category <span aria-hidden="true">→</span></button>
+              : <div className={styles.confirmPanel} role="group" aria-label="Confirm category activation"><strong>Make {selected.name} available to brands?</strong><p>This uses the approved version and records an audit event.</p><div className={styles.simpleActions}><button type="button" className={styles.simpleSecondary} disabled={busy} onClick={()=>setConfirmActivation(false)}>Cancel</button><button type="button" className={styles.simplePrimary} disabled={busy} onClick={()=>void activateCategory()}>{busy?"Activating…":"Yes, make live"}</button></div></div>}
+            {selected.hasDraft && <p className={styles.activationNote}>A newer update is also awaiting review. Activation uses the current approved version only.</p>}
+          </div>}
+          {selected.hasDraft && <div className={styles.pendingDetail}><strong>Update waiting for approval</strong><p>A different authorized admin needs to review the submitted product details. No further action is required on this page until the review is complete.</p><Link href="/operations/taxonomy">Open approval queue</Link></div>}
+          {!selected.hasDraft && !selected.retired && currentVersion(selected) != null && !editing && <div className={styles.publishedPanel}><div><h3>Product details · Version {currentVersion(selected)}</h3><p>{selected.publishedRuleset?.attributes?.length ?? 0} details in the approved version</p></div><button className={styles.simpleSecondary} type="button" onClick={()=>{setFields(savedSelection(selected));setStep("choose");setEditing(true);}}>Edit product details</button></div>}
+          {!selected.hasDraft && !selected.retired && (editing || currentVersion(selected) == null) && (step==="choose" ? <>
+            <div className={styles.editorIntro}><h3>{currentVersion(selected) == null ? "1. Choose product details" : "Update product details"}</h3><p>Select the information brands should enter for this category. Tick “Required” for essential details.</p></div>
             <div className={styles.simpleFieldList}>
-              {attributes.map(attribute=>{const chosen=fields.find(f=>f.code===attribute.code);return <div className={styles.simpleField} key={attribute.code}>
+              {attributes.map(attribute=>{const chosen=fields.find(field=>field.code===attribute.code);return <div className={styles.simpleField} key={attribute.code}>
                 <label><input type="checkbox" checked={Boolean(chosen)} onChange={()=>toggleField(attribute.code)} disabled={!attribute.id}/><span>{attribute.label||attribute.code}</span></label>
-                {chosen&&<label className={styles.requiredToggle}><input type="checkbox" checked={chosen.required} onChange={e=>setFields(v=>v.map(f=>f.code===chosen.code?{...f,required:e.currentTarget.checked}:f))}/>Required</label>}
+                {chosen && <label className={styles.requiredToggle}><input type="checkbox" checked={chosen.required} onChange={e=>{const checked=e.currentTarget.checked;setFields(values=>values.map(field=>field.code===chosen.code?{...field,required:checked}:field));}}/>Required</label>}
               </div>})}
-              {!attributes.length&&<p>No saved product details found.</p>}
+              {!attributes.length && <p>No product detail definitions were found.</p>}
             </div>
-            <button className={styles.simplePrimary} disabled={!fields.length} type="button" onClick={prepare}>Review update</button>
+            <div className={styles.simpleActions}>
+              {currentVersion(selected) != null && <button type="button" className={styles.simpleSecondary} onClick={()=>setEditing(false)}>Cancel changes</button>}
+              <button className={styles.simplePrimary} disabled={!fields.length} type="button" onClick={prepare}>Review selected details <span aria-hidden="true">→</span></button>
+            </div>
           </> : <>
-            <p>Please check this update before sending it to another admin for approval.</p>
+            <div className={styles.editorIntro}><h3>2. Check and send for approval</h3><p>Review the details below. Another administrator will publish your changes.</p></div>
             <div className={styles.reviewSummary}><strong>{selected.name} · Version {version}</strong>
               {fields.map(field=><div key={field.code}>{attributes.find(a=>a.code===field.code)?.label||field.code}<span>{field.required?"Required":"Optional"}</span></div>)}
             </div>
             <div className={styles.simpleActions}><button type="button" className={styles.simpleSecondary} disabled={busy} onClick={()=>setStep("choose")}>Back</button><button className={styles.simplePrimary} type="button" disabled={busy} onClick={()=>void submit()}>{busy?"Submitting…":"Send for approval"}</button></div>
-          </>}
+          </>)}
+        </>}
       </section>
     </div>}
-    <p className={styles.simpleFooter}>Approval is always completed by a different authorized admin. Published changes are stored by the backend.</p>
+    <p className={styles.simpleFooter}>New categories become available to brands after a second admin approves their details and an admin activates the approved category.</p>
   </main>;
 }
