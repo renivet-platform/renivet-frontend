@@ -1,8 +1,8 @@
 export type MfaEnforcementMode = "enforced" | "deferred";
 
-/** Unknown or absent server policy must preserve the existing enforced UX. */
+/** MFA step-up is deferred by default until the platform explicitly re-enables it. */
 export function normalizeMfaEnforcementMode(value: unknown): MfaEnforcementMode {
-  return value === "deferred" ? "deferred" : "enforced";
+  return value === "enforced" ? "enforced" : "deferred";
 }
 
 export function shouldRequestMfaStepUp(mode: MfaEnforcementMode): boolean {
