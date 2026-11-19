@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { shouldRequestMfaStepUp } from "../src/features/identity/mfa-policy";
 const team=readFileSync("src/features/seller/brand-team.tsx","utf8");
 const imports=readFileSync("src/features/seller/import-workspace.tsx","utf8");
 const products=readFileSync("src/features/seller/product-workspace.tsx","utf8");
@@ -15,9 +14,8 @@ test("Imports retain separate source-first five-stage workflow with session CSRF
  assert.match(imports,/wizardStep/);
  assert.match(imports,/Choose source/);
  assert.match(imports,/Upload file/);
- assert.match(imports,/shouldRequestMfaStepUp\(session\.mfaEnforcementMode\)/);
- assert.equal(shouldRequestMfaStepUp("deferred"),false);
- assert.equal(shouldRequestMfaStepUp("enforced"),true);
+ assert.match(imports,/getCurrentSession/);
+ assert.doesNotMatch(imports,/stepUpWithMfa|Authenticator code|shouldRequestMfaStepUp/);
 });
 test("Products have separate creation route plus persisted category and updated fields",()=>{
  assert.match(products,/mode === "new"/);
