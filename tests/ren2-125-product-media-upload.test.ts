@@ -14,15 +14,17 @@ test("REN2-125 preserves the private media intent, completion, status and link r
   assert.equal(resolveW2BackendPath(["brands",brand,"media",media],"GET"), `/api/v1/brands/${brand}/media/${media}`);
   assert.equal(resolveW2BackendPath(["brands",brand,"products",product,"media"],"POST"), `/api/v1/brands/${brand}/products/${product}/media`);
 });
-test("REN2-125 automatically attaches only fully scanned, rights-attested images", () => {
-  assert.match(source, /verified\.scanState === "CLEAN" && verified\.rightsState === "ATTESTED" && verified\.derivativeState === "READY"/);
-  assert.match(source, /await w2Request\(\["brands", brandId, "products", productId, "media"\]/);
-  assert.match(source, /setNotice\("Image uploaded, checked and attached to this product\."\)/);
-  assert.match(source, /setMediaId\(""\)/);
+test("REN2-126 queues multiple photos and attaches only scanned, rights-attested READY assets", () => {
+  assert.match(source, /type="file" multiple/);
+  assert.match(source, /status\.scanState !== "CLEAN" \|\| status\.rightsState !== "ATTESTED" \|\| status\.derivativeState !== "READY"/);
+  assert.match(source, /await attachMedia\(assetId, photo, session\.csrfToken, counts\)/);
+  assert.match(source, /progress: 100/);
+  assert.match(source, /variantId \? \{ variantId \} : \{\}/);
 });
+
 test("REN2-125 distinguishes upload authorization, session protection and unavailable storage", () => {
   for (const code of ["BRAND_ACCESS_DENIED", "CSRF_REJECTED", "MEDIA_STORAGE_UNAVAILABLE", "MEDIA_SCANNER_UNAVAILABLE"]) {
     assert.ok(source.includes(code), `Expected actionable handling of ${code}`);
   }
-  assert.match(source, /setError\(safeError\(caught\)\)/);
+  assert.match(source, /uploadError\(caught\)/);
 });
