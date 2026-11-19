@@ -302,7 +302,7 @@ try {
   await command("Page.navigate", { url: new URL("sign-in", base).href }); await selectEmailSignIn();
   await enter("signin-email", "seller@example.test"); await enter("signin-password", "pass1234"); await submit();
   await waitFor("location.pathname === '/brands/2a6b7c8d-1111-4111-8111-123456789abc/workspace'");
-  assert.equal(await evaluate("document.body.innerText.includes('workspace is not open yet')"), true, "seller lands on the authorized brand route while the W2 release gate stays closed");
+  await waitFor("document.body.innerText.includes('workspace is not open yet')"); // The route may commit before its async server-rendered gate is visible.
   await command("Page.navigate", { url: new URL("sign-in", base).href }); await selectEmailSignIn();
   await enter("signin-email", "multi-seller@example.test"); await enter("signin-password", "pass1234"); await submit();
   await waitFor("location.pathname === '/brands' && document.body.innerText.includes('Your brands')");
