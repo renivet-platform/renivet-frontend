@@ -3,26 +3,23 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { normalizeMfaEnforcementMode, shouldRequestMfaStepUp } from "../src/features/identity/mfa-policy";
 
-test("only an explicit server deferred policy suppresses MFA step-up UI", () => {
+test("deferred is the default and explicit opt-in is still recognizable", () => {
   assert.equal(normalizeMfaEnforcementMode("deferred"), "deferred");
   assert.equal(shouldRequestMfaStepUp("deferred"), false);
   assert.equal(normalizeMfaEnforcementMode("enforced"), "enforced");
   assert.equal(shouldRequestMfaStepUp("enforced"), true);
-  assert.equal(normalizeMfaEnforcementMode(undefined), "enforced");
-  assert.equal(normalizeMfaEnforcementMode("disabled"), "enforced");
+  assert.equal(normalizeMfaEnforcementMode(undefined), "deferred");
+  assert.equal(normalizeMfaEnforcementMode("disabled"), "deferred");
 });
 
-test("account MFA enrollment remains voluntary and admin surfaces follow server policy", () => {
-  const authForms = readFileSync("src/features/identity/auth-forms.tsx", "utf8");
-  assert.match(authForms, /Optional: add an authenticator app/);
-  assert.match(authForms, /Set up MFA/);
+test("platform UI does not render authenticator prompts for account or approval actions", () => {
   for (const path of [
+    "src/features/identity/auth-forms.tsx",
     "src/features/admin/operations-console.tsx",
     "src/features/admin/brand-approvals.tsx",
-      ]) {
+  ]) {
     const source = readFileSync(path, "utf8");
-    assert.match(source, /getCurrentSession/);
-    assert.match(source, /shouldRequestMfaStepUp/);
+    assert.doesNotMatch(source, /stepUpWithMfa|Set up MFA|review-mfa|Fresh MFA code|MfaEnrollmentPanel/);
   }
 });
 
