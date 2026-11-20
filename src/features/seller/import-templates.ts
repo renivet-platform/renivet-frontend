@@ -85,6 +85,27 @@ const unicommerceExample: Record<string, string> = {
   externalItemId: "BAND-TEE",
 };
 
+/**
+ * Export headers and wizard defaults are maintained together: downloading a
+ * template must never omit a field required by Renivet's draft importer.
+ * External product IDs become styleCode; raw source identifiers are retained
+ * in immutable import rows for provenance.
+ */
+export const defaultImportFieldMappings: Record<SourceProfile, ReadonlyArray<readonly [string, string]>> = {
+  SHOPIFY: [["URL handle", "styleCode"], ["Title", "title"], ["SKU", "sku"],
+    ["Product category", "categoryCode"], ["Option1 value", "options.size"],
+    ["Option2 value", "options.color"], ["Price", "sourceMrp"],
+    ["Product image URL", "imageUrl"]],
+  UNICOMMERCE: [["externalItemId", "styleCode"], ["skuCode", "sku"],
+    ["name", "title"], ["categoryCode", "categoryCode"], ["color", "options.color"],
+    ["size", "options.size"], ["maxRetailPrice", "sourceMrp"], ["imageUrl", "imageUrl"]],
+  RENIVET: [["styleCode", "styleCode"], ["title", "title"], ["sku", "sku"],
+    ["categoryCode", "categoryCode"], ["color", "options.color"], ["size", "options.size"],
+    ["mrp", "sourceMrp"]],
+  GENERIC: [["title", "title"], ["styleCode", "styleCode"], ["sku", "sku"],
+    ["categoryCode", "categoryCode"]],
+};
+
 const templates: Record<SourceProfile, { headers: readonly string[]; example: Record<string, string> }> = {
   SHOPIFY: { headers: shopifyHeaders, example: shopifyExample },
   UNICOMMERCE: { headers: unicommerceHeaders, example: unicommerceExample },
