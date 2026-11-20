@@ -7,6 +7,7 @@ import type { operations } from "@/generated/renivet-api";
 import { categoryLabel, createIdempotencyKey, selectableCategories, type Category, type Paged, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import { isStaleImportPreview, validateImportFieldMappings } from "@/features/seller/import-workspace-state";
 import { buildImportTemplateCsv, type SourceProfile } from "@/features/seller/import-templates";
+import { uniqueImportConflicts } from "@/features/seller/import-conflict-messages";
 import styles from "./product-workspace.module.css";
 import visual from "./import-inventory-prototype.module.css";
 
@@ -258,9 +259,25 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
     {preview && !results && <section className={visual.wizardCard} aria-labelledby="preview-title">
       <h2 id="preview-title">Review before importing</h2><p>Only draft products change after you confirm this frozen preview.</p>
       <div className={styles.importCounts}>{Object.entries(preview.counts).map(([name,count])=><div key={name}><strong>{count}</strong><span>{name}</span></div>)}</div>
+      {preview.rows.some(row=>row.conflicts.length>0)&&<div className={visual.previewConflictSummary} role="status">
+        <strong>Some products need attention before they can proceed.</strong>
+        <p>Read the issues and suggested fixes below. You can return to column and category mapping without confirming the import.</p>
+      </div>}
       {preview.rows.length>0&&<div className={styles.tableWrap}><table className={styles.variantTable}>
-        <caption className={styles.visuallyHidden}>Preview changes and conflicts</caption><thead><tr><th>Row</th><th>Action</th><th>Changed fields</th><th>Conflicts</th></tr></thead>
-        <tbody>{preview.rows.slice(0,100).map(row=><tr key={row.sourceRowNumber}><td>{row.sourceRowNumber}</td><td>{row.action.replaceAll("_"," ")}</td><td>{row.fieldMask.join(", ")||"None"}</td><td>{row.conflicts.map(c=>c.code).join(", ")||"None"}</td></tr>)}</tbody>
+        <caption className={styles.visuallyHidden}>Preview changes, conflicts, and how to fix them</caption>
+        <thead><tr><th>CSV row</th><th>Result</th><th>Fields being changed</th><th>What needs attention and how to fix it</th></tr></thead>
+        <tbody>{preview.rows.slice(0,100).map(row=><tr key={row.sourceRowNumber}>
+          <td>{row.sourceRowNumber}</td><td>{row.action.replaceAll("_"," ").toLowerCase()}</td>
+          <td>{row.fieldMask.join(", ")||"None"}</td>
+          <td>{row.conflicts.length===0?"No issues found":<ul className={visual.previewConflictList}>
+            {uniqueImportConflicts(row.conflicts.map(conflict=>conflict.code)).map(({message,occurrences})=><li key={message.code}>
+              <strong>{message.title}{occurrences>1?" (reported "+occurrences+" times)":""}</strong>
+              <span>{message.explanation}</span>
+              <span><b>What to do:</b> {message.nextStep}</span>
+              <small>Technical code: {message.code}</small>
+            </li>)}
+          </ul>}</td>
+        </tr>)}</tbody>
       </table></div>}
       {preview.rows.length>100&&<p>Showing the first 100 rows. Check the full summary before confirming.</p>}
       <label className={visual.partialLabel}><input type="checkbox" checked={allowPartial} onChange={e=>setAllowPartial(e.target.checked)}/> Import valid rows even if some rows fail</label>
