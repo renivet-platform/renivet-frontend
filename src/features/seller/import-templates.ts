@@ -28,7 +28,7 @@ const shopifyExample: Record<string, string> = {
   "Published on online store": "TRUE",
   Status: "Active",
   SKU: "TheBandTShirt-SG",
-  "Variant Barcodes": "ean:4006381333931; upc:036000291452",
+  "Variant Barcodes": "4006381333931",
   "Option1 name": "Size",
   "Option1 value": "Small",
   "Option2 name": "Color",
@@ -44,16 +44,16 @@ const shopifyExample: Record<string, string> = {
   "Weight unit for display": "g",
   "Requires shipping": "TRUE",
   "Fulfillment service": "manual",
-  "Product image URL": "https://burst.shopifycdn.com/photos/forest-hiker.jpg?width=1000",
+  "Product image URL": "https://example.com/catalog/the-band-tshirt-green.jpg",
   "Image position": "1",
   "Image alt text": "Green t-shirt with The Band graphic",
   "Gift card": "FALSE",
   "SEO title": "Vintage The Band Graphic T-Shirt: Iconic Rock Music Tribute Tee",
   "SEO description": "Celebrate the legacy of rock icons with our exclusive The Band Graphic T-Shirt.",
-  "Color (product.metafields.shopify.color-pattern)": "green; gray; red",
+  "Color (product.metafields.shopify.color-pattern)": "green",
   "Google Shopping / Google product category": "Apparel & Accessories > Clothing > Shirts & Tops",
   "Google Shopping / Gender": "Unisex",
-  "Google Shopping / Age group": "Adult (13+ years old)",
+  "Google Shopping / Age group": "adult",
   "Google Shopping / Manufacturer part number (MPN)": "TSH-12345-GRY-S",
   "Google Shopping / Ad group name": "Rock Band Graphic Tees",
   "Google Shopping / Ads labels": "Music Merch",
@@ -65,9 +65,29 @@ const shopifyExample: Record<string, string> = {
   "Packed product dimension unit": "cm",
 };
 
+// Uniware Item Master fields are deliberately distinct from Shopify's product export.
+// Use one row per SKU; sourceAsOf is collected separately in the import wizard.
+const unicommerceHeaders = [
+  "categoryCode", "skuCode", "name", "type", "color", "size",
+  "maxRetailPrice", "basePrice", "imageUrl", "externalItemId",
+] as const;
+
+const unicommerceExample: Record<string, string> = {
+  categoryCode: "TSHIRTS",
+  skuCode: "BAND-TEE-GRN-S",
+  name: "The Band Graphic T-Shirt - Green - Small",
+  type: "SIMPLE",
+  color: "Green",
+  size: "S",
+  maxRetailPrice: "2499",
+  basePrice: "1999",
+  imageUrl: "https://example.com/catalog/the-band-tshirt-green.jpg",
+  externalItemId: "BAND-TEE",
+};
+
 const templates: Record<SourceProfile, { headers: readonly string[]; example: Record<string, string> }> = {
   SHOPIFY: { headers: shopifyHeaders, example: shopifyExample },
-  UNICOMMERCE: { headers: ["categoryCode", "skuCode", "name", "type", "color", "size", "maxRetailPrice", "basePrice", "imageUrl", "externalItemId", "sourceAsOf"], example: {} },
+  UNICOMMERCE: { headers: unicommerceHeaders, example: unicommerceExample },
   RENIVET: { headers: ["styleCode", "title", "sku", "categoryCode", "color", "size", "mrp"], example: {} },
   GENERIC: { headers: ["title", "styleCode", "sku", "categoryCode"], example: {} },
 };

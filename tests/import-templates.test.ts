@@ -11,3 +11,29 @@ test("Shopify import template matches the supported export contract and includes
     assert.match(rows[1], /physical-product-the-band-t-shirt/);
     assert.match(rows[1], /TheBandTShirt-SG/);
 });
+
+test("Unicommerce has its own Item Master headers and a populated SKU example", () => {
+  const csv = buildImportTemplateCsv("UNICOMMERCE");
+  const rows = csv.trimEnd().split("\n");
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0], "categoryCode,skuCode,name,type,color,size,maxRetailPrice,basePrice,imageUrl,externalItemId");
+  assert.match(rows[1], /BAND-TEE-GRN-S/);
+  assert.match(rows[1], /TSHIRTS/);
+  assert.match(rows[1], /2499/);
+  assert.ok(!rows[0].includes("sourceAsOf"), "export timestamp is provided in the import wizard");
+});
+
+test("Shopify and Unicommerce templates use different, source-specific schemas", () => {
+  const shopify = buildImportTemplateCsv("SHOPIFY").split("\n")[0];
+  const uniware = buildImportTemplateCsv("UNICOMMERCE").split("\n")[0];
+  assert.notEqual(shopify, uniware);
+  assert.ok(shopify.includes("URL handle") && shopify.includes("Option1 value"));
+  assert.ok(uniware.includes("skuCode") && uniware.includes("maxRetailPrice"));
+  assert.ok(!uniware.includes("URL handle"));
+});
+
+test("Shopify example CSV correctly quotes commas and embedded quotation marks", () => {
+  const rows = buildImportTemplateCsv("SHOPIFY").trimEnd().split("\n");
+  assert.match(rows[1], /^"Physical Product ""The Band"" T-Shirt"/);
+  assert.match(rows[1], /"Unisex, Clothing, Men, Women, Casual, Vintage"/);
+});
