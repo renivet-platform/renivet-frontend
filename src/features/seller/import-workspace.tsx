@@ -144,7 +144,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
       });
       setConfirmation(result);
       const status = await w2Request<ImportResults>(["brands", brandId, "product-imports", batchId, "results"], { query: { limit: "100" } });
-      setResults(status); setNotice(result.state === "PARTIAL" ? "Import finished with both successful and failed rows. Successful rows are retained." : "Import results are ready.");
+      setResults(status); setNotice(result.state === "PARTIAL" ? "All source rows remain saved. Some draft writes failed and can be retried." : "All source rows saved. Eligible rows were also written as private drafts; others stay staged for later editing.");
     } catch (caught) {
       if (isStaleImportPreview(caught)) { setPreview(null); setError("The target changed after this preview. Nothing was confirmed. Rebuild the preview to review the new target values."); }
       else setError(errorText(caught));
@@ -286,7 +286,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
     </section>}
     {results && <section className={visual.wizardCard} aria-labelledby="results-title">
       <h2 id="results-title">Import results</h2><p>Imported source rows remain saved privately. Draft rows are not public; rows needing catalog corrections remain staged with their original values. No stock or live prices were changed.</p>
-      {confirmation&&<div className={styles.importCounts}><div><strong>{confirmation.appliedRows}</strong><span>Draft rows applied</span></div><div><strong>{(confirmation as Confirmation & { stagedRows?: number }).stagedRows ?? results.items.filter(row=>row.status==="STAGED").length}</strong><span>Saved for editing</span></div><div><strong>{confirmation.failedRows}</strong><span>Draft save failed</span></div><div><strong>{confirmation.noopRows}</strong><span>Unchanged</span></div></div>}
+      {confirmation&&<div className={styles.importCounts}><div><strong>{confirmation.appliedRows}</strong><span>Draft rows applied</span></div><div><strong>{preview ? preview.counts.invalid+preview.counts.review+preview.counts.conflict : results.items.filter(row=>row.status==="STAGED").length}</strong><span>Saved for editing</span></div><div><strong>{confirmation.failedRows}</strong><span>Draft save failed</span></div><div><strong>{confirmation.noopRows}</strong><span>Unchanged</span></div></div>}
       <div className={styles.tableWrap}><table className={styles.variantTable}><thead><tr><th>Row</th><th>Status</th><th>Details</th></tr></thead>
         <tbody>{results.items.map(row=><tr key={row.rowNumber}><td>{row.rowNumber}</td><td>{row.status==="STAGED"?"Source saved · needs catalog edit":row.status==="APPLIED"?"Private draft saved":row.status.replaceAll("_"," ")}</td><td>{row.errorCodes.length===0?"No errors":<ul className={visual.previewConflictList}>{uniqueImportConflicts(row.errorCodes).map(({message,occurrences})=><li key={message.code}>
           <strong>{message.title}{occurrences>1?" (reported "+occurrences+" times)":""}</strong>
