@@ -7,9 +7,19 @@ const knownConflicts: Record<string, Omit<ImportConflictMessage, "code">> = {
     nextStep: "Go back to Match columns and add a source category mapping. The destination category must be available to this brand.",
   },
   PRICE_REVIEW_REQUIRED: {
-    title: "Price needs approval",
-    explanation: "The imported price requires review before the product can proceed.",
-    nextStep: "Check the price in your file. The authorised price reviewer must approve it through the normal review process.",
+    title: "Source price saved",
+    explanation: "The source price is retained with the imported record; it is not an import error.",
+    nextStep: "No price approval is required to save this import. Set up a valid live price before publishing or selling this product.",
+  },
+  ATTRIBUTE_VALUE_INVALID: {
+    title: "Category option needs editing",
+    explanation: "A value in the imported product options does not match the currently allowed category values. The original entry is still saved.",
+    nextStep: "You can save the import now. Before using the product as a catalog draft, check its size, colour, or other option against the category details.",
+  },
+  MEDIA_REVIEW_REQUIRED: {
+    title: "Source image reference saved",
+    explanation: "The image link was retained from the source file, but it is not yet an approved Renivet media asset.",
+    nextStep: "No approval is needed to save this import. Upload or verify usable images before publishing the product.",
   },
   ATTRIBUTE_NOT_IN_SCHEMA: {
     title: "Product option is not allowed",
@@ -46,7 +56,7 @@ export function importConflictMessage(code: string): ImportConflictMessage {
     code,
     title: humanizeCode(code),
     explanation: "The import system flagged this row with the issue shown above. More specific details were not supplied.",
-    nextStep: "Review this row in the source file and its field mappings. If the cause is unclear, contact support with the technical code; do not confirm uncertain changes.",
+    nextStep: "The source row can still be saved privately. Check its mappings and edit the catalog fields later, before publication.",
   };
 }
 
