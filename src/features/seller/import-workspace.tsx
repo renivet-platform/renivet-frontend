@@ -288,7 +288,12 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
       <h2 id="results-title">Import results</h2><p>These are persisted backend results. No stock has been added.</p>
       {confirmation&&<div className={styles.importCounts}><div><strong>{confirmation.appliedRows}</strong><span>Successful</span></div><div><strong>{confirmation.failedRows}</strong><span>Failed</span></div><div><strong>{confirmation.noopRows}</strong><span>Unchanged</span></div></div>}
       <div className={styles.tableWrap}><table className={styles.variantTable}><thead><tr><th>Row</th><th>Status</th><th>Error</th></tr></thead>
-        <tbody>{results.items.map(row=><tr key={row.rowNumber}><td>{row.rowNumber}</td><td>{row.status.replaceAll("_"," ")}</td><td>{row.errorCodes.join(", ")||"None"}</td></tr>)}</tbody>
+        <tbody>{results.items.map(row=><tr key={row.rowNumber}><td>{row.rowNumber}</td><td>{row.status.replaceAll("_"," ")}</td><td>{row.errorCodes.length===0?"No errors":<ul className={visual.previewConflictList}>{uniqueImportConflicts(row.errorCodes).map(({message,occurrences})=><li key={message.code}>
+          <strong>{message.title}{occurrences>1?" (reported "+occurrences+" times)":""}</strong>
+          <span>{message.explanation}</span>
+          <span><b>What to do:</b> {message.nextStep}</span>
+          <small>Technical code: {message.code}</small>
+        </li>)}</ul>}</td></tr>)}</tbody>
       </table></div>
       {error&&<p className={styles.error} role="alert">{error}</p>}
       <div className={visual.wizardFooter}><button type="button" onClick={()=>void refreshResults()} disabled={busy} className={styles.secondaryButton}>Refresh results</button><button type="button" onClick={()=>void retryFailed()} disabled={busy||!results.items.some(row=>row.status==="FAILED")} className={styles.primaryButton}>Retry failed rows</button></div>
