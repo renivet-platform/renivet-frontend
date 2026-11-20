@@ -304,7 +304,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
       </table></div>
       {categoryRequests.length>0&&<div className={visual.previewConflictSummary} role="status">
         <strong>Category request created automatically</strong>
-        <p>These categories were not available. Your source products are saved; a taxonomy administrator can complete the category setup without uploading the file again.</p>
+        <p>These categories were not available. Your original product data is saved privately, and a taxonomy administrator can create the category. A separate catalog import or completion workflow is needed after the category becomes available.</p>
         <ul>{categoryRequests.map(request=><li key={request.sourceCode}><b>{request.name}</b> — {request.status.toLowerCase().replaceAll("_"," ")} (CSV row {request.firstSourceRow})</li>)}</ul>
       </div>}
       {confirmation && confirmation.appliedRows>0 && <p><Link href={"/brands/"+encodeURIComponent(brandId)+"/products"}>View imported private product drafts</Link></p>}
