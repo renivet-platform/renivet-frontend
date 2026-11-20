@@ -1,6 +1,16 @@
 export type ImportConflictMessage = { title: string; explanation: string; nextStep: string; code: string };
 
 const knownConflicts: Record<string, Omit<ImportConflictMessage, "code">> = {
+  IMPORT_REQUIRED_FIELD: {
+    title: "Product identity is incomplete",
+    explanation: "This source row needs a product name, SKU and product style identifier. For Unicommerce, Renivet uses externalItemId (or skuCode if missing); for Shopify, it uses URL handle.",
+    nextStep: "For a fresh import, select the matching source system and keep its default field mapping. If this still appears, check that the SKU and name columns contain values.",
+  },
+  IMPORT_VARIANTS_NEED_EDITING: {
+    title: "Product saved; variant details to complete",
+    explanation: "The original SKU, colour and size are saved in the import. The category does not currently allow a valid variant combination, so the private product draft may not yet contain that variant.",
+    nextStep: "No need to upload the source again. Finish the category's options and create the variant when the product is ready.",
+  },
   CATEGORY_UNMAPPED: {
     title: "Category not matched",
     explanation: "The category in this file has not been linked to a Renivet category.",

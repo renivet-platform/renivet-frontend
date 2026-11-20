@@ -37,3 +37,13 @@ test("price is informational at import time and invalid attributes remain saved 
   const image = importConflictMessage("MEDIA_REVIEW_REQUIRED");
   assert.match(image.title, /saved/i);
 });
+
+test("missing product fields and deferred variants show specific import actions", () => {
+  const missing = importConflictMessage("IMPORT_REQUIRED_FIELD");
+  assert.match(missing.explanation, /externalItemId/);
+  assert.match(missing.nextStep, /SKU and name/);
+
+  const variant = importConflictMessage("IMPORT_VARIANTS_NEED_EDITING");
+  assert.match(variant.title, /Product saved/);
+  assert.match(variant.explanation, /original SKU/);
+});
