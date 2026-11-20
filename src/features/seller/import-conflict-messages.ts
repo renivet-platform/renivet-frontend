@@ -56,7 +56,7 @@ export function importConflictMessage(code: string): ImportConflictMessage {
     code,
     title: humanizeCode(code),
     explanation: "The import system flagged this row with the issue shown above. More specific details were not supplied.",
-    nextStep: "The source row can still be saved privately. Check its mappings and edit the catalog fields later, before publication.",
+    nextStep: "The source row can still be saved privately. Check its mappings and edit the catalog fields later, before publication. If you need help, share the technical code with support.",
   };
 }
 
