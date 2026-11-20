@@ -221,7 +221,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
         <div className={visual.formColumns}>
           <div className={styles.field}><label htmlFor="import-as-of">Export created on</label><input id="import-as-of" type="datetime-local" required value={sourceAsOf} onChange={event=>setSourceAsOf(event.target.value)}/></div>
           <div className={styles.field}><label htmlFor="import-conflicts">When products already exist</label><select id="import-conflicts" value={mode} onChange={event=>setMode(event.target.value as CreateRequest["mode"])}>
-            <option value="REVIEW_CONFLICT">Review each conflict first</option><option value="CREATE_ONLY">Add only new products</option><option value="UPDATE_MATCHED">Update matched drafts</option><option value="SKIP_EXISTING">Skip existing products</option>
+            <option value="REVIEW_CONFLICT">Review matches before updating</option><option value="CREATE_ONLY">Add only new products</option><option value="UPDATE_MATCHED">Update matched drafts</option><option value="SKIP_EXISTING">Skip existing products</option>
           </select></div>
           
         </div>
@@ -257,11 +257,11 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
       </form>
     </section>}
     {preview && !results && <section className={visual.wizardCard} aria-labelledby="preview-title">
-      <h2 id="preview-title">Review before importing</h2><p>Only draft products change after you confirm this frozen preview.</p>
+      <h2 id="preview-title">Review before importing</h2><p>Valid rows create or update private drafts only. Source prices and images remain pending their separate checks and are not published.</p>
       <div className={styles.importCounts}>{Object.entries(preview.counts).map(([name,count])=><div key={name}><strong>{count}</strong><span>{name}</span></div>)}</div>
       {preview.rows.some(row=>row.conflicts.length>0)&&<div className={visual.previewConflictSummary} role="status">
-        <strong>Some products need attention before they can proceed.</strong>
-        <p>Read the issues and suggested fixes below. You can return to column and category mapping without confirming the import.</p>
+        <strong>Import checks and approvals</strong>
+        <p>Rows marked Create or Update may become unpublished drafts even when their prices or images need separate approval. Rows marked Invalid, Conflict, or Needs review are not imported until their blocking issues are resolved.</p>
       </div>}
       {preview.rows.length>0&&<div className={styles.tableWrap}><table className={styles.variantTable}>
         <caption className={styles.visuallyHidden}>Preview changes, conflicts, and how to fix them</caption>
@@ -285,8 +285,8 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
       <div className={visual.wizardFooter}><button type="button" className={styles.secondaryButton} onClick={()=>setPreview(null)} disabled={busy}>Back to mapping</button><button type="button" className={styles.primaryButton} onClick={()=>void confirmImport()} disabled={busy}>{busy?"Confirming…":"Confirm import"}</button></div>
     </section>}
     {results && <section className={visual.wizardCard} aria-labelledby="results-title">
-      <h2 id="results-title">Import results</h2><p>These are persisted backend results. No stock has been added.</p>
-      {confirmation&&<div className={styles.importCounts}><div><strong>{confirmation.appliedRows}</strong><span>Successful</span></div><div><strong>{confirmation.failedRows}</strong><span>Failed</span></div><div><strong>{confirmation.noopRows}</strong><span>Unchanged</span></div></div>}
+      <h2 id="results-title">Import results</h2><p>Successful rows are saved as private product drafts, not live store listings. Source prices and images still need their own approval; no stock has been added.</p>
+      {confirmation&&<div className={styles.importCounts}><div><strong>{confirmation.appliedRows}</strong><span>Draft rows applied</span></div><div><strong>{confirmation.failedRows}</strong><span>Failed</span></div><div><strong>{confirmation.noopRows}</strong><span>Unchanged</span></div></div>}
       <div className={styles.tableWrap}><table className={styles.variantTable}><thead><tr><th>Row</th><th>Status</th><th>Error</th></tr></thead>
         <tbody>{results.items.map(row=><tr key={row.rowNumber}><td>{row.rowNumber}</td><td>{row.status.replaceAll("_"," ")}</td><td>{row.errorCodes.length===0?"No errors":<ul className={visual.previewConflictList}>{uniqueImportConflicts(row.errorCodes).map(({message,occurrences})=><li key={message.code}>
           <strong>{message.title}{occurrences>1?" (reported "+occurrences+" times)":""}</strong>
