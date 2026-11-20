@@ -33,14 +33,20 @@ const knownConflicts: Record<string, Omit<ImportConflictMessage, "code">> = {
   },
 };
 
+function humanizeCode(code: string): string {
+  const words = code.trim().replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").replace(/\s+/g, " ").toLowerCase();
+  if (!words) return "An import issue occurred";
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export function importConflictMessage(code: string): ImportConflictMessage {
   const match = knownConflicts[code];
   if (match) return { ...match, code };
   return {
     code,
-    title: "Import needs review",
-    explanation: "This row triggered a validation or review condition.",
-    nextStep: "Check the row and its source mappings. Share the technical code with support if you need help.",
+    title: humanizeCode(code),
+    explanation: "The import system flagged this row with the issue shown above. More specific details were not supplied.",
+    nextStep: "Review this row in the source file and its field mappings. If the cause is unclear, contact support with the technical code; do not confirm uncertain changes.",
   };
 }
 
