@@ -67,7 +67,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
   const [mappingRows, setMappingRows] = useState<MappingRow[]>(profileMappings.UNICOMMERCE.map(([source, target], id) => ({ id, source, target })));
   const [categoryRows, setCategoryRows] = useState<CategoryMappingRow[]>([]);
   const [nextRowId, setNextRowId] = useState(10);
-  const [allowPartial, setAllowPartial] = useState(false);
+  const [allowPartial, setAllowPartial] = useState(true);
   const [wizardStep, setWizardStep] = useState<"source" | "file">("source");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -257,17 +257,17 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
       </form>
     </section>}
     {preview && !results && <section className={visual.wizardCard} aria-labelledby="preview-title">
-      <h2 id="preview-title">Review before importing</h2><p>Valid rows create or update private drafts only. Source prices and images remain pending their separate checks and are not published.</p>
-      <div className={styles.importCounts}>{Object.entries(preview.counts).map(([name,count])=><div key={name}><strong>{count}</strong><span>{name}</span></div>)}</div>
+      <h2 id="preview-title">Check your import</h2><p>Every parsed row can be saved now. Valid product data becomes an unpublished draft; rows with mismatched catalog details remain safely staged with their original fields.</p>
+      <div className={styles.importCounts}>{Object.entries(preview.counts).map(([name,count])=><div key={name}><strong>{count}</strong><span>{name==="invalid"?"Needs editing":name==="review"?"Source staged":name==="conflict"?"Needs matching":name==="create"?"New draft":name==="update"?"Update draft":name}</span></div>)}</div>
       {preview.rows.some(row=>row.conflicts.length>0)&&<div className={visual.previewConflictSummary} role="status">
-        <strong>Import checks and approvals</strong>
-        <p>Rows marked Create or Update may become unpublished drafts even when their prices or images need separate approval. Rows marked Invalid, Conflict, or Needs review are not imported until their blocking issues are resolved.</p>
+        <strong>No approval required to save this import</strong>
+        <p>All parsed rows are accepted into private import staging. Create/Update rows may also be applied as drafts. Rows with category, option, or SKU mismatches stay staged for later editing, never published as valid products.</p>
       </div>}
       {preview.rows.length>0&&<div className={styles.tableWrap}><table className={styles.variantTable}>
         <caption className={styles.visuallyHidden}>Preview changes, conflicts, and how to fix them</caption>
         <thead><tr><th>CSV row</th><th>Result</th><th>Fields being changed</th><th>What needs attention and how to fix it</th></tr></thead>
         <tbody>{preview.rows.slice(0,100).map(row=><tr key={row.sourceRowNumber}>
-          <td>{row.sourceRowNumber}</td><td>{row.action.replaceAll("_"," ").toLowerCase()}</td>
+          <td>{row.sourceRowNumber}</td><td>{["INVALID","CONFLICT","NEEDS_REVIEW"].includes(row.action)?"Save source for editing":row.action==="CREATE"?"Create private draft":row.action==="UPDATE"?"Update private draft":"No changes"}</td>
           <td>{row.fieldMask.join(", ")||"None"}</td>
           <td>{row.conflicts.length===0?"No issues found":<ul className={visual.previewConflictList}>
             {uniqueImportConflicts(row.conflicts.map(conflict=>conflict.code)).map(({message,occurrences})=><li key={message.code}>
@@ -280,15 +280,15 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
         </tr>)}</tbody>
       </table></div>}
       {preview.rows.length>100&&<p>Showing the first 100 rows. Check the full summary before confirming.</p>}
-      <label className={visual.partialLabel}><input type="checkbox" checked={allowPartial} onChange={e=>setAllowPartial(e.target.checked)}/> Import valid rows even if some rows fail</label>
+      <label className={visual.partialLabel}><input type="checkbox" checked={allowPartial} onChange={e=>setAllowPartial(e.target.checked)}/> Keep importing other rows if an individual draft operation fails</label>
       {error&&<p className={styles.error} role="alert">{error}</p>}{notice&&<p className={styles.notice} role="status">{notice}</p>}
-      <div className={visual.wizardFooter}><button type="button" className={styles.secondaryButton} onClick={()=>setPreview(null)} disabled={busy}>Back to mapping</button><button type="button" className={styles.primaryButton} onClick={()=>void confirmImport()} disabled={busy}>{busy?"Confirming…":"Confirm import"}</button></div>
+      <div className={visual.wizardFooter}><button type="button" className={styles.secondaryButton} onClick={()=>setPreview(null)} disabled={busy}>Back to mapping</button><button type="button" className={styles.primaryButton} onClick={()=>void confirmImport()} disabled={busy}>{busy?"Saving…":"Save all import rows"}</button></div>
     </section>}
     {results && <section className={visual.wizardCard} aria-labelledby="results-title">
-      <h2 id="results-title">Import results</h2><p>Successful rows are saved as private product drafts, not live store listings. Source prices and images still need their own approval; no stock has been added.</p>
-      {confirmation&&<div className={styles.importCounts}><div><strong>{confirmation.appliedRows}</strong><span>Draft rows applied</span></div><div><strong>{confirmation.failedRows}</strong><span>Failed</span></div><div><strong>{confirmation.noopRows}</strong><span>Unchanged</span></div></div>}
-      <div className={styles.tableWrap}><table className={styles.variantTable}><thead><tr><th>Row</th><th>Status</th><th>Error</th></tr></thead>
-        <tbody>{results.items.map(row=><tr key={row.rowNumber}><td>{row.rowNumber}</td><td>{row.status.replaceAll("_"," ")}</td><td>{row.errorCodes.length===0?"No errors":<ul className={visual.previewConflictList}>{uniqueImportConflicts(row.errorCodes).map(({message,occurrences})=><li key={message.code}>
+      <h2 id="results-title">Import results</h2><p>Imported source rows remain saved privately. Draft rows are not public; rows needing catalog corrections remain staged with their original values. No stock or live prices were changed.</p>
+      {confirmation&&<div className={styles.importCounts}><div><strong>{confirmation.appliedRows}</strong><span>Draft rows applied</span></div><div><strong>{(confirmation as Confirmation & { stagedRows?: number }).stagedRows ?? results.items.filter(row=>row.status==="STAGED").length}</strong><span>Saved for editing</span></div><div><strong>{confirmation.failedRows}</strong><span>Draft save failed</span></div><div><strong>{confirmation.noopRows}</strong><span>Unchanged</span></div></div>}
+      <div className={styles.tableWrap}><table className={styles.variantTable}><thead><tr><th>Row</th><th>Status</th><th>Details</th></tr></thead>
+        <tbody>{results.items.map(row=><tr key={row.rowNumber}><td>{row.rowNumber}</td><td>{row.status==="STAGED"?"Source saved · needs catalog edit":row.status==="APPLIED"?"Private draft saved":row.status.replaceAll("_"," ")}</td><td>{row.errorCodes.length===0?"No errors":<ul className={visual.previewConflictList}>{uniqueImportConflicts(row.errorCodes).map(({message,occurrences})=><li key={message.code}>
           <strong>{message.title}{occurrences>1?" (reported "+occurrences+" times)":""}</strong>
           <span>{message.explanation}</span>
           <span><b>What to do:</b> {message.nextStep}</span>
