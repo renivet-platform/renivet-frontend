@@ -9,6 +9,7 @@ import styles from "./taxonomy-admin.module.css";
 type StoredRule = { code: string; requiredByDefault?: boolean; [key: string]: unknown };
 type Category = { id: string; code: string; name: string; parentId?: string | null; active?: boolean; isActive?: boolean; retired?: boolean; schemaVersion?: number | null; currentSchemaVersion?: number | null; publishedRuleset?: { attributes?: StoredRule[]; [key: string]: unknown } | null; isLeaf: boolean; hasDraft?: boolean };
 type Attribute = { id?: string; code: string; label?: string; valueType?: string; type?: string; scopeType?: string; scope?: string; allowedValues?: unknown; unitCode?: string | null };
+type ImportCategoryRequest = { id: string; brandId: string; sourceCode: string; name: string; firstSourceRow: number; createdAt: string };
 type SelectedAttribute = { code: string; required: boolean };
 const validatorVersion = "w2-attribute-validator-v1";
 function isLive(category: Category) { return category.active === true || category.isActive === true; }
@@ -33,6 +34,7 @@ const friendlyError = (cause: unknown) => cause instanceof W2ApiError
 export function TaxonomyAdminWorkspace() {
   const [categories,setCategories] = useState<Category[]>([]);
   const [attributes,setAttributes] = useState<Attribute[]>([]);
+  const [importCategoryRequests,setImportCategoryRequests] = useState<ImportCategoryRequest[]>([]);
   const [categoryId,setCategoryId] = useState("");
   const [fields,setFields] = useState<SelectedAttribute[]>([]);
   const [step,setStep] = useState<"choose" | "review">("choose");
@@ -61,13 +63,15 @@ export function TaxonomyAdminWorkspace() {
   async function load() {
     setLoading(true); setError("");
     try {
-      const [categoryResponse,attributeResponse] = await Promise.all([
+      const [categoryResponse,attributeResponse,requestResponse] = await Promise.all([
         w2Request<{items:Category[]}>(["admin","catalog","categories"]),
-        w2Request<{items:Attribute[]}>(["admin","catalog","categories","attributes"])
+        w2Request<{items:Attribute[]}>(["admin","catalog","categories","attributes"]),
+        w2Request<{items:ImportCategoryRequest[]}>(["admin","catalog","import-category-requests"]).catch(()=>({items: [] as ImportCategoryRequest[]}))
       ]);
       const loaded = categoryResponse.items ?? [];
       setCategories(loaded);
       setAttributes(attributeResponse.items ?? []);
+      setImportCategoryRequests(requestResponse.items ?? []);
       // Prioritize the next actionable item when first opening the workspace.
       if (!categoryId) {
         const firstReady = loaded.find(category => category.isLeaf && !isLive(category) && !category.retired && currentVersion(category) != null);
@@ -182,6 +186,21 @@ export function TaxonomyAdminWorkspace() {
       <div><h2 id="pending-taxonomy-title">Waiting for a second admin</h2><p>{pendingCategories.length === 1 ? "A category update has been submitted and is awaiting independent approval." : `${pendingCategories.length} category updates have been submitted and are awaiting independent approval.`}</p>
         <div className={styles.pendingNames}>{pendingCategories.slice(0,3).map(category => <button key={category.id} type="button" onClick={() => chooseCategory(category.id)}>{category.name} <span>· Pending</span></button>)}{pendingCategories.length > 3 && <span>+{pendingCategories.length - 3} more</span>}</div>
       </div><Link href="/operations/taxonomy" className={styles.simplePrimary}>Open review queue</Link>
+    </section>}
+    {!loading && importCategoryRequests.length>0 && <section className={styles.pendingBanner} aria-labelledby="import-category-requests-heading">
+      <div><h2 id="import-category-requests-heading">Categories requested by product imports</h2>
+        <p>Products from these uploads are saved privately. Set up the missing category when ready; it will not become live until its normal approval and activation checks are complete.</p>
+        <div className={styles.pendingNames}>
+          {importCategoryRequests.slice(0,10).map(request=><button key={request.id} type="button" onClick={()=>{
+            const raw=request.sourceCode.toLowerCase().replace(/[^a-z0-9_]+/g,"_").replace(/^_+|_+$/g,"").slice(0,64);
+            setNewCode(raw.length>=3?raw:("category_"+raw).slice(0,64));
+            setNewName(request.name.slice(0,100));
+            setCreating(true);setError("");
+          }} disabled={categories.some(category=>category.code.toLowerCase()===request.sourceCode.toLowerCase())}>
+            {request.name} <span>· {categories.some(category=>category.code.toLowerCase()===request.sourceCode.toLowerCase())?"Already created":"Create category"}</span>
+          </button>)}
+        </div>
+      </div>
     </section>}
     {error && <div className={styles.simpleError} role="alert">{error} <button type="button" onClick={()=>void load()}>Refresh</button></div>}
     {notice && <div className={styles.simpleSuccess} role="status">{notice} <Link href="/operations/taxonomy">View approval queue</Link></div>}

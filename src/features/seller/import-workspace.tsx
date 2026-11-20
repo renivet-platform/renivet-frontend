@@ -20,6 +20,7 @@ type Confirmation = operations["confirmCatalogImport"]["responses"][202]["conten
 type ImportResults = operations["getImportResults"]["responses"][200]["content"]["application/json"];
 type MappingRow = { id: number; source: string; target: string };
 type CategoryMappingRow = { id: number; source: string; target: string };
+type ImportCategoryRequest = { sourceCode: string; name: string; status: string; firstSourceRow: number };
 
 const maxImportBytes = 100 * 1024 * 1024;
 const xlsxMime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -64,6 +65,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [results, setResults] = useState<ImportResults | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [categoryRequests, setCategoryRequests] = useState<ImportCategoryRequest[]>([]);
   const [mappingRows, setMappingRows] = useState<MappingRow[]>(profileMappings.UNICOMMERCE.map(([source, target], id) => ({ id, source, target })));
   const [categoryRows, setCategoryRows] = useState<CategoryMappingRow[]>([]);
   const [nextRowId, setNextRowId] = useState(10);
@@ -144,7 +146,12 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
       });
       setConfirmation(result);
       const status = await w2Request<ImportResults>(["brands", brandId, "product-imports", batchId, "results"], { query: { limit: "100" } });
-      setResults(status); setNotice(result.state === "PARTIAL" ? "All source rows remain saved. Some draft writes failed and can be retried." : "All source rows saved. Eligible rows were also written as private drafts; others stay staged for later editing.");
+      setResults(status);
+      try {
+        const requests = await w2Request<{ items: ImportCategoryRequest[] }>(["brands", brandId, "product-imports", batchId, "category-requests"]);
+        setCategoryRequests(requests.items);
+      } catch { setCategoryRequests([]); }
+      setNotice(result.state === "PARTIAL" ? "All source rows remain saved. Some draft writes failed and can be retried." : "All source rows saved. Eligible rows were also written as private drafts; others stay staged for later editing.");
     } catch (caught) {
       if (isStaleImportPreview(caught)) { setPreview(null); setError("The target changed after this preview. Nothing was confirmed. Rebuild the preview to review the new target values."); }
       else setError(errorText(caught));
@@ -257,15 +264,15 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
       </form>
     </section>}
     {preview && !results && <section className={visual.wizardCard} aria-labelledby="preview-title">
-      <h2 id="preview-title">Check your import</h2><p>Every parsed row can be saved now. Valid product data becomes an unpublished draft; rows with mismatched catalog details remain safely staged with their original fields.</p>
+      <h2 id="preview-title">Check your import</h2><p>All parsed rows will be saved. When a category exists, a private product draft can be created using compatible fields; any original values needing editing remain preserved.</p>
       <div className={styles.importCounts}>{Object.entries(preview.counts).map(([name,count])=><div key={name}><strong>{count}</strong><span>{name==="invalid"?"Needs editing":name==="review"?"Source staged":name==="conflict"?"Needs matching":name==="create"?"New draft":name==="update"?"Update draft":name}</span></div>)}</div>
       {preview.rows.some(row=>row.conflicts.length>0)&&<div className={visual.previewConflictSummary} role="status">
-        <strong>No approval required to save this import</strong>
-        <p>All parsed rows are accepted into private import staging. Create/Update rows may also be applied as drafts. Rows with category, option, or SKU mismatches stay staged for later editing, never published as valid products.</p>
+        <strong>Save now, finish product setup later</strong>
+        <p>Approval and missing category details will not stop the source upload. Compatible products become private drafts. Unavailable categories generate a request automatically; their source rows remain saved until the category can be used.</p>
       </div>}
       {preview.rows.length>0&&<div className={styles.tableWrap}><table className={styles.variantTable}>
         <caption className={styles.visuallyHidden}>Preview changes, conflicts, and how to fix them</caption>
-        <thead><tr><th>CSV row</th><th>Result</th><th>Fields being changed</th><th>What needs attention and how to fix it</th></tr></thead>
+        <thead><tr><th>CSV row</th><th>Result</th><th>Fields being changed</th><th>Original fields kept for later editing</th></tr></thead>
         <tbody>{preview.rows.slice(0,100).map(row=><tr key={row.sourceRowNumber}>
           <td>{row.sourceRowNumber}</td><td>{["INVALID","CONFLICT","NEEDS_REVIEW"].includes(row.action)?"Save source for editing":row.action==="CREATE"?"Create private draft":row.action==="UPDATE"?"Update private draft":"No changes"}</td>
           <td>{row.fieldMask.join(", ")||"None"}</td>
@@ -285,16 +292,22 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
       <div className={visual.wizardFooter}><button type="button" className={styles.secondaryButton} onClick={()=>setPreview(null)} disabled={busy}>Back to mapping</button><button type="button" className={styles.primaryButton} onClick={()=>void confirmImport()} disabled={busy}>{busy?"Saving…":"Save all import rows"}</button></div>
     </section>}
     {results && <section className={visual.wizardCard} aria-labelledby="results-title">
-      <h2 id="results-title">Import results</h2><p>Imported source rows remain saved privately. Draft rows are not public; rows needing catalog corrections remain staged with their original values. No stock or live prices were changed.</p>
+      <h2 id="results-title">Import results</h2><p>The source import is saved. Eligible products are private drafts; unavailable category or variant details stay saved for editing, not published. Store prices and stock are unchanged.</p>
       {confirmation&&<div className={styles.importCounts}><div><strong>{confirmation.appliedRows}</strong><span>Draft rows applied</span></div><div><strong>{preview ? preview.counts.invalid+preview.counts.review+preview.counts.conflict : results.items.filter(row=>row.status==="STAGED").length}</strong><span>Saved for editing</span></div><div><strong>{confirmation.failedRows}</strong><span>Draft save failed</span></div><div><strong>{confirmation.noopRows}</strong><span>Unchanged</span></div></div>}
       <div className={styles.tableWrap}><table className={styles.variantTable}><thead><tr><th>Row</th><th>Status</th><th>Details</th></tr></thead>
-        <tbody>{results.items.map(row=><tr key={row.rowNumber}><td>{row.rowNumber}</td><td>{row.status==="STAGED"?"Source saved · needs catalog edit":row.status==="APPLIED"?"Private draft saved":row.status.replaceAll("_"," ")}</td><td>{row.errorCodes.length===0?"No errors":<ul className={visual.previewConflictList}>{uniqueImportConflicts(row.errorCodes).map(({message,occurrences})=><li key={message.code}>
+        <tbody>{results.items.map(row=><tr key={row.rowNumber}><td>{row.rowNumber}</td><td>{row.status==="STAGED"?"Uploaded · ready for setup":row.status==="APPLIED"?"Private draft saved":row.status.replaceAll("_"," ")}</td><td>{row.errorCodes.length===0?"No errors":<ul className={visual.previewConflictList}>{uniqueImportConflicts(row.errorCodes).map(({message,occurrences})=><li key={message.code}>
           <strong>{message.title}{occurrences>1?" (reported "+occurrences+" times)":""}</strong>
           <span>{message.explanation}</span>
           <span><b>What to do:</b> {message.nextStep}</span>
           <small>Technical code: {message.code}</small>
         </li>)}</ul>}</td></tr>)}</tbody>
       </table></div>
+      {categoryRequests.length>0&&<div className={visual.previewConflictSummary} role="status">
+        <strong>Category request created automatically</strong>
+        <p>These categories were not available. Your original product data is saved privately, and a taxonomy administrator can create the category. A separate catalog import or completion workflow is needed after the category becomes available.</p>
+        <ul>{categoryRequests.map(request=><li key={request.sourceCode}><b>{request.name}</b> — {request.status.toLowerCase().replaceAll("_"," ")} (CSV row {request.firstSourceRow})</li>)}</ul>
+      </div>}
+      {confirmation && confirmation.appliedRows>0 && <p><Link href={"/brands/"+encodeURIComponent(brandId)+"/products"}>View imported private product drafts</Link></p>}
       {error&&<p className={styles.error} role="alert">{error}</p>}
       <div className={visual.wizardFooter}><button type="button" onClick={()=>void refreshResults()} disabled={busy} className={styles.secondaryButton}>Refresh results</button><button type="button" onClick={()=>void retryFailed()} disabled={busy||!results.items.some(row=>row.status==="FAILED")} className={styles.primaryButton}>Retry failed rows</button></div>
     </section>}
