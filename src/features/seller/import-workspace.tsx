@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { operations } from "@/generated/renivet-api";
 import { categoryLabel, createIdempotencyKey, selectableCategories, type Category, type Paged, W2ApiError, w2Request } from "@/features/seller/w2-catalog";
 import { isStaleImportPreview, validateImportFieldMappings } from "@/features/seller/import-workspace-state";
-import { buildImportTemplateCsv, type SourceProfile } from "@/features/seller/import-templates";
+import { buildImportTemplateCsv, defaultImportFieldMappings, type SourceProfile } from "@/features/seller/import-templates";
 import { uniqueImportConflicts } from "@/features/seller/import-conflict-messages";
 import styles from "./product-workspace.module.css";
 import visual from "./import-inventory-prototype.module.css";
@@ -26,12 +26,7 @@ const maxImportBytes = 100 * 1024 * 1024;
 const xlsxMime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const targetFields = ["title", "styleCode", "sku", "categoryCode", "sourceProductKey", "sourceVariantKey", "sourceMrp", "imageUrl", "options.color", "options.size"];
 
-const profileMappings: Record<SourceProfile, Array<[string, string]>> = {
-  SHOPIFY: [["URL handle", "sourceProductKey"], ["Title", "title"], ["SKU", "sku"], ["Product category", "categoryCode"], ["Option1 value", "options.size"], ["Option2 value", "options.color"], ["Price", "sourceMrp"], ["Product image URL", "imageUrl"]],
-  UNICOMMERCE: [["skuCode", "sku"], ["name", "title"], ["categoryCode", "categoryCode"], ["color", "options.color"], ["size", "options.size"], ["maxRetailPrice", "sourceMrp"], ["imageUrl", "imageUrl"]],
-  RENIVET: [["styleCode", "styleCode"], ["title", "title"], ["sku", "sku"], ["categoryCode", "categoryCode"], ["color", "options.color"], ["size", "options.size"], ["mrp", "sourceMrp"]],
-  GENERIC: [["title", "title"], ["styleCode", "styleCode"], ["sku", "sku"], ["categoryCode", "categoryCode"]],
-};
+const profileMappings = defaultImportFieldMappings;
 
 function downloadTemplate(profile: SourceProfile) {
   const csv = buildImportTemplateCsv(profile);
@@ -131,7 +126,10 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
       });
       setMappingVersion(saved.mappingVersion);
       const frozen = await w2Request<ImportPreview>(["brands", brandId, "product-imports", batchId, "preview"]);
-      setPreview(frozen); setNotice("Preview frozen. Review counts, conflicts and row actions before confirming.");
+      setPreview(frozen);
+      setNotice(frozen.counts.invalid || frozen.counts.review || frozen.counts.conflict
+        ? "All source rows are saved. Some rows need category setup or field corrections before they can become private product drafts."
+        : "The imported columns are complete. Confirm to create private product drafts; store prices, images and stock remain unchanged.");
     } catch (caught) { setError(errorText(caught)); }
     finally { setBusy(false); }
   }
