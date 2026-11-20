@@ -40,7 +40,7 @@ test("Shopify example CSV correctly quotes commas and embedded quotation marks",
 
 test("Shopify and Unicommerce downloads automatically map all required product draft fields", () => {
   for (const profile of ["SHOPIFY", "UNICOMMERCE"] as const) {
-    const headers = buildImportTemplateCsv(profile).split("\\n")[0].split(",");
+    const headers = buildImportTemplateCsv(profile).split("\n")[0].split(",");
     const mappings = defaultImportFieldMappings[profile];
     const targets = mappings.map(([, target]) => target);
     for (const required of ["title", "styleCode", "sku", "categoryCode"]) {
