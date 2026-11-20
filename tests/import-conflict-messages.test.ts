@@ -21,5 +21,6 @@ test("repeated attribute errors are grouped without losing count", () => {
 test("unknown backend codes retain technical reference without falsely specifying a cause", () => {
   const issue = importConflictMessage("FUTURE_VALIDATION_CODE");
   assert.equal(issue.code, "FUTURE_VALIDATION_CODE");
-  assert.equal(issue.title, "Import needs review");
+  assert.equal(issue.title, "Future validation code");
+  assert.match(issue.nextStep, /technical code/);
 });
