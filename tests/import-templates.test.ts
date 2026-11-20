@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildImportTemplateCsv } from "@/features/seller/import-templates";
+import { buildImportTemplateCsv, defaultImportFieldMappings } from "@/features/seller/import-templates";
 
 test("Shopify import template matches the supported export contract and includes a valid example row", () => {
     const csv = buildImportTemplateCsv("SHOPIFY");
@@ -36,4 +36,20 @@ test("Shopify example CSV correctly quotes commas and embedded quotation marks",
   const rows = buildImportTemplateCsv("SHOPIFY").trimEnd().split("\n");
   assert.match(rows[1], /^"Physical Product ""The Band"" T-Shirt"/);
   assert.match(rows[1], /"Unisex, Clothing, Men, Women, Casual, Vintage"/);
+});
+
+test("Shopify and Unicommerce downloads automatically map all required product draft fields", () => {
+  for (const profile of ["SHOPIFY", "UNICOMMERCE"] as const) {
+    const headers = buildImportTemplateCsv(profile).split("\\n")[0].split(",");
+    const mappings = defaultImportFieldMappings[profile];
+    const targets = mappings.map(([, target]) => target);
+    for (const required of ["title", "styleCode", "sku", "categoryCode"]) {
+      assert.ok(targets.includes(required), profile + " missing required mapping " + required);
+    }
+    for (const [source] of mappings) {
+      assert.ok(headers.includes(source), profile + " default source column absent from downloaded template: " + source);
+    }
+  }
+  assert.deepEqual(defaultImportFieldMappings.UNICOMMERCE.find(([, target]) => target === "styleCode"), ["externalItemId", "styleCode"]);
+  assert.deepEqual(defaultImportFieldMappings.SHOPIFY.find(([, target]) => target === "styleCode"), ["URL handle", "styleCode"]);
 });
