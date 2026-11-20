@@ -25,7 +25,7 @@ const xlsxMime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sh
 const targetFields = ["title", "styleCode", "sku", "categoryCode", "sourceProductKey", "sourceVariantKey", "sourceMrp", "imageUrl", "options.color", "options.size"];
 
 const profileMappings: Record<SourceProfile, Array<[string, string]>> = {
-  SHOPIFY: [["Handle", "sourceProductKey"], ["Title", "title"], ["Variant SKU", "sku"], ["Product Category", "categoryCode"], ["Option1 Value", "options.color"], ["Option2 Value", "options.size"], ["Variant Price", "sourceMrp"]],
+  SHOPIFY: [["URL handle", "sourceProductKey"], ["Title", "title"], ["SKU", "sku"], ["Product category", "categoryCode"], ["Option1 value", "options.size"], ["Option2 value", "options.color"], ["Price", "sourceMrp"], ["Product image URL", "imageUrl"]],
   UNICOMMERCE: [["skuCode", "sku"], ["name", "title"], ["categoryCode", "categoryCode"], ["color", "options.color"], ["size", "options.size"], ["maxRetailPrice", "sourceMrp"], ["imageUrl", "imageUrl"]],
   RENIVET: [["styleCode", "styleCode"], ["title", "title"], ["sku", "sku"], ["categoryCode", "categoryCode"], ["color", "options.color"], ["size", "options.size"], ["mrp", "sourceMrp"]],
   GENERIC: [["title", "title"], ["styleCode", "styleCode"], ["sku", "sku"], ["categoryCode", "categoryCode"]],
@@ -196,7 +196,7 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
     </ol></nav>
     {!batchId && wizardStep === "source" && <section className={visual.wizardCard} aria-labelledby="choose-source-title">
       <h2 id="choose-source-title">Where are your products coming from?</h2>
-      <p>Choose the system that exported your products. You'll upload a file next.</p>
+      <p>Choose the source system. Each download has source-specific columns and an example row.</p>
       <div role="group" aria-label="Import source" className={visual.sourceChoices}>
         {([
           ["RENIVET","Renivet template","A spreadsheet prepared for Renivet"],
@@ -207,11 +207,11 @@ export function ImportWorkspace({ brandId }: { brandId: string }) {
           <span className={visual.sourceRadio} aria-hidden="true">{profile===id?"✓":""}</span><span><strong>{label}</strong><small>{desc}</small></span>
         </button>)}
       </div>
-      <div className={visual.wizardFooter}><button type="button" className={styles.secondaryButton} onClick={()=>downloadTemplate(profile)}>Download sample file</button>
+      <div className={visual.wizardFooter}><button type="button" className={styles.secondaryButton} onClick={()=>downloadTemplate(profile)}>Download {profile==="SHOPIFY"?"Shopify":profile==="UNICOMMERCE"?"Unicommerce":profile==="RENIVET"?"Renivet":"custom"} CSV template</button>
         <button type="button" className={styles.primaryButton} onClick={()=>setWizardStep("file")}>Continue to upload</button></div>
     </section>}
     {!batchId && wizardStep === "file" && <section className={visual.wizardCard} aria-labelledby="upload-title">
-      <h2 id="upload-title">Upload your product file</h2><p>Choose the export for {profile==="UNICOMMERCE"?"Unicommerce":profile==="SHOPIFY"?"Shopify":profile==="RENIVET"?"Renivet":"a custom CSV"}.</p>
+      <h2 id="upload-title">Upload your product file</h2><p>Keep source column names unchanged and replace the example row with real products. Choose the export for {profile==="UNICOMMERCE"?"Unicommerce":profile==="SHOPIFY"?"Shopify":profile==="RENIVET"?"Renivet":"a custom CSV"}.</p>
       <form onSubmit={startImport} noValidate>
         <div className={visual.dropArea}><label htmlFor="import-file">Choose a CSV or XLSX file</label>
           <input id="import-file" type="file" required accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={event=>setFile(event.target.files?.[0]??null)}/>
