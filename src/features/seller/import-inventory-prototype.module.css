@@ -92,3 +92,14 @@
 .inventoryFilters .outOfStockFilter { display:flex; flex-direction:row; gap:10px; align-items:center; min-height:43px; padding:0 14px; border-radius:999px; background:#fff; border:1px solid #a8b1ab; cursor:pointer; }
 .outOfStockFilter input { width:17px; height:17px; accent-color:#1f5a45; }
 @media(max-width:600px) {.inventoryTopActions{width:100%;}.inventoryTopActions a{flex:1;}.inventoryFilters{gap:8px;}.inventoryFilters label:first-child{width:100%;}.inventoryFilters select{width:100%;max-width:none;}.inventoryFilters .outOfStockFilter{min-height:42px;}}
+
+
+/* Clear, accessible import review messages. */
+.previewConflictSummary { margin:16px 0; padding:14px 17px; border:1px solid #e7cba0; border-radius:9px; background:#fff9ef; color:#664715; }
+.previewConflictSummary strong { display:block; font-size:14px; }
+.previewConflictSummary p { margin:6px 0 0; line-height:1.5; font-size:13px; }
+.previewConflictList { list-style:none; display:grid; gap:12px; margin:0; padding:0; min-width:260px; }
+.previewConflictList li { display:grid; gap:5px; padding:10px 12px; border-left:3px solid #bf8428; border-radius:6px; background:#fffaf1; line-height:1.45; }
+.previewConflictList strong { color:#553b13; font-size:13px; }
+.previewConflictList span { color:#39463f; font-size:12px; overflow-wrap:anywhere; }
+.previewConflictList small { color:#66746d; font-size:11px; overflow-wrap:anywhere; }
