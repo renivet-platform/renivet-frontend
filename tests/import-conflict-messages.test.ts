@@ -24,3 +24,16 @@ test("unknown backend codes retain technical reference without falsely specifyin
   assert.equal(issue.title, "Future validation code");
   assert.match(issue.nextStep, /technical code/);
 });
+
+test("price is informational at import time and invalid attributes remain saved for later correction", () => {
+  const price = importConflictMessage("PRICE_REVIEW_REQUIRED");
+  assert.match(price.title, /saved/i);
+  assert.match(price.nextStep, /No price approval is required to save this import/);
+
+  const invalidValue = importConflictMessage("ATTRIBUTE_VALUE_INVALID");
+  assert.match(invalidValue.title, /editing/i);
+  assert.match(invalidValue.explanation, /original entry is still saved/);
+
+  const image = importConflictMessage("MEDIA_REVIEW_REQUIRED");
+  assert.match(image.title, /saved/i);
+});
