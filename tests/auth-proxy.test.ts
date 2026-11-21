@@ -69,6 +69,60 @@ test("auth BFF rejects missing or cross-site origin metadata before contacting N
   });
 });
 
+test("auth BFF accepts the explicitly configured public HTTPS origin behind a reverse proxy", async () => {
+  const oldPublicOrigin = process.env.AUTH_PROXY_PUBLIC_ORIGIN;
+  process.env.AUTH_PROXY_PUBLIC_ORIGIN = "https://staging.renivet.example";
+  try {
+    await withUpstream((_request, response) => {
+      response.setHeader("Content-Type", "application/json");
+      response.writeHead(200).end(JSON.stringify({ authenticationState: "authenticated", user: { id: "synthetic-user" } }));
+    }, async (_base, captured) => {
+      // The Next.js handler sees an internal HTTP URL while the browser sends
+      // its actual public HTTPS Origin and same-origin fetch metadata.
+      const valid = await proxyAuthRequest(new Request("http://internal-next:3000/api/auth/sessions", {
+        method: "POST",
+        headers: { ...sameOriginHeaders("https://staging.renivet.example"), "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "synthetic@example.test", password: "synthetic passphrase" }),
+      }), "/auth/sessions", "POST");
+      assert.equal(valid.status, 200);
+      assert.equal(captured.length, 1);
+
+      const wrongOrigin = await proxyAuthRequest(new Request("http://internal-next:3000/api/auth/sessions", {
+        method: "POST",
+        headers: { ...sameOriginHeaders("https://other.example"), "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "synthetic@example.test", password: "synthetic passphrase" }),
+      }), "/auth/sessions", "POST");
+      assert.equal(wrongOrigin.status, 403);
+      const wrongSite = await proxyAuthRequest(new Request("http://internal-next:3000/api/auth/sessions", {
+        method: "POST",
+        headers: { Origin: "https://staging.renivet.example", "Sec-Fetch-Site": "cross-site", "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "synthetic@example.test", password: "synthetic passphrase" }),
+      }), "/auth/sessions", "POST");
+      assert.equal(wrongSite.status, 403);
+      assert.equal(captured.length, 1, "CSRF failures must not reach NestJS");
+    });
+  } finally {
+    if (oldPublicOrigin === undefined) delete process.env.AUTH_PROXY_PUBLIC_ORIGIN;
+    else process.env.AUTH_PROXY_PUBLIC_ORIGIN = oldPublicOrigin;
+  }
+});
+
+test("auth BFF fails closed for a malformed configured public origin", async () => {
+  const oldPublicOrigin = process.env.AUTH_PROXY_PUBLIC_ORIGIN;
+  process.env.AUTH_PROXY_PUBLIC_ORIGIN = "https://staging.renivet.example/unsafe-path";
+  try {
+    const response = await proxyAuthRequest(new Request("http://internal-next:3000/api/auth/sessions", {
+      method: "POST",
+      headers: { ...sameOriginHeaders("https://staging.renivet.example"), "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "synthetic@example.test", password: "synthetic passphrase" }),
+    }), "/auth/sessions", "POST");
+    assert.equal(response.status, 403);
+  } finally {
+    if (oldPublicOrigin === undefined) delete process.env.AUTH_PROXY_PUBLIC_ORIGIN;
+    else process.env.AUTH_PROXY_PUBLIC_ORIGIN = oldPublicOrigin;
+  }
+});
+
 test("auth BFF does not expose an implemented API path through the wrong HTTP method", async () => {
   await withUpstream((_request, response) => response.writeHead(200).end("{}"), async (_base, captured) => {
     const response = await proxyAuthRequest(
