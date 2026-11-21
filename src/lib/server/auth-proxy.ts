@@ -56,7 +56,19 @@ function isSameOriginRequest(request: Request): boolean {
   const fetchSite = request.headers.get("sec-fetch-site");
   if (!origin || fetchSite !== "same-origin") return false;
   try {
-    return new URL(origin).origin === new URL(request.url).origin && origin === new URL(request.url).origin;
+    // App Platform terminates HTTPS before forwarding to Next.js. The internal
+    // request URL may therefore differ from the public browser-facing origin.
+    const configuredOrigin = process.env.AUTH_PROXY_PUBLIC_ORIGIN;
+    let expectedOrigin = new URL(request.url).origin;
+    if (configuredOrigin !== undefined) {
+      const publicUrl = new URL(configuredOrigin);
+      // Never trust a forwarded Host header or an arbitrary Origin supplied by the caller.
+      if (publicUrl.protocol !== "https:" || publicUrl.username || publicUrl.password
+        || publicUrl.pathname !== "/" || publicUrl.search || publicUrl.hash
+        || publicUrl.origin !== configuredOrigin) return false;
+      expectedOrigin = configuredOrigin;
+    }
+    return origin === expectedOrigin;
   } catch {
     return false;
   }
