@@ -49,3 +49,5 @@ test("phone contact errors give safe, actionable guidance without confirming acc
   );
   assert.equal(phoneContactErrorMessage("AUTH_SERVICE_UNAVAILABLE", 503), null);
 });
+
+// New password policy is enforced separately from legacy login compatibility.
