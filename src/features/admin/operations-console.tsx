@@ -25,6 +25,15 @@ function itemId(queue: QueueId, item: ReviewItem): string | null {
   return typeof item[key] === "string" ? item[key] as string : null;
 }
 function display(value: unknown): string { return typeof value === "string" || typeof value === "number" ? String(value) : "—"; }
+function reviewFieldLabel(code: string): string {
+  const aliases: Record<string, string> = {
+    productId: "Product ID", brandId: "Brand ID", categoryId: "Category ID",
+    submittedBy: "Submitted by", submittedAt: "Submitted at",
+    contentSha256: "Content fingerprint", rowVersion: "Record version",
+    styleCode: "Style code", variantId: "Variant ID",
+  };
+  return aliases[code] ?? code.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").replace(/^./, first => first.toUpperCase());
+}
 function errorMessage(error: unknown): string {
   const status = error instanceof W2ApiError || error instanceof AuthApiError ? error.status : 0;
   if (status === 401) return "Your session has expired. Sign in again to continue.";
@@ -190,7 +199,7 @@ export function AdminOperationsConsole({ initialQueue = "quality", initialItemId
           </section> : null}
           {detailError ? <p className={styles.availability} role="alert">{detailError}</p> : null}
           {selected ? <section className={`${styles.statusPanel} ${styles.detailPanel}`} aria-labelledby="detail-title"><p className={styles.eyebrow}>{active === "taxonomy" ? "CATEGORY APPROVAL" : "EXACT PERSISTED ITEM"}</p><h2 id="detail-title">{title}</h2>
-                    {active === "taxonomy" ? <div className={styles.statusFacts}><p>Version {display(selected.version)} · {Array.isArray(selected.rules) ? selected.rules.length : 0} product details</p>{Array.isArray(selected.rules) && selected.rules.map((rule, i) => { const entry=rule as Record<string,unknown>; return <p key={i}><strong>{display(entry.label ?? entry.code)}</strong> · {entry.requiredByDefault ? "Required" : "Optional"}</p>; })}</div> : <dl className={styles.statusFacts}>{Object.entries(selected).filter(([key]) => !["snapshot", "rules", "evidence", "media", "history", "ruleset"].includes(key)).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{display(value)}</dd></div>)}</dl>}
+                    {active === "taxonomy" ? <div className={styles.statusFacts}><p>Version {display(selected.version)} · {Array.isArray(selected.rules) ? selected.rules.length : 0} product details</p>{Array.isArray(selected.rules) && selected.rules.map((rule, i) => { const entry=rule as Record<string,unknown>; return <p key={i}><strong>{display(entry.label ?? entry.code)}</strong> · {entry.requiredByDefault ? "Required" : "Optional"}</p>; })}</div> : <dl className={styles.statusFacts}>{Object.entries(selected).filter(([key]) => !["snapshot", "rules", "evidence", "media", "history", "ruleset"].includes(key)).map(([key, value]) => <div key={key}><dt>{reviewFieldLabel(key)}</dt><dd>{display(value)}</dd></div>)}</dl>}
                     <p className={styles.availability} role="status"><strong>{selfSubmitted ? "Waiting for a second admin" : expiredClaim ? "Review unavailable" : "Independent review"}</strong>{active === "taxonomy" ? (selfSubmitted ? " You submitted this category update, so another authorized administrator must review and publish it. This is not an error." : " A separate administrator must confirm the exact version before publishing. Your account's permissions and the current security policy still apply.") : selfSubmitted ? " You cannot approve your own submission." : expiredClaim ? " This claim's evidence has expired." : " An independent authorized reviewer is required."}</p>
             {selected.snapshot ? <details><summary>Frozen revision snapshot</summary><pre>{JSON.stringify(selected.snapshot, null, 2)}</pre></details> : null}
             
