@@ -74,6 +74,9 @@ describe("admin review proxy allowlist", () => {
     assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "products", productId, "review"], "POST"), `/api/v1/admin/brands/${brandId}/products/${productId}/review`);
     assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "products", productId, "publication", "publish"], "POST"), `/api/v1/admin/brands/${brandId}/products/${productId}/publication/publish`);
     assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "application-review"], "POST"), `/api/v1/admin/brands/${brandId}/application-review`);
+    assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "application-review", "attest"], "POST"), `/api/v1/admin/brands/${brandId}/application-review/attest`);
+    assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "application-review", "attestations"], "GET"), `/api/v1/admin/brands/${brandId}/application-review/attestations`);
+    assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "application-review", "attest"], "GET"), null);
     assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "application-review"], "GET"), null);
     assert.equal(resolveW2BackendPath(["admin", "reviews", "other"], "GET"), null);
     assert.equal(resolveW2BackendPath(["admin", "reviews", "quality", ".."], "GET"), null);
