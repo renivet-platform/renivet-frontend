@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { AuthApiError, getCurrentSession, logoutCurrentSession, type CurrentSession } from "@/features/identity/auth-api";
 import { buildWorkspaceNavigation, mobileWorkspaceLinks, type WorkspaceGroup, type WorkspaceNavigationItem } from "./workspace-navigation";
+import { isPublicSellerApplicationRoute } from "./workspace-access-policy";
 import styles from "./workspace-shell.module.css";
 
 const groupLabels: Partial<Record<WorkspaceGroup, string>> = {
@@ -36,6 +37,7 @@ function NavigationLink({ item, onNavigate, mobile = false }: { item: WorkspaceN
 
 export function WorkspaceShell({ role, children }: { role: "seller" | "admin"; children: ReactNode }) {
   const pathname = usePathname() || "/";
+  const publicApplicationRoute = isPublicSellerApplicationRoute(role, pathname);
   const router = useRouter();
   const [session, setSession] = useState<CurrentSession | null>(null);
   const [sessionState, setSessionState] = useState<"checking" | "active" | "expired" | "unavailable">("checking");
@@ -47,7 +49,7 @@ export function WorkspaceShell({ role, children }: { role: "seller" | "admin"; c
   const mobileItems = mobileWorkspaceLinks(role, items);
 
   useEffect(() => {
-    if (role !== "seller") return;
+    if (role !== "seller" || publicApplicationRoute) return;
     const brandId = pathname.match(/^\/brands\/([^/]+)/)?.[1];
     if (!brandId) return;
     let live = true;
@@ -57,9 +59,12 @@ export function WorkspaceShell({ role, children }: { role: "seller" | "admin"; c
       if (brand) setBrandName(brand.name);
     }).catch(() => { /* Session and route authorization are checked by the API; keep the neutral label. */ });
     return () => { live = false; };
-  }, [pathname, role]);
+  }, [pathname, role, publicApplicationRoute]);
 
   useEffect(() => {
+    // A new seller must be able to view the application before registering.
+    // Saving still requires backend-authenticated, CSRF-protected requests.
+    if (publicApplicationRoute) return;
     let live = true;
     setSessionState("checking");
     getCurrentSession().then((value) => {
@@ -77,7 +82,7 @@ export function WorkspaceShell({ role, children }: { role: "seller" | "admin"; c
       setSessionState(error instanceof AuthApiError && error.status === 401 ? "expired" : "unavailable");
     });
     return () => { live = false; };
-  }, [role, router, pathname]);
+  }, [role, router, pathname, publicApplicationRoute]);
 
   async function signOut() {
     if (!session || signOutBusy) return;
@@ -103,6 +108,10 @@ export function WorkspaceShell({ role, children }: { role: "seller" | "admin"; c
     label: groupLabels[group]!,
     items: items.filter((item) => item.group === group),
   })).filter((section) => section.items.length > 0);
+
+  // Do not render a privileged seller workspace or its session gate on the
+  // public seller acquisition funnel. Exact path matching is intentional.
+  if (publicApplicationRoute) return <>{children}</>;
 
   return <div className={styles.frame} data-role={role}>
     <aside className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ""}`} aria-label={`${role === "seller" ? "Brand" : "Operations"} navigation`}>

@@ -6,7 +6,7 @@ const steps = ["You apply", "Renivet reviews your business details and evidence"
 
 export function SellerJoinScreen() {
   return <main className={styles.page} data-screen-id="SE-01">
-    <header className={styles.header}><Link href="/" className={styles.wordmark}>RENIVET</Link><nav aria-label="Seller navigation"><Link href="/brands">Your brands</Link><Link href="/sign-in?next=%2Fbrands%2Fjoin">Sign in</Link></nav></header>
+    <header className={styles.header}><Link href="/" className={styles.wordmark}>RENIVET</Link><nav aria-label="Seller navigation"><Link href="/brands">Your brands</Link><Link href="/sign-in?next=%2Fbrands%2Fjoin%2Fapplication">Sign in</Link></nav></header>
     <div className={styles.content}>
       <header className={styles.intro}><p className={styles.kicker}>SELLER PARTNERSHIPS</p><h1>Sell your brand on Renivet</h1><p>Renivet is a curated marketplace. We review every brand and product so shoppers can trust what they buy.</p></header>
       <div className={styles.columns}>
