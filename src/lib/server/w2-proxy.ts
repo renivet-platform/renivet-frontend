@@ -160,8 +160,20 @@ function readSessionCookie(cookieHeader: string | null): string | null {
 export function isSameOriginMutation(request: Request): boolean {
   const origin = request.headers.get("origin");
   if (!origin || request.headers.get("sec-fetch-site") !== "same-origin") return false;
-  try { return new URL(origin).origin === new URL(request.url).origin && origin === new URL(request.url).origin; }
-  catch { return false; }
+  try {
+    // DigitalOcean terminates HTTPS upstream, so request.url may use an
+    // internal host. Trust only the explicitly configured public origin.
+    const configured = process.env.AUTH_PROXY_PUBLIC_ORIGIN;
+    let expectedOrigin = new URL(request.url).origin;
+    if (configured !== undefined) {
+      const publicUrl = new URL(configured);
+      if (publicUrl.protocol !== "https:" || publicUrl.username || publicUrl.password
+        || publicUrl.pathname !== "/" || publicUrl.search || publicUrl.hash
+        || publicUrl.origin !== configured) return false;
+      expectedOrigin = configured;
+    }
+    return origin === expectedOrigin;
+  } catch { return false; }
 }
 
 async function readJsonBody(request: Request): Promise<string | Response> {
