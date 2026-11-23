@@ -71,7 +71,7 @@
 .emptyHistory strong {display:block;color:#1b2420;font-size:18px;margin:0 0 6px;}
 .emptyHistory p {max-width:380px;margin:7px auto 20px;line-height:1.5;}
 .emptyHistory a {background:#1f5a45;color:#fff;border-radius:8px;padding:11px 17px;text-decoration:none;display:inline-block;}
-.importBreadcrumb { display:flex;align-items:center;gap:10px;margin:0 0 16px;color:#79817c;font-size:13px; }
+.importBreadcrumb { display:flex;align-items:center;gap:10px;margin:0 0 16px;color:#56645c;font-size:13px; }
 .importBreadcrumb a {color:#1f5a45;}
 .loadMore { border:1px solid #9caaa0;border-radius:8px;background:#fff;color:#1f5a45;min-height:42px;padding:9px 18px;margin-top:20px; }
 .partialLabel { display:flex;align-items:center;gap:12px;padding:17px 0;color:#44514a;font-size:13px; }

@@ -29,14 +29,14 @@
 .header { border:0; align-items:center; padding:0; gap:15px; margin-bottom:14px; }
 .header h1 { color:#1b2420; font-family:inherit; font-weight:740; letter-spacing:-.025em; font-size:clamp(27px,3vw,32px); }
 .header .kicker { display:none; }
-.header .subtitle { font-size:15px; color:#79817c; }
+.header .subtitle { font-size:15px; color:#56645c; }
 .headerActions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
 .headerActions .primaryButton { min-width:130px; }
 .headerActions .secondaryButton { min-width:127px; }
 .primaryButton, .secondaryButton { min-height:42px; font-size:14px; border-radius:8px; }
 .primaryButton { background:#1f5a45; }
 .primaryButton:hover:not(:disabled) { background:#163f31; }
-.secondaryButton { background:#fff; border-color:#79817c; color:#44514a; }
+.secondaryButton { background:#fff; border-color:#56645c; color:#44514a; }
 .catalogueControls { margin:20px 0 14px; }
 .productSearch { display:block; width:min(100%,385px); min-height:47px; padding:11px 13px; border:1px solid #79817c; border-radius:9px; background:#fff; color:#1b2420; font:inherit; font-size:15px; }
 .productSearch:focus-visible { outline:3px solid #1d4f86; outline-offset:2px; }
@@ -46,21 +46,21 @@
 .activeStatusTab { border-color:#6c9585; background:#6c9585; color:#fff; }
 .statusTab:hover { border-color:#1f5a45; }
 .statusTab:focus-visible,.activeStatusTab:focus-visible { outline:3px solid #1d4f86; outline-offset:3px; }
-.filterDisclosure { margin:12px 0 0; font-size:12px; line-height:1.45; color:#79817c; }
+.filterDisclosure { margin:12px 0 0; font-size:12px; line-height:1.45; color:#56645c; }
 .listSection { margin-top:12px; }
 .listHeading { justify-content:space-between; align-items:center; margin-bottom:11px; }
 .listHeading .kicker { display:none; }
 .listHeading h2 { margin:0; font-family:inherit; font-size:19px; font-weight:700; }
-.count { color:#79817c; font-size:12px; }
+.count { color:#56645c; font-size:12px; }
 .tableWrap { min-width:0; overflow:hidden; border:1px solid #e1ddd3; background:#fff; border-radius:10px; }
-.tableHead { display:grid; grid-template-columns:minmax(170px,2fr) minmax(150px,1.5fr) minmax(95px,.7fr) minmax(72px,.55fr); gap:10px; padding:13px 16px; background:#faf9f6; border-bottom:1px solid #e1ddd3; color:#79817c; font-size:12px; font-weight:700; }
+.tableHead { display:grid; grid-template-columns:minmax(170px,2fr) minmax(150px,1.5fr) minmax(95px,.7fr) minmax(72px,.55fr); gap:10px; padding:13px 16px; background:#faf9f6; border-bottom:1px solid #e1ddd3; color:#56645c; font-size:12px; font-weight:700; }
 .productList { list-style:none; border:0; border-radius:0; margin:0; padding:0; background:transparent; }
 .productList li + li { border-top:1px solid #e1ddd3; }
 .productRow { display:grid; grid-template-columns:minmax(170px,2fr) minmax(150px,1.5fr) minmax(95px,.7fr) minmax(72px,.55fr); align-items:center; gap:10px; padding:15px 16px; color:#1b2420; }
 .productRow:hover { background:#faf9f6; }
 .productCopy { display:grid; gap:4px; min-width:0; }
 .productCopy strong { color:#1f5a45; font-size:14px; font-weight:720; white-space:normal; text-decoration:underline; text-underline-offset:3px; }
-.productCopy small { font-size:12px; color:#79817c; }
+.productCopy small { font-size:12px; color:#56645c; }
 .productVersion { color:#5d6963; font-size:13px; }
 .productOpen { justify-self:end; min-height:37px; display:inline-flex; align-items:center; padding:7px 13px; border:1px solid #9eaaa3; border-radius:8px; color:#44514a; font-size:13px; font-weight:650; background:#fff; }
 .productRow .state { width:max-content; border-radius:999px; padding:7px 10px; font-size:12px; font-weight:650; letter-spacing:0; text-transform:capitalize; }
