@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { AUTH_THEME, contrastRatio } from "../src/features/identity/auth-theme";
-import { isAcceptedPassphrase, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber, phoneContactErrorMessage } from "../src/features/identity/auth-policy";
+import { isAcceptedPassphrase, isAcceptedNewPassphrase, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber, phoneContactErrorMessage } from "../src/features/identity/auth-policy";
 
 test("authentication text and action color pairs meet WCAG AA contrast", () => {
   const pairs: Array<[string, string, string]> = [
@@ -23,6 +23,14 @@ test("passphrase validation follows the backend 8-to-128 character rule without 
   assert.equal(isAcceptedPassphrase("               "), true);
   assert.equal(isAcceptedPassphrase("x".repeat(128)), true);
   assert.equal(isAcceptedPassphrase("x".repeat(129)), false);
+});
+
+test("new account and recovery passwords require 15 characters while legacy sign-in remains available", () => {
+  assert.equal(isAcceptedNewPassphrase("x".repeat(14)), false);
+  assert.equal(isAcceptedNewPassphrase("x".repeat(15)), true);
+  assert.equal(isAcceptedNewPassphrase("x".repeat(128)), true);
+  assert.equal(isAcceptedNewPassphrase("x".repeat(129)), false);
+  assert.equal(isAcceptedPassphrase("x".repeat(8)), true);
 });
 
 test("email normalization matches backend canonicalization", () => {
@@ -50,4 +58,3 @@ test("phone contact errors give safe, actionable guidance without confirming acc
   assert.equal(phoneContactErrorMessage("AUTH_SERVICE_UNAVAILABLE", 503), null);
 });
 
-// New password policy is enforced separately from legacy login compatibility.
