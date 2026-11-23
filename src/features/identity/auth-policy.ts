@@ -1,5 +1,6 @@
 export const MIN_PASSPHRASE_LENGTH = 8;
 export const MAX_PASSPHRASE_LENGTH = 128;
+export const NEW_PASSPHRASE_MIN_LENGTH = 15;
 
 export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
@@ -7,6 +8,11 @@ export function normalizeEmail(value: string): string {
 
 export function isAcceptedPassphrase(value: string): boolean {
   return value.length >= MIN_PASSPHRASE_LENGTH && value.length <= MAX_PASSPHRASE_LENGTH;
+}
+
+export function isAcceptedNewPassphrase(value: string): boolean {
+  return [...value].length >= NEW_PASSPHRASE_MIN_LENGTH
+    && [...value].length <= MAX_PASSPHRASE_LENGTH;
 }
 
 export function normalizeOtpEntry(value: string): string {
