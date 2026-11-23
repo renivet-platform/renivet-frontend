@@ -56,6 +56,12 @@ export function resolveW2BackendPath(segments: string[], method: string): string
     if (segments[3] === "application-review" && segments.length === 4 && method === "POST") {
       return `/api/v1/admin/brands/${brandId}/application-review`;
     }
+    if (segments[3] === "application-review" && segments.length === 5 && segments[4] === "attest" && method === "POST") {
+      return `/api/v1/admin/brands/${brandId}/application-review/attest`;
+    }
+    if (segments[3] === "application-review" && segments.length === 5 && segments[4] === "attestations" && method === "GET") {
+      return `/api/v1/admin/brands/${brandId}/application-review/attestations`;
+    }
     if (segments[3] === "variant-prices" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "decision" && method === "POST") {
       return `/api/v1/admin/brands/${brandId}/variant-prices/${segments[4]}/decision`;
     }

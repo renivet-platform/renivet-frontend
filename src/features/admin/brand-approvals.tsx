@@ -29,6 +29,8 @@ export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
   const [items, setItems] = useState<Application[]>([]);
   const [selected, setSelected] = useState<Application | null>(null);
   const [checker, setChecker] = useState("");
+  const [attestations, setAttestations] = useState<Array<{checkerUserId:string;decision:string}>>([]);
+  const [attestNotice, setAttestNotice] = useState("");
   const [reviewers, setReviewers] = useState<Array<{id:string;name:string}>>([]);
   const [signedInReviewerId, setSignedInReviewerId] = useState("");
   const [error, setError] = useState("");
@@ -46,6 +48,16 @@ export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
       if (detailBrandId && resolveDetail) {
         const application = findPendingBrandApplication(pending, detailBrandId);
         setSelected(application);
+        setAttestations([]);
+        setChecker("");
+        if (application) {
+          try {
+            const evidence = await w2Request<{items:Array<{checkerUserId:string;decision:string}>}>(["admin","brands",application.brandId,"application-review","attestations"]);
+            setAttestations(evidence.items??[]);
+          } catch (error) {
+            setError(errorText(error));
+          }
+        }
         if (!application) setError("This pending application is unavailable or no longer awaiting review.");
       }
     } catch (cause) { setError(errorText(cause)); setSelected(null); }
@@ -63,9 +75,29 @@ export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
     });
   }, []);
 
+  async function recordIndependentCheck(decision: "approved" | "rejected") {
+    if (!selected || busy) return;
+    setBusy(true); setError(""); setAttestNotice("");
+    try {
+      const session=await getCurrentSession();
+      await w2Request(["admin","brands",selected.brandId,"application-review","attest"], {
+        method:"POST", csrfToken:session.csrfToken, idempotencyKey:crypto.randomUUID(),
+        body:{applicantUserId:selected.applicantUserId,decision}
+      });
+      const evidence=await w2Request<{items:Array<{checkerUserId:string;decision:string}>}>(
+        ["admin","brands",selected.brandId,"application-review","attestations"]);
+      setAttestations(evidence.items??[]);
+      setAttestNotice("Your independent review was recorded. Another authorized admin must finalize the decision.");
+    } catch (cause) { setError(errorText(cause)); }
+    finally { setBusy(false); }
+  }
+
   async function decide(decision: "approved" | "rejected") {
     if (!selected) return;
-    if (!/^[0-9a-f-]{36}$/i.test(checker)) { setError("Enter the independent checker’s user ID."); return; }
+    if (!attestations.some(item=>item.checkerUserId===checker && item.decision===decision)) {
+      setError("A different administrator must record their own matching review before you can finalize.");
+      return;
+    }
     setBusy(true); setError("");
     try {
       const session = await getCurrentSession();
@@ -134,11 +166,18 @@ export function BrandApprovals({ detailBrandId }: { detailBrandId?: string }) {
           <dl><div><dt>Brand</dt><dd>{selected.brandName ?? selected.legalName}</dd></div><div><dt>Applicant</dt><dd>{selected.applicantName ?? selected.applicantUserId}</dd></div><div><dt>Submitted</dt><dd>{selected.submittedAt ?? "—"}</dd></div></dl>
           <section className={styles.evidencePanel} aria-labelledby="application-evidence-heading"><p className={styles.kicker}>APPLICATION EVIDENCE</p><h3 id="application-evidence-heading">Documents and verification</h3><p>The current review record includes basic eligibility and membership details only. The evidence API does not provide uploaded documents, bank verification, correction requests, or review reasons.</p><ul><li><span>Business registration</span><strong>Not available</strong></li><li><span>Brand authorisation</span><strong>Not available</strong></li><li><span>Signatory identity</span><strong>Not available</strong></li><li><span>Bank verification</span><strong>Not available</strong></li></ul></section>
           <label>Independent reviewer<select value={checker} onChange={event=>setChecker(event.currentTarget.value)}>
-            <option value="">Choose another authorized reviewer</option>
-            {reviewers.filter(r=>r.id!==signedInReviewerId&&r.id!==selected.applicantUserId).map(reviewer=><option key={reviewer.id} value={reviewer.id}>{reviewer.name}</option>)}
+            <option value="">Choose an independently attested reviewer</option>
+            {reviewers.filter(r=>r.id!==signedInReviewerId&&r.id!==selected.applicantUserId
+              && attestations.some(a=>a.checkerUserId===r.id)).map(reviewer=><option key={reviewer.id} value={reviewer.id}>{reviewer.name}</option>)}
           </select></label>
           {reviewers.filter(r=>r.id!==signedInReviewerId&&r.id!==selected.applicantUserId).length===0 && <p className={styles.muted}>No independent verified reviewer is available. Ask another Renivet admin to be assigned before proceeding.</p>}
-          <div className={styles.actions}><button className={styles.approve} disabled={busy} onClick={() => void decide("approved")}>Approve application</button><button className={styles.reject} disabled={busy} onClick={() => void decide("rejected")}>Reject application</button></div>
+          <p className={styles.muted}>Separate reviewer attestation is required. The second admin must sign in to their own account and independently record the decision.</p>
+          {attestNotice && <p role="status" className={styles.notice}>{attestNotice}</p>}
+          <div className={styles.actions}>
+            <button className={styles.approve} disabled={busy || signedInReviewerId===selected.applicantUserId} onClick={() => void recordIndependentCheck("approved")}>Record my independent approval check</button>
+            <button className={styles.reject} disabled={busy || signedInReviewerId===selected.applicantUserId} onClick={() => void recordIndependentCheck("rejected")}>Record my independent rejection check</button>
+          </div>
+          <div className={styles.actions}><button className={styles.approve} disabled={busy||!attestations.some(a=>a.checkerUserId===checker&&a.decision==="approved")} onClick={() => void decide("approved")}>Finalize approval</button><button className={styles.reject} disabled={busy||!attestations.some(a=>a.checkerUserId===checker&&a.decision==="rejected")} onClick={() => void decide("rejected")}>Finalize rejection</button></div>
           <p className={styles.muted}>Maker-checker is enforced by the backend; the submitter and checker cannot be the same person. This W1 decision records approve or reject only; it does not attest that the unavailable W2 evidence was checked.</p>
         </div>}
       </div>
