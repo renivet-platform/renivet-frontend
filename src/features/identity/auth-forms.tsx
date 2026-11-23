@@ -20,7 +20,7 @@ import {
   verifyPhoneRegistration,
 } from "./auth-api";
 import type { CurrentSession } from "./auth-api";
-import { isAcceptedPassphrase, MAX_PASSPHRASE_LENGTH, MIN_PASSPHRASE_LENGTH, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber, phoneContactErrorMessage } from "./auth-policy";
+import { isAcceptedPassphrase, isAcceptedNewPassphrase, MAX_PASSPHRASE_LENGTH, MIN_PASSPHRASE_LENGTH, NEW_PASSPHRASE_MIN_LENGTH, normalizeEmail, normalizeOtpEntry, normalizePhoneNumber, phoneContactErrorMessage } from "./auth-policy";
 import { AuthShell } from "./auth-shell";
 import { appendReturnTarget, resolvePostSignInPath } from "./auth-routing";
 import styles from "./auth.module.css";
@@ -63,12 +63,12 @@ function PasswordField({ id, label, autoComplete, value, onChange }: {
     <label className={styles.label} htmlFor={id}>{label}</label>
     <div className={styles.passwordRow}>
       <input className={styles.passwordInput} id={id} name={id} type={visible ? "text" : "password"}
-        autoComplete={autoComplete} required minLength={MIN_PASSPHRASE_LENGTH} maxLength={MAX_PASSPHRASE_LENGTH} value={value}
+        autoComplete={autoComplete} required minLength={autoComplete === "new-password" ? NEW_PASSPHRASE_MIN_LENGTH : MIN_PASSPHRASE_LENGTH} maxLength={MAX_PASSPHRASE_LENGTH} value={value}
         onChange={event => onChange(event.currentTarget.value)} aria-describedby={`${id}-hint`} />
       <button className={styles.togglePassword} type="button" aria-label={`${visible ? "Hide" : "Show"} ${label.toLowerCase()}`}
         aria-pressed={visible} onClick={() => setVisible(current => !current)}>{visible ? "Hide" : "Show"}</button>
     </div>
-    <p id={`${id}-hint`} className={styles.hint}>Use 8–128 characters. Spaces are allowed.</p>
+    <p id={`${id}-hint`} className={styles.hint}>{autoComplete === "new-password" ? "Use 15–128 characters." : "Use 8–128 characters."} Spaces are allowed.</p>
   </div>;
 }
 
@@ -181,7 +181,7 @@ export function RegisterForm({ nextPath }: { nextPath?: string }) {
 
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setStatus("");
-    if (method === "email" && !isAcceptedPassphrase(password)) { setError("Password must be 8–128 characters."); return; }
+    if (method === "email" && !isAcceptedNewPassphrase(password)) { setError("New passwords must be 15–128 characters."); return; }
     setBusy(true);
     try {
       if (method === "phone") {
@@ -282,7 +282,7 @@ export function RecoveryForm({ nextPath, screenId = "CU-09C" }: { nextPath?: str
   async function reset(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setStatus("");
     if (!/^\d{6}$/.test(code)) { setError("Enter the six-digit code."); return; }
-    if (!isAcceptedPassphrase(newPassword)) { setError("Password must be 8–128 characters."); return; }
+    if (!isAcceptedNewPassphrase(newPassword)) { setError("New passwords must be 15–128 characters."); return; }
     setBusy(true);
     try {
       await verifyChallenge(challengeId, { purpose: "password_recovery", code, newPassword });
