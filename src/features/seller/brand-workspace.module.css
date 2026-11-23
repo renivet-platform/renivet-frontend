@@ -18,7 +18,7 @@
 .setupCardHeader { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .setupCard .stepNumber { margin-bottom: 0; }
 .setupCard h3 { font: 700 18px Georgia, serif; margin: 18px 0 7px; }
-.setupCard p { color: #687d73; margin: 0; line-height: 1.5; font-size: 13px; }
+.setupCard p { color: #56645c; margin: 0; line-height: 1.5; font-size: 13px; }
 .card { background: #fff; border: 1px solid #dbe7df; border-radius: 14px; padding: 22px; min-height: 170px; display: flex; flex-direction: column; }
 .card h2 { font: 700 23px Georgia, serif; margin: 0 0 8px; }
 .card p { color: #647a70; margin: 0 0 16px; line-height: 1.55; }
@@ -33,23 +33,23 @@
 .workflowCard { display: flex; flex-direction: column; min-height: 190px; padding: 18px; border: 1px solid #dbe7df; border-radius: 12px; background: #fff; }
 .workflowCardHeader { display: flex; justify-content: space-between; align-items: center; }
 .workflowStatus { border-radius: 999px; padding: 5px 8px; background: #edf6ef; color: #1a6a56; font-size: 10px; font-weight: 800; letter-spacing: .8px; }
-.workflowIndex { color: #a0b2a8; font-size: 12px; font-weight: 800; }
+.workflowIndex { color: #56645c; font-size: 12px; font-weight: 800; }
 .workflowCard h3 { font: 700 18px Georgia, serif; margin: 18px 0 7px; }
-.workflowCard p { color: #687d73; line-height: 1.5; font-size: 13px; margin: 0 0 14px; }
+.workflowCard p { color: #56645c; line-height: 1.5; font-size: 13px; margin: 0 0 14px; }
 .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 26px 0; }
 .step { background: #fff; border: 1px solid #dbe7df; border-radius: 12px; padding: 16px; }
 .stepNumber { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #e8f2eb; color: #145b4e; font-weight: 800; margin-bottom: 12px; }
 .step strong { display: block; font-size: 13px; margin-bottom: 5px; }
-.step span { color: #687d73; font-size: 12px; }
+.step span { color: #56645c; font-size: 12px; }
 .sectionTitle { font: 700 25px Georgia, serif; margin: 34px 0 14px; }
-.footerNote { color: #71847a; border-top: 1px solid #dbe7df; padding-top: 18px; margin-top: 28px; font-size: 12px; }
+.footerNote { color: #56645c; border-top: 1px solid #dbe7df; padding-top: 18px; margin-top: 28px; font-size: 12px; }
 .tableWrap { overflow-x: auto; border: 1px solid #dbe7df; border-radius: 12px; background: #fff; }
 .table { width: 100%; border-collapse: collapse; min-width: 650px; }
 .table th, .table td { padding: 15px 16px; border-bottom: 1px solid #edf2ee; text-align: left; font-size: 13px; vertical-align: top; }
 .table th { background: #f7faf7; color: #63776e; font-size: 11px; letter-spacing: .7px; text-transform: uppercase; }
 .table tr:last-child td { border-bottom: 0; }
 .tag { display: inline-block; border-radius: 999px; padding: 5px 9px; background: #edf6ef; color: #1a6a56; font-size: 11px; font-weight: 800; }
-.muted { color: #687d73; }
+.muted { color: #56645c; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
 .button { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #c9ddd1; border-radius: 9px; padding: 10px 14px; color: #145b4e; background: #fff; font-size: 13px; font-weight: 800; text-decoration: none; }
 .button.primary { color: #fff; background: #145b4e; border-color: #145b4e; }
