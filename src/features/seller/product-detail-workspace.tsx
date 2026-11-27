@@ -281,6 +281,9 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
     const from = new Date(validFrom);
     const to = validTo ? new Date(validTo) : null;
     if (Number.isNaN(from.valueOf()) || (to && Number.isNaN(to.valueOf())) || (to && to <= from)) { setPriceError("The price validity window is invalid."); return; }
+    const selectedVariant = product.variants.find((variant) => variant.id === priceVariantId) as (ProductDetail["variants"][number] & { rowVersion?: number }) | undefined;
+    const variantVersion = selectedVariant?.rowVersion;
+    if (typeof variantVersion !== "number" || !Number.isSafeInteger(variantVersion) || variantVersion < 1) { setPriceError("The SKU version is unavailable. Reload the product and try again."); return; }
     setPriceSaving(true);
     try {
       const session = await getCurrentSession();
@@ -297,7 +300,7 @@ export function ProductDetailWorkspace({ brandId, productId }: { brandId: string
         },
         csrfToken: session.csrfToken,
         idempotencyKey: createIdempotencyKey(),
-        ifMatch: `"${product.rowVersion}"`,
+        ifMatch: `"${variantVersion}"`,
       });
       setPriceNotice(`Price proposal ${receipt.id} is pending independent review.`);
       setPriceVariantId(null); setSellingPriceMinor(""); setMrpMinor(""); setValidFrom(""); setValidTo(""); setRuleVersion(""); setPriceReason("");
