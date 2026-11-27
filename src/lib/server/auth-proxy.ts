@@ -1,4 +1,5 @@
 import { resolveApiBaseUrl } from "@/lib/api-url";
+import { signedClientIp } from "./auth-client-ip";
 
 type AuthMethod = "GET" | "POST" | "DELETE";
 
@@ -128,6 +129,10 @@ export async function proxyAuthRequest(request: Request, path: string, method: A
   }
 
   const upstreamHeaders = new Headers({ Accept: "application/json" });
+  if (path === "/auth/sessions" || path === "/auth/register") {
+    const proof = signedClientIp(request, path, process.env.AUTH_PROXY_CLIENT_IP_HMAC_KEY, process.env.AUTH_TRUST_DO_CONNECTING_IP === "true");
+    if (proof) upstreamHeaders.set("X-Renivet-Client-Ip-Proof", proof);
+  }
   if (body !== undefined) upstreamHeaders.set("Content-Type", "application/json");
   const cookie = request.headers.get("cookie");
   if (cookie && (path === "/auth/session" || path === "/auth/sessions" || path === "/auth/phone" || path === "/auth/mfa/step-up" || path === "/auth/mfa/enrollments" || path === "/auth/mfa/enrollments/verify")) {
@@ -157,6 +162,7 @@ export async function proxyAuthRequest(request: Request, path: string, method: A
       headers: upstreamHeaders,
       ...(body === undefined ? {} : { body }),
       cache: "no-store",
+      redirect: "error",
       signal: AbortSignal.timeout(7_000),
     });
     let responseBody: unknown;
