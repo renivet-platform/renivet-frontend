@@ -19,3 +19,12 @@ test("rejects external, protocol-relative, and backslash return targets", () => 
     assert.equal(resolvePostSignInPath(target, { kind: "storefront" }), "/");
   }
 });
+
+test("preserves seller application intent after sign-in for customers and existing sellers", () => {
+  for (const destination of [{ kind: "storefront" as const }, brandSession]) {
+    assert.equal(resolvePostSignInPath("/brands/join/application", destination), "/brands/join/application");
+    assert.equal(resolvePostSignInPath("/brands/join", destination), "/brands/join");
+  }
+  assert.equal(resolvePostSignInPath("/brands/join/application", { kind: "operations" }), "/operations");
+  assert.equal(resolvePostSignInPath("/brands/join/application/unsafe", { kind: "storefront" }), "/");
+});

@@ -55,6 +55,37 @@ describe("W2 API proxy allowlist", () => {
       `http://localhost:4000/api/v1/brands/${brandId}/products`);
   });
 
+  it("accepts a public HTTPS browser origin behind a trusted reverse proxy, but rejects forged origins", () => {
+    const before = process.env.AUTH_PROXY_PUBLIC_ORIGIN;
+    process.env.AUTH_PROXY_PUBLIC_ORIGIN = "https://renivet-staging.example";
+    try {
+      const internalUrl = "http://10.0.0.25:3000/api/w2/admin/catalog/categories";
+      const legitimate = new Request(internalUrl, { headers: { origin: "https://renivet-staging.example", "sec-fetch-site": "same-origin" } });
+      const forgedOrigin = new Request(internalUrl, { headers: { origin: "https://attacker.example", "sec-fetch-site": "same-origin" } });
+      const crossSite = new Request(internalUrl, { headers: { origin: "https://renivet-staging.example", "sec-fetch-site": "cross-site" } });
+      assert.equal(isSameOriginMutation(legitimate), true);
+      assert.equal(isSameOriginMutation(forgedOrigin), false);
+      assert.equal(isSameOriginMutation(crossSite), false);
+    } finally {
+      if (before === undefined) delete process.env.AUTH_PROXY_PUBLIC_ORIGIN;
+      else process.env.AUTH_PROXY_PUBLIC_ORIGIN = before;
+    }
+  });
+
+  it("fails closed on an invalid configured public origin", () => {
+    const before = process.env.AUTH_PROXY_PUBLIC_ORIGIN;
+    process.env.AUTH_PROXY_PUBLIC_ORIGIN = "https://renivet-staging.example/wrong-path";
+    try {
+      const request = new Request("http://internal:3000/api/w2", {
+        headers: { origin: "https://renivet-staging.example", "sec-fetch-site": "same-origin" },
+      });
+      assert.equal(isSameOriginMutation(request), false);
+    } finally {
+      if (before === undefined) delete process.env.AUTH_PROXY_PUBLIC_ORIGIN;
+      else process.env.AUTH_PROXY_PUBLIC_ORIGIN = before;
+    }
+  });
+
   it("requires an exact same-origin mutation request", () => {
     const sameOrigin = new Request("https://seller.example/api/w2", { headers: { origin: "https://seller.example", "sec-fetch-site": "same-origin" } });
     const crossOrigin = new Request("https://seller.example/api/w2", { headers: { origin: "https://attacker.example", "sec-fetch-site": "cross-site" } });
@@ -74,6 +105,9 @@ describe("admin review proxy allowlist", () => {
     assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "products", productId, "review"], "POST"), `/api/v1/admin/brands/${brandId}/products/${productId}/review`);
     assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "products", productId, "publication", "publish"], "POST"), `/api/v1/admin/brands/${brandId}/products/${productId}/publication/publish`);
     assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "application-review"], "POST"), `/api/v1/admin/brands/${brandId}/application-review`);
+    assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "application-review", "attest"], "POST"), `/api/v1/admin/brands/${brandId}/application-review/attest`);
+    assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "application-review", "attestations"], "GET"), `/api/v1/admin/brands/${brandId}/application-review/attestations`);
+    assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "application-review", "attest"], "GET"), null);
     assert.equal(resolveW2BackendPath(["admin", "brands", brandId, "application-review"], "GET"), null);
     assert.equal(resolveW2BackendPath(["admin", "reviews", "other"], "GET"), null);
     assert.equal(resolveW2BackendPath(["admin", "reviews", "quality", ".."], "GET"), null);

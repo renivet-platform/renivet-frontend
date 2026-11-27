@@ -56,6 +56,12 @@ export function resolveW2BackendPath(segments: string[], method: string): string
     if (segments[3] === "application-review" && segments.length === 4 && method === "POST") {
       return `/api/v1/admin/brands/${brandId}/application-review`;
     }
+    if (segments[3] === "application-review" && segments.length === 5 && segments[4] === "attest" && method === "POST") {
+      return `/api/v1/admin/brands/${brandId}/application-review/attest`;
+    }
+    if (segments[3] === "application-review" && segments.length === 5 && segments[4] === "attestations" && method === "GET") {
+      return `/api/v1/admin/brands/${brandId}/application-review/attestations`;
+    }
     if (segments[3] === "variant-prices" && segments.length === 6 && uuid.test(segments[4]!) && segments[5] === "decision" && method === "POST") {
       return `/api/v1/admin/brands/${brandId}/variant-prices/${segments[4]}/decision`;
     }
@@ -160,8 +166,20 @@ function readSessionCookie(cookieHeader: string | null): string | null {
 export function isSameOriginMutation(request: Request): boolean {
   const origin = request.headers.get("origin");
   if (!origin || request.headers.get("sec-fetch-site") !== "same-origin") return false;
-  try { return new URL(origin).origin === new URL(request.url).origin && origin === new URL(request.url).origin; }
-  catch { return false; }
+  try {
+    // DigitalOcean terminates HTTPS upstream, so request.url may use an
+    // internal host. Trust only the explicitly configured public origin.
+    const configured = process.env.AUTH_PROXY_PUBLIC_ORIGIN;
+    let expectedOrigin = new URL(request.url).origin;
+    if (configured !== undefined) {
+      const publicUrl = new URL(configured);
+      if (publicUrl.protocol !== "https:" || publicUrl.username || publicUrl.password
+        || publicUrl.pathname !== "/" || publicUrl.search || publicUrl.hash
+        || publicUrl.origin !== configured) return false;
+      expectedOrigin = configured;
+    }
+    return origin === expectedOrigin;
+  } catch { return false; }
 }
 
 async function readJsonBody(request: Request): Promise<string | Response> {

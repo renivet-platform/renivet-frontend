@@ -18,6 +18,9 @@ export function resolvePostSignInPath(target: string | null | undefined, destina
   try { url = new URL(target, "https://renivet.invalid"); } catch { return fallback; }
   if (url.origin !== "https://renivet.invalid") return fallback;
   const path = `${url.pathname}${url.search}${url.hash}`;
+  // Applying for a new brand is allowed for authenticated customers and
+  // existing sellers; it does not grant a brand workspace permission.
+  if (destination.kind !== "operations" && ["/brands/join", "/brands/join/application"].includes(url.pathname)) return path;
 
   if (destination.kind === "operations") {
     return ["/operations", "/taxonomy", "/brand-approvals"].some((prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`)) ? path : fallback;

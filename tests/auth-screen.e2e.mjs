@@ -211,7 +211,7 @@ try {
   await waitFor("[...document.querySelectorAll('button')].some(button => button.textContent.includes('Email and password'))");
   await evaluate("[...document.querySelectorAll('button')].find(button => button.textContent.includes('Email and password'))?.click()");
   await waitInteractive("register-email");
-  await enter("register-email", "buyer@example.test"); await enter("register-password", "pass1234"); await submit();
+  await enter("register-email", "buyer@example.test"); await enter("register-password", "synthetic-long-password-2026"); await submit();
   await waitInteractive("register-code");
   assert.equal(await evaluate("document.activeElement?.id === 'register-code'"), true, "registration focuses the code field when the challenge step opens");
   const registerRequestsBeforeResend = emailChallengeRequests.length;
@@ -225,7 +225,7 @@ try {
   assert.equal(await evaluate("location.search === '' && document.cookie.includes('synthetic-session') === false"), true, "verification keeps challenge/code/session out of URL and document.cookie");
   await command("Page.navigate", { url: new URL("sign-in", base).href });
   await selectEmailSignIn();
-  await enter("signin-email", "buyer@example.test"); await enter("signin-password", "pass1234"); await submit();
+  await enter("signin-email", "buyer@example.test"); await enter("signin-password", "synthetic-long-password-2026"); await submit();
   await waitFor("location.pathname === '/' && document.body.innerText.includes('Made by hand, with the proof to show for it.')");
   await command("Page.navigate", { url: new URL("account", base).href });
   await waitFor("location.pathname === '/account' && document.body.innerText.includes('You are signed in')");
